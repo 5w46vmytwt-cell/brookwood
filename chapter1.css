@@ -1,0 +1,14 @@
+/* Restrained recovered-evidence sequence; no CSS animation clocks to restart on reload. */
+#opening.opening{background:#000;overflow:hidden}
+#openingTitle{position:relative;z-index:2}
+.chapter-layer{position:absolute;inset:0;opacity:0;pointer-events:none}
+.chapter-image{width:100%;height:100%;object-fit:contain;background:#000}
+#chapterFarm{object-fit:cover;transform-origin:52% 48%}
+.chapter-text{display:flex;align-items:center;justify-content:center;text-align:center;font:clamp(18px,2.5vw,36px) Arial,sans-serif;letter-spacing:.3em;color:#d7d5d0}
+#chapterFarmLabel{align-items:flex-end;padding-bottom:8vh;font-size:clamp(12px,1.4vw,20px);letter-spacing:.4em}
+#chapterFriends{padding-top:12vh;font-size:clamp(13px,1.8vw,24px);color:#aaa}
+#chapterFinal{flex-direction:column;gap:24px;font-size:clamp(14px,1.8vw,24px)}
+#chapterFinal span{font-size:clamp(12px,1.4vw,20px);letter-spacing:.35em}
+#chapterGrain{z-index:3;background:repeating-linear-gradient(17deg,transparent 0 2px,#fff 3px,transparent 4px),repeating-linear-gradient(107deg,transparent 0 3px,#fff 4px,transparent 5px)}
+#chapterFlash{background:#fff;z-index:4}
+@media(prefers-reduced-motion:reduce){#chapterFarm{transform:none!important}}

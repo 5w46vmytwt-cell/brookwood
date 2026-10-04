@@ -12,20 +12,21 @@ function environment(stored = null) {
   if (stored !== null) storage.set('brookwood-player-v3', stored);
   function element() {
     const classes = new Set();
-    return { textContent: '', innerHTML: '', value: '', options: [], children: [], events: {}, hidden: false,
+    return { style: {}, textContent: '', innerHTML: '', value: '', options: [], children: [], events: {}, hidden: false,
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, yes) { if (yes) classes.add(c); else classes.delete(c); } },
       addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
   }
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }, createElement: element };
-  const context = vm.createContext({ document, location: { origin: 'https://brookwood.example' },
+  const context = vm.createContext({ requestAnimationFrame: () => 1, cancelAnimationFrame() {}, document, location: { origin: 'https://brookwood.example' },
     localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
     setTimeout(cb) { const id = ++serial; timers.set(id, cb); return id; }, clearTimeout(id) { timers.delete(id); },
     confirm: () => true, AbortController, TypeError });
+  vm.runInContext(fs.readFileSync('chapter1.js','utf8'), context);
   return { context, document, timers, storage };
 }
 
 test('syntax, JSON, imports, route destinations and shared client asset pass', () => {
-  const files = fs.readdirSync('api').map(f => 'api/' + f).concat(['client.js'], fs.readdirSync('tests').map(f => 'tests/' + f));
+  const files = fs.readdirSync('api').map(f => 'api/' + f).concat(['client.js','chapter1.js'], fs.readdirSync('tests').map(f => 'tests/' + f));
   for (const f of files) {
     const result = spawnSync(process.execPath, ['--check', f], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
