@@ -226,3 +226,54 @@ test('Redis/network errors return safe 503 responses and retries are bounded', a
   assert.equal((await call('join', { name: 'Busy' })).status, 409);
   assert.equal(raw, original);
 });
+
+const testFill = () => call('host', { action: 'test-fill', code: 'test-host' });
+async function twoRealPlayers() {
+  await reset();
+  return [(await call('join', { name: 'Real A' })).data.player, (await call('join', { name: 'Real B' })).data.player];
+}
+test('host test-fill creates ten ready simulated players and leaves real players unchanged', async () => {
+  const real = await twoRealPlayers();
+  const before = structuredClone(state().players);
+  assert.equal((await call('host', { action: 'test-fill', code: 'wrong' })).status, 403);
+  assert.equal((await testFill()).status, 200);
+  assert.deepEqual(state().players.slice(0, 2), before);
+  const simulated = state().players.filter(p => p.simulated);
+  assert.equal(simulated.length, 10);
+  assert.deepEqual(simulated.map(p => p.name), Array.from({ length: 5 }, (_, i) => [`Test ${i + 1}A`, `Test ${i + 1}B`]).flat());
+  for (let i = 0; i < 10; i += 2) {
+    assert.equal(simulated[i].partnerId, simulated[i + 1].id);
+    assert.equal(simulated[i + 1].partnerId, simulated[i].id);
+  }
+  assert(simulated.every(p => p.ready && p.token));
+  assert.equal(new Set(state().players.map(p => p.id)).size, 12);
+  assert.equal((await start()).status, 409);
+  await call('player', { ...real[0], action: 'partner', partnerId: real[1].id });
+  for (const p of real) await call('player', { ...p, action: 'ready', ready: true });
+  assert.equal((await start()).status, 200);
+  assert.equal((await testFill()).status, 409);
+  await reset(); assert.equal(state().players.length, 0);
+});
+
+test('test-fill rejects wrong counts, simulated occupants, and reserved name collisions', async () => {
+  await reset(); assert.equal((await testFill()).status, 409);
+  await call('join', { name: 'One' }); assert.equal((await testFill()).status, 409);
+  await call('join', { name: 'Two' }); await call('join', { name: 'Three' });
+  assert.equal((await testFill()).status, 409);
+  await twoRealPlayers();
+  const altered = state(); altered.players[0].simulated = true; raw = JSON.stringify(altered);
+  assert.equal((await testFill()).status, 409);
+  await reset(); await call('join', { name: 'test 1a' }); await call('join', { name: 'Real' });
+  assert.equal((await testFill()).status, 409);
+});
+
+test('concurrent test-fill executes once and reset fences an old test-fill', async () => {
+  await twoRealPlayers(); overlapReads(2);
+  const result = await Promise.all([testFill(), testFill()]);
+  assert.deepEqual(result.map(r => r.status).sort(), [200, 409]);
+  assert.equal(state().players.length, 12);
+  await twoRealPlayers();
+  const gate = { entered: deferred(), release: deferred() }; heldCommit = gate;
+  const old = testFill(); await gate.entered.promise; await reset(); gate.release.resolve();
+  assert.equal((await old).status, 409); assert.equal(state().players.length, 0);
+});

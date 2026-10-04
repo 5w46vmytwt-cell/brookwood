@@ -109,3 +109,20 @@ test('TV QR contains only join URL, QR failure is isolated and reset clears open
     assert(!env.document.getElementById('opening').classList.contains('show'));
   }
 });
+
+test('TV test-fill requires confirmation and sends the existing host code', async () => {
+  const env = environment(); const actions = [];
+  env.context.lobbyRequest = async (url, body) => {
+    if (url === '/api/host') { actions.push(body); return { ok: true }; }
+    return { phase: 'lobby', players: [] };
+  };
+  vm.runInContext(inline('tv.html'), env.context); await flush();
+  env.document.getElementById('code').value = 'host-test-code';
+  env.context.confirm = () => false;
+  await vm.runInContext("host('test-fill')", env.context); assert.equal(actions.length, 0);
+  env.context.confirm = message => { assert(message.includes('10 ready test players')); return true; };
+  await vm.runInContext("host('test-fill')", env.context);
+  assert.equal(actions.length, 1); assert.equal(actions[0].action, 'test-fill');
+  assert.equal(actions[0].code, 'host-test-code');
+  assert(fs.readFileSync('tv.html', 'utf8').includes('TEST: FILL LOBBY'));
+});
