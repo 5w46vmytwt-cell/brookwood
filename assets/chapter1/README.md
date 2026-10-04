@@ -6,15 +6,9 @@ Add the supplied images here, using these exact filenames:
 - `brookwood-poster.png`
 - `brookwood-group.png`
 
-Optional audio (not supplied or generated):
-
-- `narration.mp3`: one 40-second track starting at Chapter 1 00:00, after the
-  four-second opening title. Spoken cues begin at 00:02, 00:05, 00:08, 00:12,
-  00:15, 00:19, 00:24, 00:27, 00:29, and 00:35, matching the supplied script.
-- `wind.mp3`: quiet looping ambience throughout Chapter 1.
-- `creak.mp3`: cue at 00:15.
-- `shutter.mp3`: photographic flash cue at 00:32.
-- `impact.mp3`: restrained cue at 00:38.
+This version is visual-only. No audio sources are referenced, loaded, or played.
+Future narration, ambience, or effect metadata may accompany a timeline cue, but
+the visual engine does not interpret or dispatch it.
 
 Narration script and offsets:
 
@@ -31,12 +25,10 @@ Narration script and offsets:
 | 00:29 | They took one photograph before going inside. |
 | 00:35 | It would be the last photograph ever taken of them. |
 
-Missing media is optional: visuals keep their own server-timestamp clock, missing
-images stay black, and missing/blocked audio stays silent. No replacement images
-or synthesized narration are included. Reloads seek narration to the current
-Chapter 1 offset; past one-shot effects are not replayed. A browser may require a
-new user gesture for audio after a reload. The host Start interaction attempts to
-unlock audio before the API request. The visual sequence never waits for audio.
+Visuals keep their own server-timestamp clock; missing images stay black. No
+replacement images are included. Reloads resolve the current cue state directly,
+including the flash only if the clock falls within its 120ms window. See
+`CINEMATICS.md` and `chapter1Timeline` in `chapter1.js` for the cue architecture.
 
 Timeline: 0–4 seconds is the existing opening (now October 31, 1996), including
 its fade to black. Chapter 1 then runs for 40 seconds and holds on black. No

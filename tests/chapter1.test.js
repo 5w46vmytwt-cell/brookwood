@@ -13,6 +13,7 @@ function setup() {
   const context = vm.createContext({ document, Date: { now: () => now },
     requestAnimationFrame(cb) { const id = ++serial; frames.set(id, cb); return id; },
     cancelAnimationFrame(id) { frames.delete(id); } });
+  vm.runInContext(fs.readFileSync('cinematic-engine.js','utf8'), context);
   vm.runInContext(fs.readFileSync('chapter1.js', 'utf8'), context);
   return { ...context.BrookwoodChapter1, document, frames, context, setTime(seconds) { now = 100000 + seconds * 1000; } };
 }
@@ -56,7 +57,7 @@ test('late TV load/reload resumes correct state and polling does not restart or 
   assert.equal(env.document.getElementById('chapterGrain').style.opacity, 0);
 });
 
-test('missing imagery, missing audio and rejected autoplay never stop visual progression', async () => {
+test('missing imagery and unavailable audio APIs never stop visual progression', async () => {
   const env = setup();
   class BlockedAudio {
     constructor() { this.state = 'suspended'; }
@@ -69,7 +70,7 @@ test('missing imagery, missing audio and rejected autoplay never stop visual pro
   missing.complete = true; missing.naturalWidth = 0;
   const cinematic = new env.Cinematic(env.document);
   assert.equal(missing.style.visibility, 'hidden');
-  cinematic.unlockAudio(); await new Promise(resolve => setImmediate(resolve));
+  await new Promise(resolve => setImmediate(resolve));
   const image = env.document.getElementById('chapterGroup'); image.listeners.error({ target: image });
   assert.equal(image.style.visibility, 'hidden');
   env.setTime(36.05); cinematic.update({ phase: 'opening', startedAt: 100000 });
@@ -78,21 +79,11 @@ test('missing imagery, missing audio and rejected autoplay never stop visual pro
   assert.equal(env.document.getElementById('chapterFinal').style.opacity, 0);
 });
 
-test('narration seeks to visual clock; shutter fires once at 32 seconds and never on a late reload', () => {
-  const { Soundtrack } = setup(); const audio = new Soundtrack(); const calls = [];
-  audio.play = (name, offset = 0) => calls.push({ name, offset });
-  audio.sync(31.9); audio.sync(32.01); audio.sync(32.05);
-  assert.equal(calls.filter(c => c.name === 'shutter').length, 1);
-  assert(calls.some(c => c.name === 'narration' && c.offset === 31.9));
-  audio.stop(); calls.length = 0; audio.sync(34);
-  assert.equal(calls.filter(c => c.name === 'shutter').length, 0);
-});
-
 test('TV integration expects exact media paths and preserves phone/server code', () => {
   const tv = fs.readFileSync('tv.html', 'utf8');
   assert(!tv.includes('1998')); assert(tv.includes('OCTOBER 31 · 1996'));
   for (const name of ['farm','poster','group']) assert(tv.includes(`/assets/chapter1/brookwood-${name}.png`));
-  assert(tv.includes('cinematic.update(s)')); assert(tv.includes("if(action==='start')cinematic.unlockAudio()"));
+  assert(tv.includes('cinematic.update(s)')); assert(tv.includes('new BrookwoodTimeline.Renderer(document,BrookwoodChapter1.chapter1Timeline)'));
   assert(tv.includes('TEST: FILL LOBBY'));
   assert(!fs.readFileSync('chapter1.js','utf8').includes('speechSynthesis'));
 });
