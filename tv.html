@@ -15,7 +15,9 @@
 const join=location.origin+'/join';document.getElementById('joinUrl').textContent=join;
 try{if(typeof QRCode!=='function')throw new Error('QR library unavailable');new QRCode(document.getElementById('qr'),{text:join,width:170,height:170,correctLevel:QRCode.CorrectLevel.M})}catch{document.getElementById('qr').hidden=true}
 const cinematic=new BrookwoodTimeline.Renderer(document,BrookwoodChapter1.chapter1Timeline);
-const narration=new BrookwoodAudio.Player(BrookwoodChapter1.chapter1Timeline);
+const narration=new BrookwoodAudio.Player(BrookwoodChapter1.chapter1Timeline,{soundtrack:BrookwoodAudio.tvSoundtrack});
+document.addEventListener('pointerdown',()=>narration.unlockBackground());
+document.addEventListener('keydown',()=>narration.unlockBackground());
 let last=null,pollError=null;
 function render(s){last=s;cinematic.update(s);narration.update(s);if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
 function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}

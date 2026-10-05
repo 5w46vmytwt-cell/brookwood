@@ -9,7 +9,10 @@ Add the supplied images here, using these exact filenames:
 Original narration WAVs live in `audio/narration-01.wav` through
 `audio/narration-10.wav`. The separate audio player consumes their absolute
 server-clock cue metadata in `chapter1.js`; the visual resolver stays pure.
-No ambience, music, or sound effects are played.
+`audio/brookwood-background.wav` is the persistent looping TV score.
+`audio/sfx-camera-shutter.wav` is the only synchronized SFX, at absolute 36000ms.
+Both source WAVs are played unchanged; see `CINEMATICS.md` for ducking and
+refresh behavior. No additional sounds are played.
 
 Narration script and absolute starts from server startedAt:
 
