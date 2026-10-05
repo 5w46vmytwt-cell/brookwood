@@ -1,5 +1,6 @@
 import { AbsoluteCueScheduler } from './cinematic-scheduler.js';
 import { CHAPTER1_END_MS } from './cinematic-timeline.js';
+import { chapter2Audio } from './chapter2-audio.js';
 
 // One scheduler clock, fed by the TV's existing /api/state poller.
 export class TVCinematicRuntime {
@@ -11,13 +12,14 @@ export class TVCinematicRuntime {
     this.state=null;this.now=now;
     this.scheduler=new AbsoluteCueScheduler({autoSync:false,now,requestFrame,cancelFrame,
       onElapsed:(_,meta)=>{
+        if(['photo','photo-complete'].includes(this.state?.phase)){this.audio.update(this.state,meta);return;}
         if(this.state?.phase!=='opening')return;
         this.visuals.update(this.state);
         this.audio.update(this.state,meta);
       }});
     const clock={elapsedNow:()=>this.scheduler.elapsedNow(),externallyDriven:true};
     this.visuals=new Renderer(document,timeline,clock);
-    this.audio=new Player(timeline,{...clock,soundtrack,canSync:()=>!this.scheduler.recovering});
+    this.audio=new Player(timeline,{...clock,soundtrack,audioExtension:chapter2Audio,canSync:()=>!this.scheduler.recovering});
     this.scheduler.start();
   }
   acceptState(state,timing={}) {

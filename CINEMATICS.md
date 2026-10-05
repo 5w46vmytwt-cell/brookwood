@@ -99,7 +99,7 @@ continues across lobby/Start/replay.
 
 `cinematic-timeline.js` contains locked chapter/checkpoint boundaries and the
 verified Chapter 2 narration timing contract.
-Chapter 2 is not implemented, and no automatic photo action is dispatched.
+Chapter 2 audio is implemented separately; no automatic photo action is dispatched.
 Opening at or after 44000ms continues to render Chapter 1's final black state.
 
 ## Locked Chapter 2 narration timing contract
@@ -134,7 +134,50 @@ mandatory 750 ms narration-free interval (`CHAPTER2_PHOTO_SILENCE_MS`).
 The photo prompt begins at 86,500 ms; the persistent photo checkpoint begins
 at 88,000 ms, exactly the Chapter 2 end. The prompt must not move to fit narration.
 
-This checkpoint exports timing constants only. Chapter 2 playback, visuals,
-music, and photo progression are not implemented. The narration plan is not
-wired into playback, and no automatic begin-photo action is dispatched.
+The timing contract remains frozen. Chapter 2 narration and music consume it.
+Chapter 2 visuals and automatic photo progression are not implemented.
 Opening at or after 44,000 ms continues to render Chapter 1's final black state.
+
+## Chapter 2 audio integration
+
+`chapter2-audio.js` maps narration directly from the locked timing contract and
+provides a reusable synchronized looping score configuration. The existing
+Player and TV scheduler drive both chapters; no new polling or timing loop is
+introduced. Chapter 1's visual timeline remains unchanged and black after 44s.
+
+The party asset is `/assets/chapter2/audio/halloweenbeat.mp3`: 5,519 complete
+MPEG-1 Layer III frames, 44,100 Hz joint stereo, 256 kbps CBR, 6,357,888 samples.
+Encoded duration is exactly 6357888 / 44100 seconds (144169.79591836737ms).
+No ID3/Xing gapless duration metadata is present. Chromium reports decoded
+duration 144.169781 seconds (timestamp precision differs by about 0.015ms).
+Modulo seeking prefers browser decoded duration when available, with the
+frame-derived duration as fallback. The source is not re-encoded.
+It exceeds the required 38 seconds from 50s to 88s. Browser looping keeps it
+playing afterward; refresh/hard resync seeks `(elapsed - 50000) % duration`.
+One preloaded element is retained per track, including between narration clips
+and during authoritative photo/photo-complete phases. New startedAt resets
+execution and canonical seek. Lobby stops the party track, preserving the
+existing non-canonical Chapter 1 lobby soundtrack behavior.
+
+Chapter 1 score fades canonically from its post-narration .12 bed at 44000ms
+to zero at 47000ms. Party starts at 50000ms with a 350ms fade-in. Volume is
+resolved from absolute elapsed, without page-load-relative fades or timers.
+Narration remains at 1.0 and uses the existing one-shot/seeking logic.
+
+Duck windows are derived from the final locked narration intervals. Gaps under
+500ms merge, making all thirteen lines one continuous window: 50500�85750ms.
+Pre-roll is 150ms, hold is 100ms, and release is 250ms. This includes the zero-gap
+Costumes/Drinks/Food sequence. The narration ceiling is .10 until 75000ms,
+ramps to .09 by 75500ms, then ramps .09 to .08 from 80000�80500ms and stays .08
+through final narration. The underlying montage bed rises toward .20 near
+74000ms, but the narration ceiling takes precedence, so it does not pump or
+compete with the voice. Other free gaps use .14; after the final release at
+86100ms the bed is .12. From 86500�88000ms it rises linearly .12 to .13; at and
+after 88000ms it holds .13 indefinitely. Narration ends at 85750ms; the locked
+750ms narration-free interval before the photo prompt is preserved.
+
+Host Start primes the party element synchronously alongside narration. A
+blocked score attempt is caught and may retry on a subsequent interaction,
+seeking from the live scheduler clock. Loading or playback failures cannot
+stop the scheduler, narration, or visuals. No Chapter 2 SFX, visual cues,
+automatic begin-photo, or server/phase changes are introduced.

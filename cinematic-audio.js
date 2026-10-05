@@ -43,13 +43,53 @@
       if (progress === 1) this.ramp = null;
     }
   }
+  // Canonical, reusable looping score. A single element survives cue changes.
+  class SynchronizedTrack {
+    constructor(config, elapsedNow, canSync) {
+      this.config=config;this.elapsedNow=elapsedNow;this.canSync=canSync;
+      this.startedAt=null;this.attempted=false;this.pending=false;this.generation=0;
+      try{
+        this.audio=new Audio(config.src);this.audio.loop=true;this.audio.preload='auto';this.audio.volume=0;
+        this.audio.addEventListener('canplay',()=>this.sync());
+        this.audio.addEventListener('error',()=>{this.unavailable=true;console.warn(`Score unavailable: ${config.id}`)});
+        this.audio.load();
+      }catch(error){this.unavailable=true;console.warn('Score preload failed',error)}
+    }
+    reset(startedAt){
+      if(this.startedAt===startedAt)return;
+      this.startedAt=startedAt;this.attempted=false;this.pending=false;++this.generation;
+      this.audio?.pause();
+    }
+    sync({gesture=false,reconstruct=false}={}){
+      if(this.unavailable||this.startedAt===null||!this.canSync())return;
+      const elapsed=this.elapsedNow(),audio=this.audio,c=this.config;
+      if(elapsed<c.at)return;
+      audio.volume=c.volumeAt(elapsed);
+      const seek=()=>{
+        const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration*1000:c.durationMs;
+        audio.currentTime=((this.elapsedNow()-c.at)%duration)/1000;
+      };
+      if(reconstruct&&audio.readyState>=1)try{seek()}catch(error){console.warn('Score seek failed',error)}
+      if(!audio.paused||this.pending||audio.readyState<1||(this.attempted&&!gesture))return;
+      this.attempted=true;this.pending=true;const generation=this.generation;
+      try{
+        seek();
+        Promise.resolve(audio.play()).then(()=>{
+          if(generation===this.generation&&this.canSync())seek();
+        }).catch(error=>{if(generation===this.generation)audio.pause();console.warn('Score playback blocked; retry on interaction',error)})
+          .finally(()=>{if(generation===this.generation)this.pending=false});
+      }catch(error){this.pending=false;console.warn('Score playback failed',error)}
+    }
+  }
   class Player {
     constructor(timeline, options = {}) {
       this.elapsedNow = options.elapsedNow || (() => Date.now() - this.startedAt);
       this.externallyDriven = !!options.externallyDriven;
       this.canSync = options.canSync || (() => true);
       this.timeline = timeline;
-      this.cues = timeline.cues.filter(c => c.type === 'narration');
+      this.extension = options.audioExtension;
+      this.tracks=(this.extension?.tracks||[]).map(c=>new SynchronizedTrack(c,this.elapsedNow,this.canSync));
+      this.cues = [...timeline.cues.filter(c => c.type === 'narration'),...(this.extension?.narration||[])];
       this.sfxCues = timeline.cues.filter(c => c.type === 'sfx');
       this.activeSfx = new Map();
       this.soundtrack = options.soundtrack ? new Soundtrack(options.soundtrack) : null;
@@ -75,7 +115,7 @@
     unlock() {
       // Called synchronously by the host's Start click, before its API await.
       this.unlockBackground();
-      for (const [id, audio] of this.media) {
+      for (const [id, audio] of [...this.media,...this.tracks.filter(t=>t.audio&&t.audio.paused).map(t=>[t.config.id,t.audio])]) {
         if (this.unavailable.has(id)) continue;
         try {
           audio.muted = true;
@@ -88,13 +128,20 @@
         } catch (error) { audio.muted = false; console.warn(`Narration priming failed: ${id}`, error); }
       }
     }
-    unlockBackground() { this.soundtrack?.start(true); this.schedule(); }
+    unlockBackground() { this.soundtrack?.start(true); for(const track of this.tracks)track.sync({gesture:true}); this.schedule(); }
     update(state, {reconstruct = false} = {}) {
       const startedAt = Number(state.startedAt);
+      if(this.extension?.persistPhases?.includes(state.phase)&&Number.isFinite(startedAt)&&startedAt>0){
+        if(this.startedAt!==startedAt){this.stop();this.startedAt=startedAt;}
+        for(const audio of this.media.values())audio.pause();this.active=null;this.activeSfx.clear();
+        for(const track of this.tracks){track.reset(startedAt);track.sync({reconstruct});}
+        this.mixScore(this.elapsedNow());return;
+      }
       if (state.phase !== 'opening' || !Number.isFinite(startedAt) || startedAt <= 0) {
         this.stop(); this.mixScore(); this.schedule(); return;
       }
       if (this.startedAt !== startedAt) { this.stop(); this.startedAt = startedAt; }
+      for(const track of this.tracks)track.reset(startedAt);
       this.sync();
       if(reconstruct)this.reconcile();
       this.schedule();
@@ -106,6 +153,7 @@
     sync() {
       if (this.startedAt === null || !this.canSync()) return;
       const elapsed = this.elapsedNow();
+      for(const track of this.tracks)track.sync();
       // Pause the previous clip before any new clip starts: no late-load overlap.
       if (this.active && elapsed >= this.active.cue.at + this.active.cue.durationMs) {
         this.active.audio.pause(); this.active = null;
@@ -164,6 +212,7 @@
     }
     reconcile() {
       if(!this.canSync())return;
+      for(const track of this.tracks)track.sync({reconstruct:true});
       const elapsed=this.elapsedNow();
       for(const entry of [this.active,...this.activeSfx.values()]){
         if(!entry)continue;
@@ -175,6 +224,12 @@
     }
     mixScore(elapsed = null) {
       if (!this.soundtrack) return;
+      const override=this.startedAt===null?null:this.extension?.backgroundVolumeAt(elapsed);
+      if(override!=null){
+        this.soundtrack.start();this.soundtrack.target=override;this.soundtrack.ramp=null;
+        if(this.soundtrack.audio)this.soundtrack.audio.volume=override;
+        return;
+      }
       const mix = this.timeline.scoreMix;
       let target = this.soundtrack.config.lobbyVolume;
       if (this.startedAt !== null && mix) {
@@ -186,6 +241,7 @@
     }
     tick() { this.raf = null; if (this.startedAt !== null) this.sync(); else this.mixScore(); this.schedule(); }
     stop() {
+      for(const track of this.tracks)track.reset(null);
       if (this.raf !== null) cancelAnimationFrame(this.raf);
       for (const audio of this.media.values()) { try { audio.pause(); } catch {} }
       this.raf = null; this.startedAt = null; this.active = null; this.handled.clear(); ++this.run;
