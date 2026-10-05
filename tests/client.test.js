@@ -183,3 +183,16 @@ test('TV test-fill requires confirmation and sends the existing host code', asyn
   assert.equal(actions[0].code, 'host-test-code');
   assert(fs.readFileSync('tv.html', 'utf8').includes('TEST: FILL LOBBY'));
 });
+
+test('existing phone and TV clients stay stable for photo and photo-complete without a new UI',async()=>{
+  for(const phase of ['photo','photo-complete']){
+    const phone=environment(JSON.stringify({id:'id',token:'private'}));
+    phone.context.lobbyRequest=async()=>({...response,phase,photo:{confirmed:true,confirmedCount:phase==='photo'?8:12,complete:phase==='photo-complete',confirmedAt:null}});
+    vm.runInContext(inline('join.html'),phone.context);await flush();
+    assert(phone.storage.has('brookwood-player-v3'));assert.equal(phone.document.getElementById('playerErr').textContent,'');assert.equal(phone.timers.size,1);
+    const tv=environment();tv.context.lobbyRequest=async()=>({phase,startedAt:Date.now()-50000,players:[{id:'id',name:'Player',partnerId:null,ready:true}],photo:{confirmedCount:8,complete:false,confirmedAt:null}});
+    vm.runInContext(inline('tv.html'),tv.context);await flush();
+    assert.equal(tv.document.getElementById('count').textContent,1);assert.equal(tv.document.getElementById('msg').textContent,'');
+    assert(tv.document.getElementById('returnControl').hidden);
+  }
+});

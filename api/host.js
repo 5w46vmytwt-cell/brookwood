@@ -1,13 +1,30 @@
 import crypto from "node:crypto";
-import {updateState,resetState,send,fail,LobbyError} from "./_state.js";
+import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
   if(String(req.body?.code||"")!==String(process.env.HOST_KEY||"1031"))return send(res,403,{error:"Wrong host code."});
   try{
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
+    if(req.body.action==="begin-photo"){
+      await updateState(withinCinematicRun(s=>{
+        if(["photo","photo-complete"].includes(s.phase))return UNCHANGED;
+        if(s.phase!=="opening")throw new LobbyError(409,"The photo checkpoint requires an opening session.");
+        s.photo={promptedAt:Date.now(),confirmedPlayerIds:[],confirmedAt:null};s.phase="photo";
+      }));
+      return send(res,200,{ok:true});
+    }
+    if(req.body.action==="test-confirm-simulated"){
+      await updateState(withinCinematicRun(s=>{
+        if(s.phase!=="photo")throw new LobbyError(409,"Test photo confirmation is only available during the photo checkpoint.");
+        const ids=s.players.filter(p=>p.simulated===true).map(p=>p.id);
+        if(!ids.length)throw new LobbyError(409,"There are no simulated players to confirm.");
+        return confirmPhoto(s,ids);
+      }));
+      return send(res,200,{ok:true});
+    }
     if(req.body.action==="return-lobby"){
       await updateState(s=>{
-        if(s.phase!=="opening"||!Number.isFinite(s.startedAt)||s.startedAt<=0||Date.now()-s.startedAt<44000)
+        if(!["opening","photo","photo-complete"].includes(s.phase)||!Number.isFinite(s.startedAt)||s.startedAt<=0||Date.now()-s.startedAt<44000)
           throw new LobbyError(409,"Chapter 1 must finish before returning to the lobby.");
         s.phase="lobby";s.startedAt=null;
       });
@@ -34,6 +51,7 @@ export default async function handler(req,res){
       const pairs=new Set(s.players.map(p=>[p.id,p.partnerId].sort().join(":")));
       if(pairs.size!==6)throw new LobbyError(409,"The cast must contain six couples.");
       s.phase="opening";s.startedAt=Date.now();
+      delete s.photo;
     });
     return send(res,200,{ok:true});
   }catch(e){return fail(res,e);}
