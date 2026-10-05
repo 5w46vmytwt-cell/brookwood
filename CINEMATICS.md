@@ -97,6 +97,44 @@ After suspension, audio waits for authoritative reconciliation; expired cues
 are skipped and active clips seek without restarting. The same soundtrack
 continues across lobby/Start/replay.
 
-`cinematic-timeline.js` contains locked chapter/checkpoint boundaries only.
+`cinematic-timeline.js` contains locked chapter/checkpoint boundaries and the
+verified Chapter 2 narration timing contract.
 Chapter 2 is not implemented, and no automatic photo action is dispatched.
 Opening at or after 44000ms continues to render Chapter 1's final black state.
+
+## Locked Chapter 2 narration timing contract
+
+Chapter 1 occupies absolute 0–44,000 ms and is production-verified and frozen.
+Chapter 2 occupies absolute 44,000–88,000 ms. All 13 Chapter 2 narration
+durations have been measured; their start/end timestamps are now locked.
+These values are implementation constants, not provisional planning values.
+All table values are absolute milliseconds from server `startedAt`, except
+Duration, which is the measured clip length in milliseconds.
+
+| ID | Start | Duration | End |
+| --- | ---: | ---: | ---: |
+| 01 | 50,500 | 3,750 | 54,250 |
+| 02 | 54,400 | 4,925 | 59,325 |
+| 03 | 59,425 | 2,875 | 62,300 |
+| 04 | 62,400 | 2,550 | 64,950 |
+| 05 | 65,100 | 3,575 | 68,675 |
+| 06 | 68,875 | 1,075 | 69,950 |
+| 07 | 69,950 | 750 | 70,700 |
+| 08 | 70,700 | 750 | 71,450 |
+| 09 | 71,600 | 3,425 | 75,025 |
+| 10 | 75,225 | 2,550 | 77,775 |
+| 11 | 77,875 | 2,150 | 80,025 |
+| 12 | 80,125 | 2,325 | 82,450 |
+| 13 | 82,625 | 3,125 | 85,750 |
+
+The 06→07 transition at 69,950 ms and the 07→08 transition at 70,700 ms
+intentionally have zero gaps. Narration #13 ends exactly at 85,750 ms,
+`CHAPTER2_NARRATION_END_DEADLINE_MS`. The interval 85,750–86,500 ms is a
+mandatory 750 ms narration-free interval (`CHAPTER2_PHOTO_SILENCE_MS`).
+The photo prompt begins at 86,500 ms; the persistent photo checkpoint begins
+at 88,000 ms, exactly the Chapter 2 end. The prompt must not move to fit narration.
+
+This checkpoint exports timing constants only. Chapter 2 playback, visuals,
+music, and photo progression are not implemented. The narration plan is not
+wired into playback, and no automatic begin-photo action is dispatched.
+Opening at or after 44,000 ms continues to render Chapter 1's final black state.
