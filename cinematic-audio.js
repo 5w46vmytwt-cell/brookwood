@@ -45,6 +45,9 @@
   }
   class Player {
     constructor(timeline, options = {}) {
+      this.elapsedNow = options.elapsedNow || (() => Date.now() - this.startedAt);
+      this.externallyDriven = !!options.externallyDriven;
+      this.canSync = options.canSync || (() => true);
       this.timeline = timeline;
       this.cues = timeline.cues.filter(c => c.type === 'narration');
       this.sfxCues = timeline.cues.filter(c => c.type === 'sfx');
@@ -86,22 +89,23 @@
       }
     }
     unlockBackground() { this.soundtrack?.start(true); this.schedule(); }
-    update(state) {
+    update(state, {reconstruct = false} = {}) {
       const startedAt = Number(state.startedAt);
       if (state.phase !== 'opening' || !Number.isFinite(startedAt) || startedAt <= 0) {
         this.stop(); this.mixScore(); this.schedule(); return;
       }
       if (this.startedAt !== startedAt) { this.stop(); this.startedAt = startedAt; }
       this.sync();
+      if(reconstruct)this.reconcile();
       this.schedule();
     }
-    schedule() { if (this.raf === null && this.needsFrame()) this.raf = requestAnimationFrame(() => this.tick()); }
+    schedule() { if (this.externallyDriven && this.startedAt !== null) return; if (this.raf === null && this.needsFrame()) this.raf = requestAnimationFrame(() => this.tick()); }
     needsFrame() {
-      return Boolean(this.soundtrack?.ramp) || (this.startedAt !== null && Date.now() - this.startedAt < Math.max(0, ...[...this.cues, ...this.sfxCues].map(c => c.at + c.durationMs)));
+      return Boolean(this.soundtrack?.ramp) || (this.startedAt !== null && this.elapsedNow() < Math.max(0, ...[...this.cues, ...this.sfxCues].map(c => c.at + c.durationMs)));
     }
     sync() {
-      if (this.startedAt === null) return;
-      const elapsed = Date.now() - this.startedAt;
+      if (this.startedAt === null || !this.canSync()) return;
+      const elapsed = this.elapsedNow();
       // Pause the previous clip before any new clip starts: no late-load overlap.
       if (this.active && elapsed >= this.active.cue.at + this.active.cue.durationMs) {
         this.active.audio.pause(); this.active = null;
@@ -120,7 +124,7 @@
           Promise.resolve(audio.play()).then(() => {
             // A delayed load/play must not move subsequent cues later.
             if (run !== this.run || this.active?.cue.id !== cue.id) return;
-            const offset = (Date.now() - this.startedAt - cue.at) / 1000;
+            const offset = (this.elapsedNow() - cue.at) / 1000;
             if (offset >= cue.durationMs / 1000) { audio.pause(); this.active = null; }
             else if (Math.abs(audio.currentTime - offset) > .1) audio.currentTime = offset;
           }).catch(error => {
@@ -148,7 +152,7 @@
           this.activeSfx.set(cue.id, { cue, audio });
           Promise.resolve(audio.play()).then(() => {
             if (run !== this.run || !this.activeSfx.has(cue.id)) return;
-            const offset = (Date.now() - this.startedAt - cue.at) / 1000;
+            const offset = (this.elapsedNow() - cue.at) / 1000;
             if (offset >= cue.durationMs / 1000) { audio.pause(); this.activeSfx.delete(cue.id); }
             else if (Math.abs(audio.currentTime - offset) > .1) audio.currentTime = offset;
           }).catch(error => {
@@ -156,6 +160,17 @@
             if (run === this.run && this.activeSfx.has(cue.id)) { audio.pause(); this.activeSfx.delete(cue.id); }
           });
         } catch (error) { console.warn(`SFX seek/play failed: ${cue.id}`, error); audio.pause(); this.activeSfx.delete(cue.id); }
+      }
+    }
+    reconcile() {
+      if(!this.canSync())return;
+      const elapsed=this.elapsedNow();
+      for(const entry of [this.active,...this.activeSfx.values()]){
+        if(!entry)continue;
+        const offset=(elapsed-entry.cue.at)/1000;
+        if(offset>=0&&offset<entry.cue.durationMs/1000){
+          try{entry.audio.currentTime=offset}catch(error){console.warn(`Audio reconciliation failed: ${entry.cue.id}`,error)}
+        }
       }
     }
     mixScore(elapsed = null) {

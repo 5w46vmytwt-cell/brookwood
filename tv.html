@@ -16,15 +16,16 @@
 .host-return[hidden]{display:none}.host-return{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);font:13px Arial,sans-serif}.host-return-panel{padding:24px;border:1px solid #333;background:#0d0d0d;width:320px}.host-return h2{font-size:12px;letter-spacing:.2em;color:#999;margin:0 0 20px}.host-return input,.host-return button{box-sizing:border-box;width:100%;background:#080808;border:1px solid #333;color:#ddd;padding:12px;margin-bottom:10px}.host-return button{cursor:pointer}.host-return p{color:#a66;margin:0;font-size:12px}
 </style>
 <div id="returnControl" class="host-return" role="dialog" aria-modal="true" aria-labelledby="returnHeading" hidden><div class="host-return-panel"><h2 id="returnHeading">HOST CONTROL</h2><input id="returnCode" type="password" placeholder="Host PIN" aria-label="Host PIN" autocomplete="off"><button id="returnButton" onclick="returnLobby()">RETURN TO LOBBY</button><p id="returnError" role="alert"></p></div></div>
-<script src="/cinematic-engine.js"></script><script src="/cinematic-audio.js"></script><script src="/chapter1.js"></script><script src="/client.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script>
+<script src="/cinematic-engine.js"></script><script src="/cinematic-audio.js"></script><script src="/chapter1.js"></script><script src="/client.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script type="module" src="/tv-cinematic.js"></script><script type="module">
 const join=location.origin+'/join';document.getElementById('joinUrl').textContent=join;
 try{if(typeof QRCode!=='function')throw new Error('QR library unavailable');new QRCode(document.getElementById('qr'),{text:join,width:170,height:170,correctLevel:QRCode.CorrectLevel.M})}catch{document.getElementById('qr').hidden=true}
-const cinematic=new BrookwoodTimeline.Renderer(document,BrookwoodChapter1.chapter1Timeline);
-const narration=new BrookwoodAudio.Player(BrookwoodChapter1.chapter1Timeline,{soundtrack:BrookwoodAudio.tvSoundtrack});
+const tvRuntime=new BrookwoodTV.Runtime({document,timeline:BrookwoodChapter1.chapter1Timeline});
+const cinematic=tvRuntime.visuals,narration=tvRuntime.audio;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)tvRuntime.suspend()});
 document.addEventListener('pointerdown',()=>narration.unlockBackground());
 let last=null,pollError=null;
 let returnKeys=[],returnRun=null,returnPending=false;
-function completedOpening(){const start=Number(last?.startedAt);return last?.phase==='opening'&&Number.isFinite(start)&&start>0&&Date.now()-start>=BrookwoodChapter1.chapter1Timeline.end}
+function completedOpening(){const start=Number(last?.startedAt);return last?.phase==='opening'&&Number.isFinite(start)&&start>0&&tvRuntime.elapsedNow()>=BrookwoodChapter1.chapter1Timeline.end}
 function closeReturnControl(){document.getElementById('returnControl').hidden=true;document.getElementById('returnCode').value='';document.getElementById('returnError').textContent='';returnKeys=[]}
 document.addEventListener('keydown',event=>{
   narration.unlockBackground();
@@ -45,11 +46,11 @@ async function returnLobby(){
   catch(failure){error.textContent=failure.message}
   finally{returnPending=false;button.disabled=false}
 }
-function render(s){last=s;if(!completedOpening())closeReturnControl();cinematic.update(s);narration.update(s);if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
+function render(s,timing){tvRuntime.acceptState(s,timing);last=s;if(!completedOpening())closeReturnControl();if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
 function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function poll(){
   const msg=document.getElementById('msg');
-  try{render(await lobbyRequest('/api/state'));if(pollError&&msg.textContent===pollError)msg.textContent='';pollError=null}
+  try{const sentAt=performance.now();const state=await lobbyRequest('/api/state');render(state,{sentAt,receivedAt:performance.now()});if(pollError&&msg.textContent===pollError)msg.textContent='';pollError=null}
   catch(error){pollError=error.message;msg.textContent=pollError}
   finally{setTimeout(poll,1200)}
 }
@@ -58,5 +59,6 @@ async function host(action){
   if(action==='start')narration.unlock();
   try{await lobbyRequest('/api/host',{action,code:document.getElementById('code').value})}
   catch(error){msg.textContent=error.message}
-}poll();
+}
+Object.assign(globalThis,{host,returnLobby});poll();
 </script></body></html>

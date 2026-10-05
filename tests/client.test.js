@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
+import { TVCinematicRuntime } from '../tv-cinematic.js';
 
 const inline = file => [...fs.readFileSync(file, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => s.trim()).join('\n');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const response = { phase: 'lobby', player: { name: 'Player', partner: null, partnerId: null, inventory: [], ready: false }, others: [] };
 function environment(stored = null) {
-  const nodes = new Map(), timers = new Map(), storage = new Map(); let serial = 0;
+  const nodes = new Map(), timers = new Map(), storage = new Map(); let serial = 0, perf = 0;
   if (stored !== null) storage.set('brookwood-player-v3', stored);
   function element() {
     const classes = new Set();
@@ -17,14 +18,15 @@ function environment(stored = null) {
       focus() { this.focused=true; }, addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
   }
   const document = { events: {}, addEventListener(name,cb) { this.events[name]=cb; }, getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }, createElement: element };
-  const context = vm.createContext({ requestAnimationFrame: () => 1, cancelAnimationFrame() {}, document, location: { origin: 'https://brookwood.example' },
+  const context = vm.createContext({ performance:{now:()=>perf}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, document, location: { origin: 'https://brookwood.example' },
     localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
     setTimeout(cb) { const id = ++serial; timers.set(id, cb); return id; }, clearTimeout(id) { timers.delete(id); },
     confirm: () => true, AbortController, TypeError });
   vm.runInContext(fs.readFileSync('cinematic-engine.js','utf8'), context);
   vm.runInContext(fs.readFileSync('chapter1.js','utf8'), context);
   vm.runInContext(fs.readFileSync('cinematic-audio.js','utf8'), context);
-  return { context, document, timers, storage };
+  context.BrookwoodTV={Runtime:class extends TVCinematicRuntime {constructor(options){super({...options,Renderer:context.BrookwoodTimeline.Renderer,Player:context.BrookwoodAudio.Player,soundtrack:context.BrookwoodAudio.tvSoundtrack,now:context.performance.now,requestFrame:context.requestAnimationFrame,cancelFrame:context.cancelAnimationFrame});}}};
+  return { context, document, timers, storage, setPerformance(value){perf=value;} };
 }
 
 test('syntax, JSON, imports, route destinations and shared client asset pass', () => {
@@ -45,12 +47,12 @@ test('syntax, JSON, imports, route destinations and shared client asset pass', (
 function returnEnvironment(elapsed=44000) {
   const env=environment();let now=100000+elapsed;
   env.context.Date={now:()=>now};
-  env.context.lobbyRequest=async()=>({phase:'opening',startedAt:100000,players:[]});
+  env.context.lobbyRequest=async()=>({phase:'opening',startedAt:100000,serverNow:now,players:[]});
   vm.runInContext(inline('tv.html'),env.context);
   env.document.getElementById('returnControl').hidden=true;
-  vm.runInContext("render({phase:'opening',startedAt:100000,players:[]})",env.context);
+  vm.runInContext("render({serverNow:Date.now(),phase:'opening',startedAt:100000,players:[]})",env.context);
   env.key=key=>env.document.events.keydown({key,preventDefault(){},target:{tagName:'BODY'}});
-  env.setElapsed=ms=>{now=100000+ms;};
+  env.setElapsed=ms=>{env.setPerformance(ms-elapsed);now=100000+ms;};
   return env;
 }
 
@@ -62,9 +64,9 @@ test('hidden return control requires completed valid opening and five separate R
   for(let i=0;i<4;i++)env.key('r');assert.equal(control.hidden,false);
   assert(env.document.getElementById('returnCode').focused);
   env.key('Escape');assert(control.hidden);
-  vm.runInContext("render({phase:'opening',startedAt:null,players:[]})",env.context);
+  vm.runInContext("render({serverNow:Date.now(),phase:'opening',startedAt:null,players:[]})",env.context);
   for(let i=0;i<5;i++)env.key('r');assert(control.hidden);
-  vm.runInContext("render({phase:'lobby',startedAt:100000,players:[]})",env.context);
+  vm.runInContext("render({serverNow:Date.now(),phase:'lobby',startedAt:100000,players:[]})",env.context);
   for(let i=0;i<5;i++)env.key('r');assert(control.hidden);
 });
 
@@ -83,7 +85,7 @@ test('Enter submits authenticated return action, success clears overlay and popu
   env.key('Enter');env.key('Enter');await flush();
   assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/host');assert.equal(calls[0].body.action,'return-lobby');assert.equal(calls[0].body.code,'host-test-code');
   assert(env.document.getElementById('returnControl').hidden);assert.equal(env.document.getElementById('returnCode').value,'');
-  vm.runInContext("render({phase:'lobby',startedAt:null,players:[{id:'one',name:'Allan',partnerId:'two',ready:true},{id:'two',name:'Friend',partnerId:'one',ready:true}]})",env.context);
+  vm.runInContext("render({serverNow:Date.now(),phase:'lobby',startedAt:null,players:[{id:'one',name:'Allan',partnerId:'two',ready:true},{id:'two',name:'Friend',partnerId:'one',ready:true}]})",env.context);
   assert.equal(env.document.getElementById('count').textContent,2);assert.equal(env.document.getElementById('grid').children.length,12);
   assert(!env.document.getElementById('opening').classList.contains('show'));
 });
@@ -158,11 +160,11 @@ test('TV QR contains only join URL, QR failure is isolated and reset clears open
       function QRCode(node, options) { qr = options; }
       QRCode.CorrectLevel = { M: 0 }; env.context.QRCode = QRCode;
     }
-    env.context.lobbyRequest = async () => ({ phase: 'lobby', players: [] });
+    env.context.lobbyRequest = async () => ({ phase: 'lobby', startedAt:null, serverNow:100000, players: [] });
     vm.runInContext(inline('tv.html'), env.context); await flush();
     if (available) assert.equal(qr.text, 'https://brookwood.example/join');
     else assert(env.document.getElementById('qr').hidden);
-    vm.runInContext("render({phase:'opening',players:[]});render({phase:'lobby',players:[]})", env.context);
+    vm.runInContext("render({serverNow:Date.now(),startedAt:null,phase:'opening',players:[]});render({serverNow:Date.now(),startedAt:null,phase:'lobby',players:[]})", env.context);
     assert(!env.document.getElementById('opening').classList.contains('show'));
   }
 });
@@ -171,7 +173,7 @@ test('TV test-fill requires confirmation and sends the existing host code', asyn
   const env = environment(); const actions = [];
   env.context.lobbyRequest = async (url, body) => {
     if (url === '/api/host') { actions.push(body); return { ok: true }; }
-    return { phase: 'lobby', players: [] };
+    return { phase: 'lobby', startedAt:null, serverNow:100000, players: [] };
   };
   vm.runInContext(inline('tv.html'), env.context); await flush();
   env.document.getElementById('code').value = 'host-test-code';
@@ -190,7 +192,7 @@ test('existing phone and TV clients stay stable for photo and photo-complete wit
     phone.context.lobbyRequest=async()=>({...response,phase,photo:{confirmed:true,confirmedCount:phase==='photo'?8:12,complete:phase==='photo-complete',confirmedAt:null}});
     vm.runInContext(inline('join.html'),phone.context);await flush();
     assert(phone.storage.has('brookwood-player-v3'));assert.equal(phone.document.getElementById('playerErr').textContent,'');assert.equal(phone.timers.size,1);
-    const tv=environment();tv.context.lobbyRequest=async()=>({phase,startedAt:Date.now()-50000,players:[{id:'id',name:'Player',partnerId:null,ready:true}],photo:{confirmedCount:8,complete:false,confirmedAt:null}});
+    const tv=environment();tv.context.lobbyRequest=async()=>({phase,serverNow:Date.now(),startedAt:Date.now()-50000,players:[{id:'id',name:'Player',partnerId:null,ready:true}],photo:{confirmedCount:8,complete:false,confirmedAt:null}});
     vm.runInContext(inline('tv.html'),tv.context);await flush();
     assert.equal(tv.document.getElementById('count').textContent,1);assert.equal(tv.document.getElementById('msg').textContent,'');
     assert(tv.document.getElementById('returnControl').hidden);

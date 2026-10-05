@@ -83,7 +83,8 @@ test('TV integration expects exact media paths and preserves phone/server code',
   const tv = fs.readFileSync('tv.html', 'utf8');
   assert(!tv.includes('1998')); assert(tv.includes('OCTOBER 31 · 1996'));
   for (const name of ['farm','poster','group']) assert(tv.includes(`/assets/chapter1/brookwood-${name}.png`));
-  assert(tv.includes('cinematic.update(s)')); assert(tv.includes('new BrookwoodTimeline.Renderer(document,BrookwoodChapter1.chapter1Timeline)'));
+  assert(tv.includes('tvRuntime.acceptState(s,timing)')); assert(tv.includes('new BrookwoodTV.Runtime({document,timeline:BrookwoodChapter1.chapter1Timeline})'));
+  assert(fs.readFileSync('tv-cinematic.js','utf8').includes('this.visuals.update(this.state)'));
   assert(tv.includes('TEST: FILL LOBBY'));
   assert(!fs.readFileSync('chapter1.js','utf8').includes('speechSynthesis'));
 });

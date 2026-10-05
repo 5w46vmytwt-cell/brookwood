@@ -79,3 +79,24 @@ Approved regression formulas are frozen in
 millisecond, including additional fractional boundary samples. The existing
 seconds-based `frameAt`/`Cinematic` adapters remain for regression-test continuity;
 the TV uses the reusable engine directly.
+
+## TV server-clock integration
+
+Successful public state responses include response-only `serverNow`; this is
+never persisted and does not change Redis revision or updatedAt. The existing
+TV poller records monotonic request/response times and supplies them to
+`AbsoluteCueScheduler.acceptState()`. RTT midpoint estimation establishes the
+server elapsed anchor; injected performance time interpolates between polls.
+There is no second scheduler polling loop.
+
+`tv-cinematic.js` passes scheduler elapsed to the existing visual renderer and
+audio player, using one cinematic RAF. Standalone adapters retain their default
+clock for compatibility; the TV always injects the scheduler clock. Background
+score fades and the hidden-control key gesture keep their independent timing.
+After suspension, audio waits for authoritative reconciliation; expired cues
+are skipped and active clips seek without restarting. The same soundtrack
+continues across lobby/Start/replay.
+
+`cinematic-timeline.js` contains locked chapter/checkpoint boundaries only.
+Chapter 2 is not implemented, and no automatic photo action is dispatched.
+Opening at or after 44000ms continues to render Chapter 1's final black state.

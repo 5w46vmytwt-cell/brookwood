@@ -170,6 +170,28 @@ test('scheduler helpers: loop offsets use absolute modulo with no accumulated dr
   assert.equal(resolveLoopOffset(25*60*60*1000+1234,1000,3000),(25*60*60*1000+234)%3000);
 });
 
+test('scheduler: external polling applies RTT midpoint and ordinary bounded correction without fetching',async()=>{
+  const e=environment();e.scheduler.autoSync=false;await e.scheduler.start();
+  e.clock.value=100;
+  assert(e.scheduler.acceptState({phase:'opening',startedAt:1000000,serverNow:1000500},{sentAt:0,receivedAt:100}));
+  assert.equal(e.scheduler.elapsedNow(),550);
+  e.scheduler.acceptState({phase:'opening',startedAt:1000000,serverNow:1001550},{sentAt:100,receivedAt:100});
+  assert.equal(e.scheduler.elapsedNow(),800);assert.equal(e.server.requests,0);e.scheduler.stop();
+});
+test('scheduler: external poll suspension waits for authoritative reconstruction and consumes history',async()=>{
+  const e=environment(0,[cue('historical',36000)]);e.scheduler.autoSync=false;await e.scheduler.start();
+  e.scheduler.acceptState({phase:'opening',startedAt:1000000,serverNow:1030000});
+  e.clock.advance(7000);e.raf.frame();assert(e.scheduler.recovering);assert.equal(e.events.length,0);assert.equal(e.server.requests,0);
+  e.scheduler.acceptState({phase:'opening',startedAt:1000000,serverNow:1037000});
+  assert(!e.scheduler.recovering);assert(e.scheduler.fired.has('historical'));assert.equal(e.events.length,0);assert.equal(e.samples.at(-1).reconstruct,true);e.scheduler.stop();
+});
+test('scheduler: invalid external responses preserve the anchor and pending reconstruction',()=>{
+  const e=environment();e.scheduler.autoSync=false;
+  e.scheduler.acceptState({phase:'opening',startedAt:1000000,serverNow:1000100});e.scheduler.recovering=true;
+  assert.equal(e.scheduler.acceptState({phase:'opening',startedAt:1000000}),false);
+  assert.equal(e.scheduler.anchorElapsed,100);assert(e.scheduler.recovering);
+});
+
 // Four named seeds x 125 cases = 500 generated cases per property.
 // Each generated case executes twice with fresh clocks and is compared exactly.
 const SEEDS={HALLOWEEN_1996:0x19961031,HALLOWEEN_2026:0x20261031,BROOKWOOD:0x00B00C,COFFEE:0xC0FFEE};

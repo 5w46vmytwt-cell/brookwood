@@ -1,6 +1,6 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { CAS_SCRIPT } from '../api/_state.js';
+import { CAS_SCRIPT, publicState } from '../api/_state.js';
 import join from '../api/join.js';
 import player from '../api/player.js';
 import host from '../api/host.js';
@@ -489,4 +489,19 @@ test('corrupted photo checkpoints fail closed without repair or writes',async()=
     assert.equal((await photoConfirm(players[0])).status,503);
     assert.equal((await beginPhoto()).status,503);assert.equal(raw,corrupt);
   }
+});
+
+test('public serverNow is response-only UTC metadata; repeated reads preserve Redis and private projection',async()=>{
+  await checkpoint(true);await testConfirm();const original=raw,before=state(),originalNow=Date.now;
+  let utc=1893456000000;
+  try{
+    Date.now=()=>utc;
+    const first=(await call('state',{},'GET')).data;utc+=123;const second=(await call('state',{},'GET')).data;
+    assert.equal(first.serverNow,1893456000000);assert.equal(second.serverNow,1893456000123);
+    assert.equal(typeof first.serverNow,'number');assert.equal(raw,original);
+    assert.equal(state().revision,before.revision);assert.equal(state().updatedAt,before.updatedAt);assert(!('serverNow' in state()));
+    const {serverNow,...projected}=first;assert.deepEqual(projected,publicState(before));
+    assert(!('confirmedPlayerIds' in first.photo));assert(first.players.every(p=>!('token' in p)));
+    for(const p of before.players)assert(!JSON.stringify(first).includes(p.token));
+  }finally{Date.now=originalNow;}
 });

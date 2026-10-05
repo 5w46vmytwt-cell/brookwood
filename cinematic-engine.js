@@ -18,7 +18,9 @@
   return {elapsedMs,done:elapsedMs>=timeline.end,visuals};
  }
  class Renderer{
-  constructor(document,timeline){
+  constructor(document,timeline,options={}){
+   this.elapsedNow=options.elapsedNow||(()=>Date.now()-this.startedAt);
+   this.externallyDriven=!!options.externallyDriven;
    this.timeline=timeline;this.startedAt=null;this.raf=null;this.layers=[];
    for(const cue of timeline.cues){
     if(!cue.visual)continue;
@@ -42,10 +44,10 @@
    if(state.phase!=='opening'||!Number.isFinite(startedAt)||startedAt<=0){this.stop();return}
    if(this.startedAt!==startedAt){this.stop();this.startedAt=startedAt}
    const frame=this.paint();
-   if(this.raf===null&&!frame.done)this.raf=requestAnimationFrame(()=>this.tick());
+   if(!this.externallyDriven&&this.raf===null&&!frame.done)this.raf=requestAnimationFrame(()=>this.tick());
   }
   paint(){
-   const frame=resolve(this.timeline,Date.now()-this.startedAt);
+   const frame=resolve(this.timeline,this.elapsedNow());
    for(const {cue,node} of this.layers){const v=frame.visuals[cue.id];node.style.opacity=v.opacity;if(cue.visual.scale)node.style.transform='scale('+v.scale+')'}
    return frame;
   }
