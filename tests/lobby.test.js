@@ -78,6 +78,7 @@ async function call(name, body = {}, method = 'POST') {
 }
 const reset = () => call('host', { action: 'reset', code: 'test-host' });
 const start = () => call('host', { action: 'start', code: 'test-host' });
+const returnLobby = () => call('host', { action: 'return-lobby', code: 'test-host' });
 function overlapReads(total) { readBarrier = { total, count: 0, done: deferred() }; }
 async function cast(concurrent = false) {
   if (concurrent) overlapReads(12);
@@ -100,6 +101,43 @@ async function ready(players) {
   assert(responses.every(r => r.status === 200));
   assert.equal(state().players.filter(p => p.ready).length, 12);
 }
+
+test('return-lobby authenticates and rejects unfinished or invalid opening without mutation', async () => {
+  await reset();const before=raw;
+  assert.equal((await call('host',{action:'return-lobby',code:'wrong'})).status,403);assert.equal(raw,before);
+  assert.equal((await returnLobby()).status,409);assert.equal(raw,before);
+  for(const startedAt of [Date.now(),null,-1]) {
+    raw=JSON.stringify({...state(),phase:'opening',startedAt});const snapshot=raw;
+    assert.equal((await returnLobby()).status,409);assert.equal(raw,snapshot);
+  }
+});
+
+test('return-lobby preserves complete cast, simulated players, tokens and all state; same cast can replay', async () => {
+  await reset();const a=(await call('join',{name:'Real A'})).data.player,b=(await call('join',{name:'Real B'})).data.player;
+  await pair([a,b]);for(const p of [a,b])assert.equal((await call('player',{...p,action:'ready',ready:true})).status,200);
+  assert.equal((await call('host',{action:'test-fill',code:'test-host'})).status,200);assert.equal((await start()).status,200);
+  const seeded=state();seeded.startedAt=Date.now()-44001;seeded.customSession={preserved:true};
+  seeded.players[0].inventory=['evidence'];seeded.players[0].customPlayer={note:'preserved'};
+  raw=JSON.stringify(seeded);const before=state();
+  assert.equal((await returnLobby()).status,200);const after=state();
+  assert.equal(after.phase,'lobby');assert.equal(after.startedAt,null);assert.deepEqual(after.players,before.players);
+  for(const key of Object.keys(before).filter(k=>!['phase','startedAt','updatedAt','revision'].includes(k)))assert.deepEqual(after[key],before[key]);
+  assert.notEqual(after.revision,before.revision);assert.equal(after.generation,before.generation);
+  for(const p of after.players)assert.equal((await call('me',{id:p.id,token:p.token})).status,200);
+  assert.equal(after.players.filter(p=>p.simulated).length,10);
+  assert.equal((await start()).status,200);const replay=state();
+  assert.equal(replay.phase,'opening');assert(replay.startedAt>before.startedAt);assert.deepEqual(replay.players,before.players);
+  for(const p of [a,b])assert.equal((await call('me',p)).status,200);
+});
+
+test('destructive reset fences an in-flight return-lobby and retains destructive semantics', async () => {
+  await reset();const players=await cast();await pair(players);await ready(players);await start();
+  raw=JSON.stringify({...state(),startedAt:Date.now()-45000});
+  const gate={entered:deferred(),release:deferred()};heldCommit=gate;const old=returnLobby();
+  await gate.entered.promise;await reset();const resetRaw=raw;gate.release.resolve();
+  assert.equal((await old).status,409);assert.equal(raw,resetRaw);assert.equal(state().players.length,0);
+  assert.equal((await call('me',players[0])).status,401);
+});
 
 test('12 overlapping joins persist all 12 unique players, including an initially missing key', async () => {
   const players = await cast(true);

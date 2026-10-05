@@ -98,7 +98,7 @@ test('synchronous gesture priming neither consumes cues nor changes volume', asy
   env.at(5000); await Promise.resolve(); assert.equal(env.audio().plays,2);
   const tv = fs.readFileSync('tv.html','utf8');
   const prime = tv.indexOf("if(action==='start')narration.unlock()");
-  const request = tv.indexOf("await lobbyRequest('/api/host'");
+  const request = tv.indexOf("await lobbyRequest('/api/host'",prime);
   assert(prime >= 0 && request > prime);
 });
 
@@ -183,6 +183,19 @@ test('pending SFX completion from an old run cannot seek or stop the new run', a
   audio.play=function(){this.plays++;this.paused=false;return new Promise(resolve=>{finish=resolve;});};
   env.at(36000);const oldFinish=finish;env.at(36100,200000);const newTime=audio.currentTime;
   oldFinish();await Promise.resolve();assert.equal(audio.currentTime,newTime);assert.equal(audio.paused,false);
+});
+
+test('completed run returns to lobby and replays from zero with rearmed cues and uninterrupted score', async () => {
+  const env=setup(true), audio=env.player.soundtrack.audio;
+  env.at(36000);env.at(44000);await new Promise(r=>setImmediate(r));audio.currentTime=51;
+  const original=audio,plays=audio.plays;
+  env.player.update({phase:'lobby',startedAt:null});assert.equal(env.player.soundtrack.target,.18);
+  env.setElapsed(44350);env.player.update({phase:'lobby',startedAt:null});assert.equal(audio.volume,.18);
+  env.at(0,200000);assert.equal(env.player.soundtrack.audio,original);assert.equal(audio.currentTime,51);assert.equal(audio.plays,plays);
+  assert.equal(env.player.handled.size,0);assert.equal(env.context.BrookwoodTimeline.resolve(env.timeline,0).visuals.title.opacity,1);
+  env.at(5000,200000);assert.equal(env.audio().plays,1);
+  env.at(36000,200000);assert.equal(env.audio('camera-shutter').plays,2);
+  assert.equal(env.timeline.end,44000);
 });
 
 test('WAV parser locates extra odd-size chunks and honors byte rate, rejecting truncation', () => {

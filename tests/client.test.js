@@ -14,7 +14,7 @@ function environment(stored = null) {
     const classes = new Set();
     return { style: {}, textContent: '', innerHTML: '', value: '', options: [], children: [], events: {}, hidden: false,
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, yes) { if (yes) classes.add(c); else classes.delete(c); } },
-      addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
+      focus() { this.focused=true; }, addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
   }
   const document = { events: {}, addEventListener(name,cb) { this.events[name]=cb; }, getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }, createElement: element };
   const context = vm.createContext({ requestAnimationFrame: () => 1, cancelAnimationFrame() {}, document, location: { origin: 'https://brookwood.example' },
@@ -40,6 +40,60 @@ test('syntax, JSON, imports, route destinations and shared client asset pass', (
   const config = JSON.parse(fs.readFileSync('vercel.json'));
   for (const r of config.rewrites) assert(fs.existsSync('.' + r.destination));
   assert.equal(JSON.parse(fs.readFileSync('package.json')).type, 'module');
+});
+
+function returnEnvironment(elapsed=44000) {
+  const env=environment();let now=100000+elapsed;
+  env.context.Date={now:()=>now};
+  env.context.lobbyRequest=async()=>({phase:'opening',startedAt:100000,players:[]});
+  vm.runInContext(inline('tv.html'),env.context);
+  env.document.getElementById('returnControl').hidden=true;
+  vm.runInContext("render({phase:'opening',startedAt:100000,players:[]})",env.context);
+  env.key=key=>env.document.events.keydown({key,preventDefault(){},target:{tagName:'BODY'}});
+  env.setElapsed=ms=>{now=100000+ms;};
+  return env;
+}
+
+test('hidden return control requires completed valid opening and five separate R presses within two seconds', () => {
+  const env=returnEnvironment(43999), control=env.document.getElementById('returnControl');
+  for(let i=0;i<5;i++)env.key('r');assert(control.hidden);
+  env.setElapsed(44000);for(let i=0;i<4;i++)env.key('R');assert(control.hidden);
+  env.setElapsed(46001);env.key('r');assert(control.hidden);
+  for(let i=0;i<4;i++)env.key('r');assert.equal(control.hidden,false);
+  assert(env.document.getElementById('returnCode').focused);
+  env.key('Escape');assert(control.hidden);
+  vm.runInContext("render({phase:'opening',startedAt:null,players:[]})",env.context);
+  for(let i=0;i<5;i++)env.key('r');assert(control.hidden);
+  vm.runInContext("render({phase:'lobby',startedAt:100000,players:[]})",env.context);
+  for(let i=0;i<5;i++)env.key('r');assert(control.hidden);
+});
+
+test('return overlay Escape closes and clears credentials without an API mutation', async () => {
+  const env=returnEnvironment();let calls=0;
+  env.context.lobbyRequest=async()=>{calls++;};for(let i=0;i<5;i++)env.key('r');
+  env.document.getElementById('returnCode').value='private';env.document.getElementById('returnError').textContent='old error';
+  env.key('Escape');await flush();assert.equal(calls,0);assert(env.document.getElementById('returnControl').hidden);
+  assert.equal(env.document.getElementById('returnCode').value,'');assert.equal(env.document.getElementById('returnError').textContent,'');
+});
+
+test('Enter submits authenticated return action, success clears overlay and populated lobby renders', async () => {
+  const env=returnEnvironment();const calls=[];
+  env.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true};};
+  for(let i=0;i<5;i++)env.key('r');env.document.getElementById('returnCode').value='host-test-code';
+  env.key('Enter');env.key('Enter');await flush();
+  assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/host');assert.equal(calls[0].body.action,'return-lobby');assert.equal(calls[0].body.code,'host-test-code');
+  assert(env.document.getElementById('returnControl').hidden);assert.equal(env.document.getElementById('returnCode').value,'');
+  vm.runInContext("render({phase:'lobby',startedAt:null,players:[{id:'one',name:'Allan',partnerId:'two',ready:true},{id:'two',name:'Friend',partnerId:'one',ready:true}]})",env.context);
+  assert.equal(env.document.getElementById('count').textContent,2);assert.equal(env.document.getElementById('grid').children.length,12);
+  assert(!env.document.getElementById('opening').classList.contains('show'));
+});
+
+test('return API failure keeps overlay open with its error and does not change TV state', async () => {
+  const env=returnEnvironment();for(let i=0;i<5;i++)env.key('r');
+  env.context.lobbyRequest=async()=>{throw Error('Wrong host code.');};
+  env.key('Enter');await flush();assert.equal(env.document.getElementById('returnControl').hidden,false);
+  assert.equal(env.document.getElementById('returnError').textContent,'Wrong host code.');
+  assert(env.document.getElementById('opening').classList.contains('show'));assert.equal(env.document.getElementById('returnButton').disabled,false);
 });
 
 test('phone polling has at most one active request and one scheduled timer', async () => {

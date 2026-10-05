@@ -5,6 +5,14 @@ export default async function handler(req,res){
   if(String(req.body?.code||"")!==String(process.env.HOST_KEY||"1031"))return send(res,403,{error:"Wrong host code."});
   try{
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
+    if(req.body.action==="return-lobby"){
+      await updateState(s=>{
+        if(s.phase!=="opening"||!Number.isFinite(s.startedAt)||s.startedAt<=0||Date.now()-s.startedAt<44000)
+          throw new LobbyError(409,"Chapter 1 must finish before returning to the lobby.");
+        s.phase="lobby";s.startedAt=null;
+      });
+      return send(res,200,{ok:true});
+    }
     if(req.body.action==="test-fill"){
       await updateState(s=>{
         if(s.phase!=="lobby")throw new LobbyError(409,"Test fill is only available during the lobby.");
