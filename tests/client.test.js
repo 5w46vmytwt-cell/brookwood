@@ -23,11 +23,12 @@ function environment(stored = null) {
     confirm: () => true, AbortController, TypeError });
   vm.runInContext(fs.readFileSync('cinematic-engine.js','utf8'), context);
   vm.runInContext(fs.readFileSync('chapter1.js','utf8'), context);
+  vm.runInContext(fs.readFileSync('cinematic-audio.js','utf8'), context);
   return { context, document, timers, storage };
 }
 
 test('syntax, JSON, imports, route destinations and shared client asset pass', () => {
-  const files = fs.readdirSync('api').map(f => 'api/' + f).concat(['client.js','cinematic-engine.js','chapter1.js'], fs.readdirSync('tests').map(f => 'tests/' + f));
+  const files = fs.readdirSync('api').map(f => 'api/' + f).concat(['client.js','cinematic-engine.js','cinematic-audio.js','chapter1.js'], fs.readdirSync('tests').map(f => 'tests/' + f));
   for (const f of files) {
     const result = spawnSync(process.execPath, ['--check', f], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);

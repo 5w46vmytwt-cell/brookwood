@@ -1,11 +1,22 @@
 /* Approved Chapter 1 definition. Times are absolute milliseconds from startedAt.
  * Cues can later associate optional narration/sfx/event metadata with a visual.
- * No audio or event playback is implemented by the current visual engine.
+ * Narration is consumed separately; the visual resolver remains pure.
  */
 (() => {
  const chapter1Timeline={id:'chapter1',end:44000,
   sections:[{id:'opening',at:0,end:4000},{id:'historical-sequence',at:4000,end:44000}],
   cues:[
+   {id:'narration-01',type:'narration',at:5000,src:'/assets/chapter1/audio/narration-01.wav',durationMs:3775},
+   {id:'narration-02',type:'narration',at:9000,src:'/assets/chapter1/audio/narration-02.wav',durationMs:2450},
+   {id:'narration-03',type:'narration',at:12000,src:'/assets/chapter1/audio/narration-03.wav',durationMs:3850},
+   {id:'narration-04',type:'narration',at:16000,src:'/assets/chapter1/audio/narration-04.wav',durationMs:2775},
+   {id:'narration-05',type:'narration',at:19000,src:'/assets/chapter1/audio/narration-05.wav',durationMs:4450},
+   {id:'narration-06',type:'narration',at:23500,src:'/assets/chapter1/audio/narration-06.wav',durationMs:1725},
+   {id:'narration-07',type:'narration',at:27900,src:'/assets/chapter1/audio/narration-07.wav',durationMs:4050},
+   {id:'narration-08',type:'narration',at:31950,src:'/assets/chapter1/audio/narration-08.wav',durationMs:1775},
+   {id:'narration-09',type:'narration',at:33725,src:'/assets/chapter1/audio/narration-09.wav',durationMs:2275},
+   {id:'narration-10',type:'narration',at:39000,src:'/assets/chapter1/audio/narration-10.wav',durationMs:3925},
+
    {id:'title',type:'scene',at:0,end:4000,visual:{target:'openingTitle',fadeOut:[3400,4000],content:[
     {selector:'.date',text:'OCTOBER 31 · 1996'},{selector:'h1',text:'BROOKWOOD'},
     {selector:'h2',text:'The Final Session'},{selector:'p',text:'Some stories refuse to stay buried.'}

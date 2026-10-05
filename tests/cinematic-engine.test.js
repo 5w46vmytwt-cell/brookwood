@@ -32,7 +32,7 @@ test('cue resolver matches approved visual formulas at every millisecond and fra
     }
   };
   for (let ms = -100; ms <= 45000; ms++) check(ms);
-  for (const cue of env.timeline.cues) for (const boundary of [cue.at, cue.end, ...(cue.visual.fadeIn || []), ...(cue.visual.fadeOut || [])]) {
+  for (const cue of env.timeline.cues.filter(c => c.visual)) for (const boundary of [cue.at, cue.end, ...(cue.visual.fadeIn || []), ...(cue.visual.fadeOut || [])]) {
     for (const offset of [-.01, 0, .01]) check(boundary + offset);
   }
 });

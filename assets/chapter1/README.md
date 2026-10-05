@@ -6,24 +6,25 @@ Add the supplied images here, using these exact filenames:
 - `brookwood-poster.png`
 - `brookwood-group.png`
 
-This version is visual-only. No audio sources are referenced, loaded, or played.
-Future narration, ambience, or effect metadata may accompany a timeline cue, but
-the visual engine does not interpret or dispatch it.
+Original narration WAVs live in `audio/narration-01.wav` through
+`audio/narration-10.wav`. The separate audio player consumes their absolute
+server-clock cue metadata in `chapter1.js`; the visual resolver stays pure.
+No ambience, music, or sound effects are played.
 
-Narration script and offsets:
+Narration script and absolute starts from server startedAt:
 
-| Chapter time | Narration |
+| Start ms | Narration |
 | --- | --- |
-| 00:02 | October 31st, 1996. |
-| 00:05 | Thirty years ago tonight... |
-| 00:08 | Before Brookwood had streets... before the houses... |
-| 00:12 | There was only Brookwood Farm. |
-| 00:15 | That Halloween, the farm opened its doors for something new. |
-| 00:19 | A haunted house. |
-| 00:24 | At 9:30 PM, the final group arrived. |
-| 00:27 | Thirteen friends. |
-| 00:29 | They took one photograph before going inside. |
-| 00:35 | It would be the last photograph ever taken of them. |
+| 5000 | October 31st, 1996. |
+| 9000 | Thirty years ago tonight... |
+| 12000 | Before Brookwood had streets... before the houses... |
+| 16000 | There was only Brookwood Farm. |
+| 19000 | That Halloween, the farm opened its doors for something new. |
+| 23500 | A haunted house. |
+| 27900 | At 9:30 PM, the final group arrived. |
+| 31950 | Thirteen friends. |
+| 33725 | They took one photograph before going inside. |
+| 39000 | It would be the last photograph ever taken of them. |
 
 Visuals keep their own server-timestamp clock; missing images stay black. No
 replacement images are included. Reloads resolve the current cue state directly,
