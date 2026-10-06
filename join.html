@@ -79,7 +79,7 @@ async function privateAction(action){
       messagePending=null;render(current,{sentAt,receivedAt:performance.now()});
     }
   }catch(error){if(auth===session){if(error.status===401)clearSession();else document.getElementById('privateErr').textContent=error.message}}
-  finally{messagePending=null;if(me?.chapter3)renderPrivate(me,privateRuntime.scheduler.elapsedNow()>=12600);}
+  finally{messagePending=null;if(me?.chapter3)renderPrivate(me,privateRuntime.messagesActive());}
 }
 function choosePartner(){const id=document.getElementById('partner').value;if(id)action({action:'partner',partnerId:id})}function toggleReady(){if(me)action({action:'ready',ready:!me.player.ready})}document.getElementById('name').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();joinGame()}});Object.assign(globalThis,{joinGame,choosePartner,toggleReady,confirmPhoto,privateAction});show(auth?'player':'join');pollMe();
 </script></body></html>

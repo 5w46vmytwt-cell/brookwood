@@ -9,8 +9,24 @@ import {PhoneChapter3Runtime} from '../phone-chapter3.js';
 const inline = file => [...fs.readFileSync(file, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => s.trim()).join('\n');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const response = { phase: 'lobby', player: { name: 'Player', partner: null, partnerId: null, inventory: [], ready: false }, others: [] };
-function privateResponse(elapsed=12600,openedAt=null,readAt=null){return {...response,phase:'private-messages',player:{...response.player,id:'real'},photo:{confirmed:true,confirmedCount:12,complete:true},serverNow:200000+elapsed,chapter3:{startedAt:200000,openedAt,readAt,assignment:openedAt!==null&&readAt===null?{title:'KEEP THIS TO YOURSELF',body:'Persisted private message.'}:null}};}
+function privateResponse(elapsed=12600,openedAt=null,readAt=null){return {...response,phase:elapsed<12600?'chapter3-opening':'private-messages',player:{...response.player,id:'real'},photo:{confirmed:true,confirmedCount:12,complete:true},serverNow:200000+elapsed,chapter3:{startedAt:200000,openedAt,readAt,assignment:openedAt!==null&&readAt===null?{title:'KEEP THIS TO YOURSELF',body:'Persisted private message.'}:null}};}
 async function privateEnvironment(state){const e=environment(JSON.stringify({id:'real',token:'secret'}));e.context.lobbyRequest=async()=>state;vm.runInContext(inline('join.html'),e.context);await flush();return e;}
+test('untouched PHOTO COMPLETE phone transitions on active poll even while RAF clock lags',async()=>{
+  let state={...privateResponse(),phase:'photo-complete'};delete state.chapter3;delete state.serverNow;
+  const e=await privateEnvironment(state);let requests=0;
+  e.context.lobbyRequest=async(url,body)=>{assert.equal(url,'/api/me');assert.equal(body.id,'real');requests++;return state;};
+  const poll=async()=>{assert.equal(e.timers.size,1);const cb=[...e.timers.values()][0];cb();await flush();assert.equal(e.timers.size,1);};
+  assert.equal(e.document.getElementById('photoTitle').textContent,'PHOTO COMPLETE');
+  state=privateResponse(11800);await poll();assert.equal(e.document.getElementById('photoTitle').textContent,'PHOTO COMPLETE');
+  // No reload, click, or RAF delivery. Ordinary correction is bounded to 250ms.
+  state=privateResponse(12600);await poll();assert(vm.runInContext('privateRuntime.scheduler.elapsedNow()<12600',e.context));
+  assert(!e.document.getElementById('privateBox').classList.contains('hidden'));assert(e.document.getElementById('photoBox').classList.contains('hidden'));
+  assert.equal(e.document.getElementById('privateTitle').textContent,'PRIVATE MESSAGE');assert(!e.document.getElementById('privateOpen').classList.contains('hidden'));
+  assert.equal(e.document.getElementById('privateBlank').hidden,true);
+  state=privateResponse(13000,212600);await poll();assert.equal(e.document.getElementById('privateBody').textContent,'Persisted private message.');assert.equal(e.document.getElementById('privateBlank').hidden,true);
+  await poll();assert.equal(e.document.getElementById('privateBlank').hidden,true);
+  state=privateResponse(14000,212600,213000);await poll();assert.equal(e.document.getElementById('privateTitle').textContent,'MESSAGE RECEIVED');assert.equal(e.document.getElementById('privateBody').textContent,'');assert.equal(requests,5);
+});
 test('private phone reconnect reconstructs before activation, unopened, unread and read states',async()=>{
   for(const [state,title] of [[privateResponse(12599),'PHOTO COMPLETE'],[privateResponse(),'PRIVATE MESSAGE'],[privateResponse(13000,212600),'KEEP THIS TO YOURSELF'],[privateResponse(13000,212600,212900),'MESSAGE RECEIVED']]){
     const e=await privateEnvironment(state);assert.equal(e.document.getElementById(state.serverNow<212600?'photoTitle':'privateTitle').textContent,title);assert.equal(e.document.getElementById('privateBlank').hidden,true);
