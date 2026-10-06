@@ -1,4 +1,4 @@
-import {updateState,withinCinematicRun,UNCHANGED,LobbyError,send,fail} from './_state.js';
+import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail} from './_state.js';
 import {PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
 
 // Public capability limited to one server-time-gated transition. Request body
@@ -7,7 +7,12 @@ export default async function handler(req,res){
   if(req.method!=='POST')return send(res,405,{error:'Method not allowed'});
   try{
     let outcome;
+    const chapter3Change=withinChapter3Run(s=>{
+      const result=activatePrivateMessages(s);
+      outcome={ok:true,eligible:s.phase!=='chapter3-opening',phase:s.phase};return result;
+    });
     await updateState(withinCinematicRun(s=>{
+      if(isChapter3(s))return chapter3Change(s);
       outcome={ok:true,eligible:false,phase:s.phase};
       if(['photo','photo-complete'].includes(s.phase)){
         outcome.eligible=true;return UNCHANGED;

@@ -4,10 +4,32 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { TVCinematicRuntime } from '../tv-cinematic.js';
+import {PhoneChapter3Runtime} from '../phone-chapter3.js';
 
 const inline = file => [...fs.readFileSync(file, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => s.trim()).join('\n');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const response = { phase: 'lobby', player: { name: 'Player', partner: null, partnerId: null, inventory: [], ready: false }, others: [] };
+function privateResponse(elapsed=12600,openedAt=null,readAt=null){return {...response,phase:'private-messages',player:{...response.player,id:'real'},photo:{confirmed:true,confirmedCount:12,complete:true},serverNow:200000+elapsed,chapter3:{startedAt:200000,openedAt,readAt,assignment:openedAt!==null&&readAt===null?{title:'KEEP THIS TO YOURSELF',body:'Persisted private message.'}:null}};}
+async function privateEnvironment(state){const e=environment(JSON.stringify({id:'real',token:'secret'}));e.context.lobbyRequest=async()=>state;vm.runInContext(inline('join.html'),e.context);await flush();return e;}
+test('private phone reconnect reconstructs before activation, unopened, unread and read states',async()=>{
+  for(const [state,title] of [[privateResponse(12599),'PHOTO COMPLETE'],[privateResponse(),'PRIVATE MESSAGE'],[privateResponse(13000,212600),'KEEP THIS TO YOURSELF'],[privateResponse(13000,212600,212900),'MESSAGE RECEIVED']]){
+    const e=await privateEnvironment(state);assert.equal(e.document.getElementById(state.serverNow<212600?'photoTitle':'privateTitle').textContent,title);assert.equal(e.document.getElementById('privateBlank').hidden,true);
+    if(state.chapter3.readAt!==null)assert.equal(e.document.getElementById('privateBody').textContent,'');
+  }
+});
+test('OPEN uses own authentication and exactly 350ms blank reveal; READ removes private body',async()=>{
+  const e=await privateEnvironment(privateResponse()),calls=[];
+  e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return url==='/api/me'?privateResponse(12600,212600):{ok:true};};
+  vm.runInContext("privateAction('message-open');privateAction('message-open')",e.context);await flush();
+  assert.equal(calls.filter(c=>c.url==='/api/player').length,1);assert.equal(calls[0].body.id,'real');assert.equal(calls[0].body.token,'secret');assert.equal(e.document.getElementById('privateBlank').hidden,false);
+  e.setPerformance(349);vm.runInContext('privateRuntime.scheduler.frame()',e.context);assert.equal(e.document.getElementById('privateBlank').hidden,false);
+  e.setPerformance(350);vm.runInContext('privateRuntime.scheduler.frame()',e.context);assert.equal(e.document.getElementById('privateBlank').hidden,true);assert.equal(e.document.getElementById('privateBody').textContent,'Persisted private message.');
+  e.context.lobbyRequest=async url=>url==='/api/me'?privateResponse(13000,212600,213000):{ok:true};
+  vm.runInContext("privateAction('message-read')",e.context);await flush();assert.equal(e.document.getElementById('privateBody').textContent,'');assert.equal(e.document.getElementById('privateTitle').textContent,'MESSAGE RECEIVED');
+});
+test('invalidated phone session stops private renderer and cannot redisplay its message',async()=>{
+  const e=await privateEnvironment(privateResponse(13000,212600));vm.runInContext('clearSession();privateRuntime.scheduler.frame()',e.context);assert(e.document.getElementById('privateBox').classList.contains('hidden'));assert.equal(e.storage.size,0);
+});
 function environment(stored = null) {
   const nodes = new Map(), timers = new Map(), storage = new Map(); let serial = 0, perf = 0;
   if (stored !== null) storage.set('brookwood-player-v3', stored);
@@ -26,6 +48,7 @@ function environment(stored = null) {
   vm.runInContext(fs.readFileSync('chapter1.js','utf8'), context);
   vm.runInContext(fs.readFileSync('cinematic-audio.js','utf8'), context);
   context.BrookwoodTV={Runtime:class extends TVCinematicRuntime {constructor(options){super({...options,Renderer:context.BrookwoodTimeline.Renderer,Player:context.BrookwoodAudio.Player,soundtrack:context.BrookwoodAudio.tvSoundtrack,now:context.performance.now,requestFrame:context.requestAnimationFrame,cancelFrame:context.cancelAnimationFrame});}}};
+  context.BrookwoodPrivatePhone={Runtime:class extends PhoneChapter3Runtime{constructor(options){super({...options,now:context.performance.now,requestFrame:context.requestAnimationFrame,cancelFrame:context.cancelAnimationFrame});}}};
   return { context, document, timers, storage, setPerformance(value){perf=value;} };
 }
 

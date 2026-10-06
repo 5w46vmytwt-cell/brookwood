@@ -253,3 +253,39 @@ photo-complete they show PHOTO COMPLETE / Everyone is in. Refresh reconstructs
 both states without resubmitting. Invalid sessions clear local storage; network
 errors allow retry. The existing single phone polling loop is retained. No
 Chapter 3 progression or cinematic/audio retiming is introduced.
+# Chapter 3: private messages
+
+After `photo-complete`, the TV calls the narrow public `POST /api/chapter3`
+endpoint. The server validates the completed photo and twelve reciprocal paired
+players, then atomically persists twelve distinct rendered assignments and a new
+`chapter3.startedAt`. CAS retries and concurrent starts never reroll assignments.
+The original Chapter 1/2 `startedAt` and completed photo remain intact.
+
+Chapter 3 uses the existing authoritative scheduler with its separate server
+timestamp. Relative milliseconds: photo-complete holds through 2000, fades until
+2500; narration is 3250–9400; silence is 9400–10150; vibration is
+10150–12600. At 12600 the TV cuts to CHECK YOUR PHONES and phones become
+eligible. At 14600 the indefinite aggregate private-message checkpoint appears.
+The existing party element continues while its gain fades from 1 at 2000 to 0
+at 3250. Chapter 1/2 audio metadata and mixing before this run are unchanged.
+
+`POST /api/progress` activates messages only when server time reaches 12600.
+Authenticated `message-open` and `message-read` also enforce this server gate.
+Only `/api/me` exposes the requesting player's rendered assignment, only while
+opened and unread. Public state exposes the run timestamps and derived read
+count, never assignments, templates, targets or individual open/read timestamps.
+OPEN and READ timestamps are write-once. READ requires OPEN. The twelfth unique
+read atomically sets completion once. Acknowledged bodies disappear from phones.
+
+The phone's first successful OPEN uses a 350ms blank reveal measured by the
+injected monotonic clock and existing RAF. Reconnecting opened/unread shows the
+persisted message immediately. Reconnecting read shows only MESSAGE RECEIVED.
+TV completion holds 12/12 for 1500ms, fades for 500ms, then stays black.
+The host-only simulated-read helper never reads real players. Reset and returning
+to lobby clear all Chapter 3 assignments so replay creates a fresh selection.
+
+Narration and vibration use the reusable finite-audio layer: active refreshes
+seek from authoritative elapsed; expired clips never replay. Audio is primed
+from existing user gestures without interrupting an active clip. Browser autoplay
+restrictions can still silence a newly opened TV; rejected playback is isolated
+from visuals and state. WAV files are original, unprocessed recordings.

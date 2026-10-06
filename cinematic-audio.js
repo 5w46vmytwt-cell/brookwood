@@ -47,7 +47,7 @@
   class SynchronizedTrack {
     constructor(config, elapsedNow, canSync) {
       this.config=config;this.elapsedNow=elapsedNow;this.canSync=canSync;
-      this.startedAt=null;this.attempted=false;this.pending=false;this.generation=0;
+      this.startedAt=null;this.attempted=false;this.pending=false;this.generation=0;this.gain=1;
       try{
         this.audio=new Audio(config.src);this.audio.loop=true;this.audio.preload='auto';this.audio.volume=0;
         this.audio.addEventListener('canplay',()=>this.sync());
@@ -64,7 +64,7 @@
       if(this.unavailable||this.startedAt===null||!this.canSync())return;
       const elapsed=this.elapsedNow(),audio=this.audio,c=this.config;
       if(elapsed<c.at)return;
-      audio.volume=c.volumeAt(elapsed);
+      audio.volume=c.volumeAt(elapsed)*this.gain;
       const seek=()=>{
         const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration*1000:c.durationMs;
         audio.currentTime=((this.elapsedNow()-c.at)%duration)/1000;
@@ -128,6 +128,7 @@
         } catch (error) { audio.muted = false; console.warn(`Narration priming failed: ${id}`, error); }
       }
     }
+    setTrackGain(gain){for(const track of this.tracks)track.gain=gain;}
     unlockBackground() { this.soundtrack?.start(true); for(const track of this.tracks)track.sync({gesture:true}); this.schedule(); }
     update(state, {reconstruct = false} = {}) {
       const startedAt = Number(state.startedAt);

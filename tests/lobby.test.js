@@ -7,8 +7,10 @@ import host from '../api/host.js';
 import me from '../api/me.js';
 import stateHandler from '../api/state.js';
 import progress from '../api/progress.js';
+import chapter3 from '../api/chapter3.js';
+import {createAssignments,messageTemplates} from '../api/_chapter3-messages.js';
 
-const handlers = { join, player, host, me, state: stateHandler, progress };
+const handlers = { join, player, host, me, state: stateHandler, progress, chapter3 };
 let raw, readBarrier, heldCommit, heldRead, fault, persisted;
 const KEY = 'brookwood:1031:v3:state';
 const deferred = () => {
@@ -60,6 +62,7 @@ beforeEach(() => {
       assert.equal(args[3], KEY);
       if (heldCommit) {
         const held = heldCommit; heldCommit = null;
+        held.candidate=JSON.parse(args[5]);
         held.entered.resolve(); await held.release.promise;
       }
       if ((raw ?? '') === args[4] && fault !== 'conflict') {
@@ -581,4 +584,126 @@ test('automatic progress supports host-only simulated confirmation and concurren
     assert.equal(persisted.filter(s=>s.phase==='photo-complete').length,1);
     const original=raw;await photoConfirm(real[0]);await call('progress');assert.equal(raw,original);
   });
+});
+
+async function completedCast(simulated=false){
+  const players=await checkpoint(simulated);if(simulated)await testConfirm();for(const p of players)await photoConfirm(p);
+  const s=state();s.startedAt=1000000;s.photo.promptedAt=1088000;s.photo.confirmedAt=1088000;raw=JSON.stringify(s);persisted=[];return players;
+}
+async function chapter3Run(simulated=false){const players=await completedCast(simulated);await serverClock(2000000,()=>call('chapter3'));return players;}
+const messageOpen=p=>call('player',{id:p.id,token:p.token,action:'message-open'});
+const messageRead=p=>call('player',{id:p.id,token:p.token,action:'message-read'});
+const testRead=()=>call('host',{action:'test-read-simulated',code:'test-host'});
+test('Chapter 3 template pool is exact, unique, and placeholders never target the recipient',()=>{
+  assert.equal(messageTemplates.length,20);assert.equal(new Set(messageTemplates.map(t=>t.id)).size,20);
+  assert(messageTemplates.some(t=>t.id==='your-partner'));assert(!messageTemplates.some(t=>t.id==='your-partartner'));
+  const players=Array.from({length:12},(_,i)=>({id:`id-${i}`,name:`[PLAYER_${i}]`,partnerId:`id-${i^1}`}));
+  let seed=0x19961031;const choose=n=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed%n;};
+  for(let i=0;i<500;i++){
+    const assignments=createAssignments(players,choose);assert.equal(Object.keys(assignments).length,12);assert.equal(new Set(Object.values(assignments).map(a=>a.templateId)).size,12);
+    for(const p of players){const a=assignments[p.id],t=messageTemplates.find(t=>t.id===a.templateId);
+      assert.equal(a.title,'KEEP THIS TO YOURSELF');assert(!a.body.includes(p.name));
+      if(t.body.includes('{partner}'))assert(a.body.includes(players.find(q=>q.id===p.partnerId).name));
+      if(t.body.includes('{name}'))assert(players.some(q=>q.id!==p.id&&a.body.includes(q.name)));
+      assert(!/\{name\}|\{partner\}/.test(a.body));assert.equal(a.openedAt,null);assert.equal(a.readAt,null);
+    }
+  }
+});
+test('Chapter 3 start requires photo-complete and a valid reciprocal cast; request values ignored',async()=>{
+  assert.equal((await call('chapter3',{},'GET')).status,405);assert.equal((await call('chapter3')).status,409);
+  await completedCast();const valid=state();raw=JSON.stringify({...valid,players:valid.players.map((p,i)=>i===0?{...p,partnerId:null}:p)});
+  const corrupt=raw;assert.equal((await call('chapter3')).status,409);assert.equal(raw,corrupt);raw=JSON.stringify(valid);
+  await serverClock(2000000,async()=>{
+    assert.equal((await call('chapter3',{startedAt:1,assignments:{},phase:'lobby'})).status,200);
+    assert.equal(state().phase,'chapter3-opening');assert.equal(state().chapter3.startedAt,2000000);assert.equal(state().startedAt,1000000);
+  });
+});
+test('concurrent automatic starts assign once; repeats never reroll or write',async()=>{
+  await completedCast();overlapReads(12);
+  await serverClock(2000000,async()=>{
+    assert((await Promise.all(Array.from({length:12},()=>call('chapter3')))).every(r=>r.status===200));assert.equal(persisted.length,1);
+    assert.equal(new Set(Object.values(state().chapter3.assignments).map(a=>a.templateId)).size,12);
+    const before=raw;await call('chapter3');assert.equal(raw,before);
+  });
+});
+test('CAS retry reuses the prepared rendered assignments',async()=>{
+  await completedCast();const gate={entered:deferred(),release:deferred()};heldCommit=gate;
+  await serverClock(2000000,async()=>{
+    const start=call('chapter3');await gate.entered.promise;const candidate=gate.candidate.chapter3;
+    const s=state();s.revision='intervening';raw=JSON.stringify(s);gate.release.resolve();assert.equal((await start).status,200);
+    assert.deepEqual(state().chapter3,candidate);
+  });
+});
+test('public Chapter 3 state never exposes private assignments, IDs, text, targets, or per-player timestamps',async()=>{
+  const players=await chapter3Run();await serverClock(2012600,()=>messageOpen(players[0]));
+  const result=(await call('state',{},'GET')).data,serialized=JSON.stringify(result);
+  assert.deepEqual(Object.keys(result.chapter3).sort(),['startedAt','privateMessagesActivatedAt','completedAt','readCount'].sort());
+  for(const key of ['assignments','templateId','title','body','openedAt','readAt'])assert(!serialized.includes(`"${key}"`));
+  for(const a of Object.values(state().chapter3.assignments)){assert(!serialized.includes(a.templateId));assert(!serialized.includes(a.body));}
+  assert(!result.players.some(p=>'token' in p));
+});
+test('before activation phones receive no body; authenticated me exposes only own opened/unread assignment',async()=>{
+  const players=await chapter3Run();const unopened=(await call('me',players[0])).data;assert(!unopened.chapter3.assignment);
+  await serverClock(2012600,()=>messageOpen(players[0]));
+  const own=(await call('me',players[0])).data;assert.deepEqual(own.chapter3.assignment,{title:state().chapter3.assignments[players[0].id].title,body:state().chapter3.assignments[players[0].id].body});
+  assert(!own.chapter3.assignments);assert(!(await call('me',players[1])).data.chapter3.assignment);
+  assert.equal((await call('me',{id:players[0].id,token:players[1].token})).status,401);
+});
+test('private activation is server gated at exactly 12600 and idempotent',async()=>{
+  const players=await chapter3Run(),before=raw;
+  await serverClock(2012599,async()=>{await call('progress',{elapsed:999999});assert.equal(raw,before);assert.equal((await messageOpen(players[0])).status,409);});
+  await serverClock(2012600,async()=>{await call('progress');assert.equal(state().phase,'private-messages');assert.equal(state().chapter3.privateMessagesActivatedAt,2012600);const activated=raw;await call('progress');assert.equal(raw,activated);});
+});
+test('OPEN is authenticated, recipient-only, atomic and write-once',async()=>{
+  const players=await chapter3Run();
+  await serverClock(2012600,async()=>{
+    assert.equal((await messageOpen({...players[1],token:players[0].token})).status,401);
+    assert.equal((await call('player',{...players[0],action:'message-open',playerId:players[1].id,openedAt:1})).status,200);
+    assert.equal(state().chapter3.assignments[players[0].id].openedAt,2012600);assert.equal(state().chapter3.assignments[players[1].id].openedAt,null);
+    const before=raw;await messageOpen(players[0]);assert.equal(raw,before);
+  });
+});
+test('READ requires opening, counts once, clears own body projection and preserves timestamp on retry',async()=>{
+  const players=await chapter3Run();
+  await serverClock(2012600,async()=>{
+    assert.equal((await messageRead(players[0])).status,409);await messageOpen(players[0]);await messageRead(players[0]);
+    assert.equal(state().chapter3.assignments[players[0].id].readAt,2012600);const saved=raw;
+    await messageRead(players[0]);assert.equal(raw,saved);const result=(await call('me',players[0])).data;assert.equal(result.chapter3.readCount,1);assert(!result.chapter3.assignment);
+  });
+});
+test('twelve concurrent reads and duplicate final reads complete atomically once, without stored readCount',async()=>{
+  const players=await chapter3Run();
+  await serverClock(2012600,async()=>{for(const p of players)await messageOpen(p);overlapReads(12);assert((await Promise.all(players.map(messageRead))).every(r=>r.status===200));
+    assert.equal(state().phase,'private-messages-complete');assert.equal(state().chapter3.completedAt,2012600);assert(!('readCount' in state().chapter3));
+    assert.equal(persisted.filter(s=>s.phase==='private-messages-complete').length,1);
+    const before=raw;overlapReads(3);assert((await Promise.all(Array.from({length:3},()=>messageRead(players[11])))).every(r=>r.status===200));assert.equal(raw,before);
+  });
+});
+test('host simulated reads yield 10/12, then concurrent real reads complete exactly once',async()=>{
+  const real=await chapter3Run(true);assert.equal((await testRead()).status,409);
+  await serverClock(2012600,async()=>{
+    await call('progress');assert.equal((await call('host',{action:'test-read-simulated',code:'wrong'})).status,403);await testRead();
+    assert.equal(Object.values(state().chapter3.assignments).filter(a=>a.readAt!==null).length,10);
+    for(const p of real)assert.equal(state().chapter3.assignments[p.id].readAt,null);
+    const before=raw;await testRead();assert.equal(raw,before);for(const p of real)await messageOpen(p);
+    overlapReads(2);assert((await Promise.all(real.map(messageRead))).every(r=>r.status===200));assert.equal(state().phase,'private-messages-complete');assert.equal(state().chapter3.completedAt,2012600);
+  });
+});
+test('return-to-lobby preserves cast, clears Chapter 3, and a future start prepares fresh assignments',async()=>{
+  await chapter3Run();const cast=structuredClone(state().players);
+  await serverClock(2100000,async()=>{assert.equal((await returnLobby()).status,200);assert(!state().chapter3);assert.deepEqual(state().players,cast);await start();assert(!state().chapter3);});
+});
+for(const operation of ['open','read','start'])test(`reset fences in-flight Chapter 3 ${operation} and clears all private state`,async()=>{
+  const players=operation==='start'?await completedCast():await chapter3Run();
+  await serverClock(2012600,async()=>{
+    if(operation==='read')await messageOpen(players[0]);const gate={entered:deferred(),release:deferred()};heldCommit=gate;
+    const pending=operation==='start'?call('chapter3'):operation==='open'?messageOpen(players[0]):messageRead(players[0]);await gate.entered.promise;await reset();gate.release.resolve();
+    assert.equal((await pending).status,409);assert(!state().chapter3);assert.equal(state().players.length,0);
+  });
+});
+test('corrupt private state is rejected without repair or public leakage',async()=>{
+  const players=await chapter3Run(),valid=state();
+  for(const mutate of [s=>delete s.chapter3.assignments[players[0].id],s=>s.chapter3.assignments[players[0].id].readAt=1,s=>s.chapter3.completedAt=1,s=>s.chapter3.assignments[players[0].id].templateId='unknown']){
+    const s=structuredClone(valid);mutate(s);raw=JSON.stringify(s);const before=raw;const r=await call('state',{},'GET');assert.equal(r.status,503);assert.equal(raw,before);assert(!r.data.chapter3);
+  }
 });

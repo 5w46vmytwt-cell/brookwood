@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import {createAssignments,messageTemplates} from './_chapter3-messages.js';
+import {chapter3Phases,PRIVATE_MESSAGES_MS} from '../chapter3-timing.js';
 const KEY = "brookwood:1031:v3:state";
 // Compare the exact snapshot and write in one Redis operation, across all instances.
 export const CAS_SCRIPT = `local current = redis.call('GET', KEYS[1])
@@ -34,8 +36,77 @@ export function validatePhoto(s){
   return confirmed;
 }
 function validateState(s){
-  if(!s||!Array.isArray(s.players)||s.room!=="1031"||!["lobby","opening",...photoPhases].includes(s.phase))throw new Error("Invalid lobby data.");
+  if(!s||!Array.isArray(s.players)||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases].includes(s.phase))throw new Error("Invalid lobby data.");
   if(photoPhases.includes(s.phase))validatePhoto(s);
+  if(chapter3Phases.includes(s.phase))validateChapter3(s);
+}
+export const isChapter3=s=>chapter3Phases.includes(s.phase);
+export function validChapter3Cast(s){
+  const cast=new Map(s.players.map(p=>[p.id,p]));
+  return s.players.length===12&&cast.size===12&&s.players.every(p=>typeof p.id==='string'&&p.id&&typeof p.name==='string'&&p.name&&
+    typeof p.token==='string'&&p.token&&p.partnerId!==p.id&&cast.get(p.partnerId)?.partnerId===p.id);
+}
+export function validateChapter3(s){
+  const c=s.chapter3;
+  validatePhoto({...s,phase:'photo-complete'});
+  if(!validChapter3Cast(s)||!c||!positiveTime(c.startedAt)||!c.assignments||Array.isArray(c.assignments)||
+    Object.keys(c.assignments).length!==12)throw Error('Invalid Chapter 3 state.');
+  const templates=new Set(messageTemplates.map(t=>t.id)),used=new Set();let count=0;
+  const active=c.privateMessagesActivatedAt!==null;
+  if(active&&(!positiveTime(c.privateMessagesActivatedAt)||c.privateMessagesActivatedAt<c.startedAt+PRIVATE_MESSAGES_MS))throw Error('Invalid message activation.');
+  for(const p of s.players){
+    const a=Object.hasOwn(c.assignments,p.id)?c.assignments[p.id]:null;
+    if(!a||!templates.has(a.templateId)||used.has(a.templateId)||typeof a.title!=='string'||!a.title||typeof a.body!=='string'||!a.body)
+      throw Error('Invalid private assignment.');
+    used.add(a.templateId);
+    if(a.openedAt!==null&&(!active||!positiveTime(a.openedAt)||a.openedAt<c.privateMessagesActivatedAt))throw Error('Invalid message opening.');
+    if(a.readAt!==null&&(!positiveTime(a.readAt)||a.openedAt===null||a.readAt<a.openedAt))throw Error('Invalid message acknowledgement.');
+    if(a.readAt!==null)count++;
+  }
+  if(s.phase==='chapter3-opening'&&(active||count||c.completedAt!==null))throw Error('Invalid Chapter 3 opening.');
+  if(s.phase==='private-messages'&&(!active||count===12||c.completedAt!==null))throw Error('Invalid private checkpoint.');
+  if(s.phase==='private-messages-complete'&&(!active||count!==12||!positiveTime(c.completedAt)||c.completedAt<Math.max(...Object.values(c.assignments).map(a=>a.readAt))))throw Error('Invalid private completion.');
+  return count;
+}
+export function withinChapter3Run(change){
+  let seen=false,start;
+  return s=>{if(seen&&s.chapter3?.startedAt!==start)throw new LobbyError(409,'Chapter 3 changed. Please try again.');seen=true;start=s.chapter3?.startedAt;return change(s);};
+}
+export function makeChapter3Starter(){
+  let prepared;
+  return withinCinematicRun(s=>{
+    if(isChapter3(s))return UNCHANGED;
+    if(s.phase!=='photo-complete')throw new LobbyError(409,'Complete the group photo before starting Chapter 3.');
+    validatePhoto(s);
+    if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter 3 requires twelve players in reciprocal couples.');
+    // Cache once per request; CAS retries never reroll the prepared selection.
+    prepared??={startedAt:Date.now(),privateMessagesActivatedAt:null,assignments:createAssignments(s.players),completedAt:null};
+    s.chapter3=structuredClone(prepared);s.phase='chapter3-opening';
+  });
+}
+export function activatePrivateMessages(s){
+  if(!isChapter3(s))return UNCHANGED;
+  if(s.phase!=='chapter3-opening'||Date.now()-s.chapter3.startedAt<PRIVATE_MESSAGES_MS)return UNCHANGED;
+  s.chapter3.privateMessagesActivatedAt=Date.now();s.phase='private-messages';
+}
+export function privateMessageAction(s,ids,action){
+  if(!isChapter3(s)||Date.now()-s.chapter3.startedAt<PRIVATE_MESSAGES_MS)throw new LobbyError(409,'Private messages are not active.');
+  activatePrivateMessages(s);let changed=false;
+  for(const id of new Set(ids)){
+    const a=Object.hasOwn(s.chapter3.assignments,id)?s.chapter3.assignments[id]:null;
+    if(!a)throw new LobbyError(409,'Private assignment not found.');
+    if(action==='message-read'&&a.openedAt===null)throw new LobbyError(409,'Open your message before acknowledging it.');
+    if(action==='message-open'||action==='simulated-read')if(a.openedAt===null){a.openedAt=Date.now();changed=true;}
+    if(action==='message-read'||action==='simulated-read')if(a.readAt===null){a.readAt=Date.now();changed=true;}
+  }
+  if(!changed)return UNCHANGED;
+  if(Object.values(s.chapter3.assignments).every(a=>a.readAt!==null)){
+    s.chapter3.completedAt??=Date.now();s.phase='private-messages-complete';
+  }
+}
+export function chapter3Progress(s){
+  if(!isChapter3(s))return null;
+  return {startedAt:s.chapter3.startedAt,privateMessagesActivatedAt:s.chapter3.privateMessagesActivatedAt,completedAt:s.chapter3.completedAt,readCount:validateChapter3(s)};
 }
 export function confirmPhoto(s,ids){
   if(!photoPhases.includes(s.phase))throw new LobbyError(409,"The photo checkpoint is not active.");
@@ -49,6 +120,7 @@ export function confirmPhoto(s,ids){
   if(confirmed.size===12&&[...cast].every(id=>confirmed.has(id))){s.photo.confirmedAt=Date.now();s.phase="photo-complete";}
 }
 export function photoProgress(s){
+  if(isChapter3(s))return photoProgress({...s,phase:'photo-complete'});
   if(!photoPhases.includes(s.phase))return null;
   const confirmed=validatePhoto(s);
   return {promptedAt:s.photo.promptedAt,confirmedCount:confirmed.size,complete:s.phase==="photo-complete",confirmedAt:s.photo.confirmedAt};
@@ -97,4 +169,4 @@ export function fail(res,error){
   console.error("Lobby request failed:",error.message);
   return send(res,503,{error:"Brookwood could not reach the lobby database. Please try again."});
 }
-export function publicState(s){const photo=photoProgress(s);return {room:s.room,phase:s.phase,startedAt:s.startedAt,...(photo?{photo}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
+export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s);return {room:s.room,phase:s.phase,startedAt:s.startedAt,...(photo?{photo}:{}),...(chapter3?{chapter3}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}

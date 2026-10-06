@@ -2,6 +2,9 @@ import { AbsoluteCueScheduler } from './cinematic-scheduler.js';
 import { CHAPTER1_END_MS } from './cinematic-timeline.js';
 import { chapter2Audio } from './chapter2-audio.js';
 import { chapter2Timeline } from './chapter2.js';
+import {Chapter3View} from './chapter3.js';
+import {chapter3AudioTimeline,chapter3PartyGain} from './chapter3-audio.js';
+import {chapter3Phases} from './chapter3-timing.js';
 
 // One scheduler clock, fed by the TV's existing /api/state poller.
 export class TVCinematicRuntime {
@@ -13,6 +16,13 @@ export class TVCinematicRuntime {
     this.state=null;this.now=now;this.onElapsed=onElapsed;
     this.scheduler=new AbsoluteCueScheduler({autoSync:false,now,requestFrame,cancelFrame,
       onElapsed:(elapsed,meta)=>{
+        if(chapter3Phases.includes(this.state?.phase)){
+          this.chapter3Visuals.update(this.state);
+          this.audio.setTrackGain(chapter3PartyGain(elapsed));
+          this.audio.update({...this.state,phase:'photo-complete'},meta);
+          this.chapter3Audio.update({phase:'opening',startedAt:this.state.chapter3.startedAt},meta);
+          this.onElapsed(elapsed,this.state);return;
+        }
         if(['photo','photo-complete'].includes(this.state?.phase)){this.audio.update(this.state,meta);return;}
         if(this.state?.phase!=='opening')return;
         this.visuals.update(this.state);
@@ -23,16 +33,24 @@ export class TVCinematicRuntime {
     const clock={elapsedNow:()=>this.scheduler.elapsedNow(),externallyDriven:true};
     this.visuals=new Renderer(document,timeline,clock);
     this.chapter2Visuals=new Renderer(document,chapter2Timeline,clock);
-    this.audio=new Player(timeline,{...clock,soundtrack,audioExtension:chapter2Audio,canSync:()=>!this.scheduler.recovering});
+    this.chapter3Visuals=new Chapter3View(document,Renderer,clock);
+    this.audio=new Player(timeline,{...clock,elapsedNow:()=>this.originalElapsedNow(),soundtrack,audioExtension:chapter2Audio,canSync:()=>!this.scheduler.recovering});
+    this.chapter3Audio=new Player(chapter3AudioTimeline,{...clock,canSync:()=>!this.scheduler.recovering});
     this.scheduler.start();
   }
   acceptState(state,timing={}) {
     const previous=this.state;this.state=state;
-    if(!this.scheduler.acceptState(state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
-    if(state.phase!=='opening'){this.visuals.stop();this.chapter2Visuals.stop();this.audio.update(state);}
+    const chapter3=chapter3Phases.includes(state.phase);
+    if(!this.scheduler.acceptState(chapter3?{...state,startedAt:state.chapter3.startedAt}:state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
+    if(!chapter3){this.chapter3Audio.stop();this.chapter3Visuals.stop();this.audio.setTrackGain(1);}
+    if(state.phase!=='opening'){
+      this.visuals.stop();this.chapter2Visuals.stop();if(!chapter3)this.audio.update(state);
+    }
   }
   suspend(){this.scheduler.recovering=true;}
   elapsedNow(){return this.scheduler.elapsedNow();}
+  originalElapsedNow(){return this.elapsedNow()+(chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
+  unlockChapter3(){if(this.chapter3Audio.startedAt===null)this.chapter3Audio.unlock();}
 }
 // Classic Chapter 1 assets load first; the TV's following module uses this bridge.
 globalThis.BrookwoodTV={Runtime:TVCinematicRuntime};
