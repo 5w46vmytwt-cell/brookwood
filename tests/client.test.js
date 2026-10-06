@@ -46,6 +46,25 @@ test('OPEN uses own authentication and exactly 350ms blank reveal; READ removes 
 test('invalidated phone session stops private renderer and cannot redisplay its message',async()=>{
   const e=await privateEnvironment(privateResponse(13000,212600));vm.runInContext('clearSession();privateRuntime.scheduler.frame()',e.context);assert(e.document.getElementById('privateBox').classList.contains('hidden'));assert.equal(e.storage.size,0);
 });
+test('Chapter Select TV control requires valid cast and sends only selected checkpoint and entered PIN',async()=>{
+  const e=returnEnvironment();const players=Array.from({length:12},(_,i)=>({id:'p'+i,name:'P'+i,partnerId:'p'+(i^1),ready:true}));
+  e.context.selectedState={phase:'lobby',startedAt:null,serverNow:100000,players};vm.runInContext('render(selectedState);openChapterSelect()',e.context);
+  assert.equal(e.document.getElementById('chapterSelectToggle').hidden,false);assert.equal(e.document.getElementById('chapterSelectPanel').hidden,false);
+  const calls=[];e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true};};
+  e.document.getElementById('chapterSelectCode').value='entered-host-pin';e.document.getElementById('chapterSelectCheckpoint').value='chapter3';
+  vm.runInContext('selectTestChapter();selectTestChapter()',e.context);await flush();assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/host');assert.equal(calls[0].body.action,'chapter-select');assert.equal(calls[0].body.checkpoint,'chapter3');assert.equal(calls[0].body.code,'entered-host-pin');assert.deepEqual(Object.keys(calls[0].body).sort(),['action','checkpoint','code']);
+  assert.equal(e.document.getElementById('chapterSelectPanel').hidden,true);assert.equal(e.document.getElementById('chapterSelectCode').value,'');
+  e.context.selectedState={phase:'opening',startedAt:100000,serverNow:144000,players};vm.runInContext('render(selectedState)',e.context);assert.equal(e.document.getElementById('chapterSelectToggle').hidden,true);
+  e.document.events.keydown({key:'C',ctrlKey:true,shiftKey:true,preventDefault(){}});assert.equal(e.document.getElementById('chapterSelectPanel').hidden,false);
+  e.context.selectedState.players=[];vm.runInContext('render(selectedState);openChapterSelect()',e.context);assert.equal(e.document.getElementById('chapterSelectToggle').hidden,true);assert.equal(e.document.getElementById('chapterSelectPanel').hidden,true);
+});
+test('Chapter Select phone updates without reload across private, photo, opening and fresh private runs',async()=>{
+  const e=await privateEnvironment(privateResponse(13000,212600,213000));
+  e.context.nextState={...privateResponse(),phase:'photo'};delete e.context.nextState.chapter3;vm.runInContext('render(nextState)',e.context);assert(!e.document.getElementById('photoBox').classList.contains('hidden'));assert(e.document.getElementById('privateBox').classList.contains('hidden'));
+  e.context.nextState={...response,phase:'opening'};vm.runInContext('render(nextState)',e.context);assert(e.document.getElementById('opening').classList.contains('show'));
+  e.context.nextState=privateResponse(0);e.context.nextState.chapter3.startedAt=300000;e.context.nextState.serverNow=300000;vm.runInContext('render(nextState)',e.context);assert.equal(e.document.getElementById('photoTitle').textContent,'PHOTO COMPLETE');
+  e.context.nextState.phase='private-messages';e.context.nextState.serverNow=312600;vm.runInContext('render(nextState)',e.context);assert.equal(e.document.getElementById('privateTitle').textContent,'PRIVATE MESSAGE');assert(!e.document.getElementById('privateOpen').classList.contains('hidden'));
+});
 function environment(stored = null) {
   const nodes = new Map(), timers = new Map(), storage = new Map(); let serial = 0, perf = 0;
   if (stored !== null) storage.set('brookwood-player-v3', stored);

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {createAssignments,messageTemplates} from './_chapter3-messages.js';
 import {chapter3Phases,PRIVATE_MESSAGES_MS} from '../chapter3-timing.js';
+import {CHAPTER2_START_MS,PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
 const KEY = "brookwood:1031:v3:state";
 // Compare the exact snapshot and write in one Redis operation, across all instances.
 export const CAS_SCRIPT = `local current = redis.call('GET', KEYS[1])
@@ -82,6 +83,39 @@ export function makeChapter3Starter(){
     // Cache once per request; CAS retries never reroll the prepared selection.
     prepared??={startedAt:Date.now(),privateMessagesActivatedAt:null,assignments:createAssignments(s.players),completedAt:null};
     s.chapter3=structuredClone(prepared);s.phase='chapter3-opening';
+  });
+}
+function setOpening(s,startedAt){
+  s.phase='opening';s.startedAt=startedAt;delete s.photo;delete s.chapter3;
+}
+export function startSession(s,startedAt=Date.now()){
+  if(s.players.length!==12)throw new LobbyError(409,"The cast must contain exactly 12 players.");
+  if(s.players.some(p=>!p.partnerId||!p.ready))throw new LobbyError(409,"Every player must have a partner and be ready.");
+  const pairs=new Set(s.players.map(p=>[p.id,p.partnerId].sort().join(":")));
+  if(pairs.size!==6)throw new LobbyError(409,"The cast must contain six couples.");
+  setOpening(s,startedAt);
+}
+export function makeTestChapterSelector(checkpoint){
+  if(!['chapter1','chapter2','photo','chapter3'].includes(checkpoint))throw new LobbyError(400,'Unknown test checkpoint.');
+  let prepared;
+  return withinCinematicRun(s=>{
+    if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter Select requires twelve players in six reciprocal couples.');
+    if(!prepared){
+      const now=Date.now(),offset=checkpoint==='chapter1'?0:checkpoint==='chapter2'?CHAPTER2_START_MS:PHOTO_CHECKPOINT_MS;
+      // Distinct server-generated clocks also distinguish intentional same-ms reruns.
+      const startedAt=now-offset+(now-offset===s.startedAt?1:0);
+      prepared={startedAt,now,generation:randomUUID(),chapter3:checkpoint==='chapter3'?{
+        startedAt:Math.max(now,(s.chapter3?.startedAt??0)+1),privateMessagesActivatedAt:null,
+        assignments:createAssignments(s.players),completedAt:null
+      }:null};
+    }
+    s.generation=prepared.generation;
+    if(checkpoint==='chapter1'){startSession(s,prepared.startedAt);return;}
+    setOpening(s,prepared.startedAt);
+    if(checkpoint==='chapter2')return;
+    s.photo={promptedAt:prepared.now,confirmedPlayerIds:checkpoint==='chapter3'?s.players.map(p=>p.id):[],confirmedAt:checkpoint==='chapter3'?prepared.now:null};
+    s.phase=checkpoint==='photo'?'photo':'chapter3-opening';
+    if(prepared.chapter3)s.chapter3=structuredClone(prepared.chapter3);
   });
 }
 export function activatePrivateMessages(s){

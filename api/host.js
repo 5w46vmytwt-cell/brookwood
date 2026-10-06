@@ -1,10 +1,14 @@
 import crypto from "node:crypto";
-import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3} from "./_state.js";
+import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
   if(String(req.body?.code||"")!==String(process.env.HOST_KEY||"1031"))return send(res,403,{error:"Wrong host code."});
   try{
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
+    if(req.body.action==='chapter-select'){
+      await updateState(makeTestChapterSelector(req.body.checkpoint));
+      return send(res,200,{ok:true});
+    }
     if(req.body.action==='test-read-simulated'){
       await updateState(withinChapter3Run(s=>{
         if(!isChapter3(s)||s.phase==='chapter3-opening')throw new LobbyError(409,'Private messages must be active before test reads.');
@@ -54,15 +58,7 @@ export default async function handler(req,res){
       return send(res,200,{ok:true});
     }
     if(req.body.action!=="start")return send(res,400,{error:"Unknown action."});
-    await updateState(s=>{
-      if(s.players.length!==12)throw new LobbyError(409,"The cast must contain exactly 12 players.");
-      if(s.players.some(p=>!p.partnerId||!p.ready))throw new LobbyError(409,"Every player must have a partner and be ready.");
-      const pairs=new Set(s.players.map(p=>[p.id,p.partnerId].sort().join(":")));
-      if(pairs.size!==6)throw new LobbyError(409,"The cast must contain six couples.");
-      s.phase="opening";s.startedAt=Date.now();
-      delete s.photo;
-      delete s.chapter3;
-    });
+    await updateState(s=>startSession(s));
     return send(res,200,{ok:true});
   }catch(e){return fail(res,e);}
 }

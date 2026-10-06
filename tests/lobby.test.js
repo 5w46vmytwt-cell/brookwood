@@ -594,6 +594,61 @@ async function chapter3Run(simulated=false){const players=await completedCast(si
 const messageOpen=p=>call('player',{id:p.id,token:p.token,action:'message-open'});
 const messageRead=p=>call('player',{id:p.id,token:p.token,action:'message-read'});
 const testRead=()=>call('host',{action:'test-read-simulated',code:'test-host'});
+const selectChapter=(checkpoint,extra={})=>call('host',{action:'chapter-select',checkpoint,code:'test-host',...extra});
+async function testCast(){const a=(await call('join',{name:'Real A'})).data.player,b=(await call('join',{name:'Real B'})).data.player;await pair([a,b]);for(const p of [a,b])await call('player',{...p,action:'ready',ready:true});await call('host',{action:'test-fill',code:'test-host'});return [a,b];}
+test('Chapter Select is host-only, uses a fixed allowlist and rejects incomplete or invalid couples',async()=>{
+  assert.equal((await selectChapter('photo',{code:'wrong'})).status,403);
+  assert.equal((await selectChapter('unknown')).status,400);
+  assert.equal((await selectChapter('photo')).status,409);
+  await testCast();const valid=state();
+  for(const mutate of [s=>s.players.pop(),s=>s.players[0].partnerId=s.players[0].id,s=>s.players[0].partnerId=s.players[2].id,s=>s.players[0].token='',s=>s.players[0].id=s.players[1].id]){
+    const s=structuredClone(valid);mutate(s);raw=JSON.stringify(s);const before=raw;assert.equal((await selectChapter('photo')).status,409);assert.equal(raw,before);
+  }
+});
+test('Chapter Select chapter1 uses normal Start validation and clears downstream data preserving cast',async()=>{
+  await chapter3Run(true);const castBefore=state().players;await serverClock(3000000,async()=>{
+    assert.equal((await selectChapter('chapter1')).status,200);assert.equal(state().phase,'opening');assert.equal(state().startedAt,3000000);assert(!state().photo);assert(!state().chapter3);assert.deepEqual(state().players,castBefore);
+    const s=state();s.players[0].ready=false;raw=JSON.stringify(s);const before=raw;assert.equal((await selectChapter('chapter1')).status,409);assert.equal(raw,before);
+  });
+});
+test('Chapter Select chapter2 is server-clock derived, ignores supplied timing and clears downstream state',async()=>{
+  await chapter3Run(true);await serverClock(3000000,async()=>{
+    assert.equal((await selectChapter('chapter2',{elapsed:1,startedAt:1,serverNow:1})).status,200);const s=state();assert.equal(s.phase,'opening');assert.equal(3000000-s.startedAt,44000);assert(!s.photo);assert(!s.chapter3);
+  });
+});
+test('Chapter Select photo creates fresh 0/12 and existing simulated helper reaches 10/12',async()=>{
+  await chapter3Run(true);const castBefore=state().players;await serverClock(3000000,async()=>{
+    assert.equal((await selectChapter('photo')).status,200);const s=state();assert.equal(s.phase,'photo');assert.equal(3000000-s.startedAt,88000);assert.deepEqual(s.photo,{promptedAt:3000000,confirmedPlayerIds:[],confirmedAt:null});assert(!s.chapter3);assert.deepEqual(s.players,castBefore);
+    await testConfirm();assert.equal(state().photo.confirmedPlayerIds.length,10);assert.equal(state().phase,'photo');
+    assert.equal((await selectChapter('chapter2')).status,200);assert(!state().photo);assert(!state().chapter3);
+  });
+});
+test('Chapter Select chapter3 creates completed photo, twelve fresh assignments, and normal activation/helper',async()=>{
+  await testCast();await serverClock(3000000,async()=>{
+    assert.equal((await selectChapter('chapter3')).status,200);const s=state();assert.equal(s.phase,'chapter3-opening');assert.equal(s.chapter3.startedAt,3000000);assert.equal(s.photo.confirmedPlayerIds.length,12);assert.equal(s.photo.confirmedAt,3000000);assert.equal(s.chapter3.privateMessagesActivatedAt,null);assert.equal(s.chapter3.completedAt,null);
+    assert.equal(new Set(Object.values(s.chapter3.assignments).map(a=>a.templateId)).size,12);assert(Object.values(s.chapter3.assignments).every(a=>a.openedAt===null&&a.readAt===null));assert(!JSON.stringify(publicState(s)).includes('templateId'));
+  });
+  await serverClock(3012599,async()=>{await call('progress');assert.equal(state().phase,'chapter3-opening');});
+  await serverClock(3012600,async()=>{await call('progress');assert.equal(state().phase,'private-messages');assert.equal((await testRead()).status,200);assert.equal(publicState(state()).chapter3.readCount,10);});
+});
+test('Chapter Select repeated chapter3 intentionally creates a new run and reset assignments',async()=>{
+  await testCast();await serverClock(3000000,async()=>{
+    await selectChapter('chapter3');const a=state();await selectChapter('chapter3');const b=state();assert.notEqual(b.chapter3.startedAt,a.chapter3.startedAt);assert.notEqual(b.startedAt,a.startedAt);assert.notEqual(b.generation,a.generation);assert.notDeepEqual(b.chapter3.assignments,a.chapter3.assignments);assert(Object.values(b.chapter3.assignments).every(x=>x.readAt===null&&x.openedAt===null));
+  });
+});
+test('Chapter Select CAS retry preserves prepared randomized assignments',async()=>{
+  await testCast();const gate={entered:deferred(),release:deferred()};heldCommit=gate;
+  await serverClock(3000000,async()=>{
+    const pending=selectChapter('chapter3');await gate.entered.promise;const prepared=gate.candidate.chapter3;
+    const s=state();s.revision='conflict';raw=JSON.stringify(s);gate.release.resolve();assert.equal((await pending).status,200);assert.deepEqual(state().chapter3,prepared);
+  });
+});
+test('Chapter Select generation fences old OPEN/READ and reset fences pending chapter selection',async()=>{
+  const players=await chapter3Run(true);await serverClock(2012600,async()=>{
+    await call('progress');const gate={entered:deferred(),release:deferred()};heldCommit=gate;const old=messageOpen(players[0]);await gate.entered.promise;await selectChapter('photo');const selected=raw;gate.release.resolve();assert.equal((await old).status,409);assert.equal(raw,selected);
+    const nextGate={entered:deferred(),release:deferred()};heldCommit=nextGate;const pending=selectChapter('chapter3');await nextGate.entered.promise;await reset();nextGate.release.resolve();assert.equal((await pending).status,409);assert.equal(state().players.length,0);
+  });
+});
 test('Chapter 3 template pool is exact, unique, and placeholders never target the recipient',()=>{
   assert.equal(messageTemplates.length,20);assert.equal(new Set(messageTemplates.map(t=>t.id)).size,20);
   assert(messageTemplates.some(t=>t.id==='your-partner'));assert(!messageTemplates.some(t=>t.id==='your-partartner'));

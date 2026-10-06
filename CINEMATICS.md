@@ -255,6 +255,30 @@ errors allow retry. The existing single phone polling loop is retained. No
 Chapter 3 progression or cinematic/audio retiming is introduced.
 # Chapter 3: private messages
 
+## Host development checkpoint selector
+
+`TEST: CHAPTER SELECT` is an explicit authenticated `chapter-select` host action,
+with a fixed allowlist: `chapter1`, `chapter2`, `photo`, `chapter3`. It requires
+twelve existing players in six reciprocal couples and never creates players.
+The TV button appears in the lobby/photo checkpoint; Ctrl+Shift+C opens the
+same authenticated test panel during cinematics without drawing over story cues.
+Chapter 1 also retains normal Start's READY requirement and uses the same Start
+helper. Host PIN is supplied privately with the request, never stored publicly.
+
+Chapter 1 starts at elapsed zero; Chapter 2 uses a server-generated startedAt
+offset by CHAPTER2_START_MS; photo uses PHOTO_CHECKPOINT_MS and fresh 0/12 state.
+Chapter 3 creates valid completed-photo prerequisites and a fresh randomized
+assignment set with its own server clock at elapsed zero. All destinations clear
+stale downstream state while preserving the entire player/session cast.
+
+Each intentional selection rotates the existing internal generation fence,
+rejecting in-flight mutations from the old test checkpoint. CAS retries cache
+timestamps and assignments within a request rather than rerolling. Repeated
+intentional selections are new runs. Clients use ordinary polling and existing
+server-clock reconstruction, with no reload, special chapter mode or alternate
+timeline. Historical finite audio is consumed, active obsolete audio is stopped,
+and normal photo/private-message helpers remain host-authenticated.
+
 After `photo-complete`, the TV calls the narrow public `POST /api/chapter3`
 endpoint. The server validates the completed photo and twelve reciprocal paired
 players, then atomically persists twelve distinct rendered assignments and a new

@@ -48,3 +48,18 @@ test('phone activation uses server time at exactly 12600, with no wall clock',()
   perf=1;runtime.scheduler.frame();assert.equal(calls.at(-1),true);
   runtime.acceptState({phase:'lobby'});assert.equal(runtime.state.chapter3,undefined);
 });
+test('checkpoint changes reconstruct existing TV/audio without reload and consume historical Chapter 1 effects',()=>{
+  const e=setup(12000),vibration=e.audio('private-message-vibration');assert.equal(vibration.paused,false);
+  e.runtime.acceptState({phase:'opening',startedAt:400000,serverNow:444000,players:[]});
+  assert.equal(e.runtime.elapsedNow(),44000);assert.equal(vibration.paused,true);
+  assert.equal(e.runtime.audio.media.get('camera-shutter').plays,0);assert.equal(e.runtime.audio.media.get('narration-01').plays,0);
+  e.runtime.acceptState({phase:'photo',startedAt:500000,serverNow:588000,players:[]});
+  assert.equal(e.runtime.elapsedNow(),88000);for(const a of e.runtime.audio.media.values())assert.equal(a.paused,true);
+  const run={phase:'chapter3-opening',startedAt:612000,chapter3:{startedAt:700000,completedAt:null,readCount:0},serverNow:700000};
+  e.runtime.acceptState(run);assert.equal(e.runtime.elapsedNow(),0);assert.equal(e.opacity('photoComplete'),1);assert.equal(vibration.paused,true);
+  e.runtime.acceptState({...run,serverNow:710150},{hard:true});assert.equal(vibration.plays,2);assert.equal(vibration.currentTime,0);
+  // Reselect Chapter 3 while vibration is playing: new generation starts at zero.
+  e.runtime.acceptState({...run,startedAt:712000,chapter3:{...run.chapter3,startedAt:800000},serverNow:800000});
+  assert.equal(e.runtime.elapsedNow(),0);assert.equal(vibration.paused,true);assert.equal(e.opacity('photoComplete'),1);
+  e.runtime.acceptState({...run,startedAt:712000,chapter3:{...run.chapter3,startedAt:800000},serverNow:810150},{hard:true});assert.equal(vibration.plays,3);
+});

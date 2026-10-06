@@ -36,6 +36,11 @@
 <div id="chapter3-completion" hidden><div id="chapter3-completed" class="chapter3-layer"><h2>PRIVATE MESSAGES</h2><b>12 / 12 READ</b></div></div>
 <div id="chapter3Host" hidden><div class="chapter3-host"><input id="chapter3HostCode" type="password" placeholder="Host code" aria-label="Chapter 3 host code"><button onclick="readSimulatedMessages()">TEST: READ SIMULATED MESSAGES</button></div><div id="chapter3HostError" role="alert"></div></div>
 </section>
+<style>
+#chapterSelectToggle[hidden],#chapterSelectPanel[hidden]{display:none}#chapterSelectToggle{position:fixed;left:18px;bottom:18px;z-index:8;background:#160f04;border:1px solid #806329;color:#e4c785;padding:12px;font:12px Arial,sans-serif;cursor:pointer}#chapterSelectPanel{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;font:14px Arial,sans-serif}#chapterSelectPanel .test-panel{width:420px;max-width:90vw;padding:24px;border:1px solid #806329;background:#0d0b08}#chapterSelectPanel h2{color:#e4c785;font-size:17px}#chapterSelectPanel select,#chapterSelectPanel input,#chapterSelectPanel button{box-sizing:border-box;width:100%;margin-top:12px;padding:12px;background:#111;border:1px solid #555;color:#eee}#chapterSelectError{color:#b86b6b}
+</style>
+<button id="chapterSelectToggle" hidden onclick="openChapterSelect()">TEST: CHAPTER SELECT</button>
+<section id="chapterSelectPanel" role="dialog" aria-modal="true" aria-labelledby="chapterSelectTitle" hidden><div class="test-panel"><h2 id="chapterSelectTitle">TEST: CHAPTER SELECT</h2><p>Testing only. Starts a fresh run at the selected checkpoint. Open anytime with Ctrl+Shift+C.</p><select id="chapterSelectCheckpoint" aria-label="Test checkpoint"><option value="chapter1">CHAPTER 1 — BEGINNING</option><option value="chapter2">CHAPTER 2 — 2026</option><option value="photo">PHOTO CHECKPOINT</option><option value="chapter3">CHAPTER 3 — PRIVATE MESSAGES</option></select><input id="chapterSelectCode" type="password" placeholder="Host PIN" aria-label="Chapter Select host PIN" autocomplete="off"><button id="chapterSelectSubmit" onclick="selectTestChapter()">TEST: GO TO CHECKPOINT</button><button onclick="closeChapterSelect()">CANCEL</button><p id="chapterSelectError" role="alert"></p></div></section>
 <div id="returnControl" class="host-return" role="dialog" aria-modal="true" aria-labelledby="returnHeading" hidden><div class="host-return-panel"><h2 id="returnHeading">HOST CONTROL</h2><input id="returnCode" type="password" placeholder="Host PIN" aria-label="Host PIN" autocomplete="off"><button id="returnButton" onclick="returnLobby()">RETURN TO LOBBY</button><p id="returnError" role="alert"></p></div></div>
 <script src="/cinematic-engine.js"></script><script src="/cinematic-audio.js"></script><script src="/chapter1.js"></script><script src="/client.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script type="module" src="/tv-cinematic.js"></script><script type="module">
 const join=location.origin+'/join';document.getElementById('joinUrl').textContent=join;
@@ -50,6 +55,7 @@ let returnKeys=[],returnRun=null,returnPending=false;
 function completedOpening(){const start=Number(last?.startedAt);return (last?.phase==='opening'||!!last?.chapter3)&&Number.isFinite(start)&&start>0&&tvRuntime.originalElapsedNow()>=BrookwoodChapter1.chapter1Timeline.end}
 function closeReturnControl(){document.getElementById('returnControl').hidden=true;document.getElementById('returnCode').value='';document.getElementById('returnError').textContent='';returnKeys=[]}
 document.addEventListener('keydown',event=>{
+  if(event.ctrlKey&&event.shiftKey&&event.key.toLowerCase()==='c'&&validTestCast(last)){event.preventDefault();openChapterSelect();return;}
   narration.unlockBackground();
   const control=document.getElementById('returnControl');
   if(!control.hidden){if(event.key==='Escape'){event.preventDefault();closeReturnControl()}else if(event.key==='Enter'){event.preventDefault();returnLobby()}return}
@@ -68,7 +74,7 @@ async function returnLobby(){
   catch(failure){error.textContent=failure.message}
   finally{returnPending=false;button.disabled=false}
 }
-function render(s,timing){tvRuntime.acceptState(s,timing);last=s;if(!completedOpening())closeReturnControl();document.getElementById('chapter3TV').hidden=!s.chapter3;if(s.chapter3){document.getElementById('opening').classList.remove('show');document.getElementById('photoCheckpoint').hidden=true;return}if(s.phase==='photo-complete')startChapter3Automatically(s);const photo=['photo','photo-complete'].includes(s.phase);document.getElementById('photoCheckpoint').hidden=!photo;if(photo){document.getElementById('opening').classList.remove('show');document.getElementById('photoCounter').textContent=s.photo.confirmedCount+' / 12 READY FOR THE PHOTO';return}if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
+function render(s,timing){document.getElementById('chapterSelectToggle').hidden=!validTestCast(s)||!['lobby','photo','photo-complete'].includes(s.phase);if(!validTestCast(s))closeChapterSelect();tvRuntime.acceptState(s,timing);last=s;if(!completedOpening())closeReturnControl();document.getElementById('chapter3TV').hidden=!s.chapter3;if(s.chapter3){document.getElementById('opening').classList.remove('show');document.getElementById('photoCheckpoint').hidden=true;return}if(s.phase==='photo-complete')startChapter3Automatically(s);const photo=['photo','photo-complete'].includes(s.phase);document.getElementById('photoCheckpoint').hidden=!photo;if(photo){document.getElementById('opening').classList.remove('show');document.getElementById('photoCounter').textContent=s.photo.confirmedCount+' / 12 READY FOR THE PHOTO';return}if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
 function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function requestPhotoProgress(elapsed,state){
   const chapter3=!!state.chapter3;const run=chapter3?state.chapter3.startedAt:state.startedAt;if((chapter3?(state.phase!=='chapter3-opening'||elapsed<12600):(state.phase!=='opening'||elapsed<88000))||progressPending)return;
@@ -112,4 +118,19 @@ async function readSimulatedMessages(){
   catch(failure){error.textContent=failure.message}
 }
 Object.assign(globalThis,{host,returnLobby,confirmSimulated,readSimulatedMessages});poll();
+function validTestCast(state){const players=state?.players||[],cast=new Map(players.map(p=>[p.id,p]));return players.length===12&&cast.size===12&&players.every(p=>p.partnerId!==p.id&&cast.get(p.partnerId)?.partnerId===p.id);}
+let chapterSelectPending=false;
+function openChapterSelect(){if(!validTestCast(last))return;document.getElementById('chapterSelectPanel').hidden=false;document.getElementById('chapterSelectCode').focus();}
+function closeChapterSelect(){document.getElementById('chapterSelectPanel').hidden=true;document.getElementById('chapterSelectCode').value='';document.getElementById('chapterSelectError').textContent='';}
+async function selectTestChapter(){
+  if(chapterSelectPending||document.getElementById('chapterSelectPanel').hidden)return;
+  chapterSelectPending=true;const button=document.getElementById('chapterSelectSubmit'),error=document.getElementById('chapterSelectError');button.disabled=true;error.textContent='';
+  narration.unlock();tvRuntime.unlockChapter3();
+  try{await lobbyRequest('/api/host',{action:'chapter-select',checkpoint:document.getElementById('chapterSelectCheckpoint').value,code:document.getElementById('chapterSelectCode').value});closeChapterSelect();}
+  catch(failure){error.textContent=failure.message;}
+  finally{chapterSelectPending=false;button.disabled=false;}
+}
+document.getElementById('chapterSelectCode').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();selectTestChapter();}else if(event.key==='Escape'){event.preventDefault();closeChapterSelect();}});
+
+Object.assign(globalThis,{openChapterSelect,closeChapterSelect,selectTestChapter});
 </script></body></html>
