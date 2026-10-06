@@ -1,0 +1,16 @@
+/* Chapter 2 only: clean contemporary presentation, no independent animation clock. */
+.chapter2-layer{position:absolute;inset:0;opacity:0;pointer-events:none}
+.chapter2-image{width:100%;height:100%;object-fit:contain;transform-origin:center}
+.chapter2-text{display:flex;align-items:center;justify-content:center;text-align:center;font:clamp(18px,2.5vw,36px) Arial,sans-serif;letter-spacing:.22em;color:#fff}
+#chapter2-brookwood{font-size:clamp(42px,7vw,100px);letter-spacing:.16em;padding-bottom:16vh}
+#chapter2-presentDate{font-size:clamp(16px,2vw,28px);padding-top:9vh}
+#chapter2-presentTime{font-size:clamp(18px,2.4vw,34px);padding-top:25vh;letter-spacing:.14em;color:#eee}
+#chapter2-onePhoto{font-size:clamp(38px,6vw,82px);padding-bottom:13vh}
+#chapter2-beforeNight{font-size:clamp(18px,2.6vw,36px);padding-top:8vh}
+#chapter2-getTogether{font-size:clamp(12px,1.7vw,24px);padding-top:30vh;color:#e5d4bf}
+#photoCheckpoint[hidden]{display:none}
+#photoCheckpoint{position:fixed;inset:0;z-index:5;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5vw;font-family:Arial,sans-serif}
+#photoCheckpoint h2{max-width:1100px;font-size:clamp(30px,4vw,60px);font-weight:normal;letter-spacing:.12em;line-height:1.5;margin:0 0 5vh}
+#photoCheckpoint p{font-size:clamp(17px,2vw,28px);line-height:1.8;color:#ddd;margin:0}
+#photoCounter{font-size:clamp(14px,1.8vw,24px);letter-spacing:.14em;color:#dfc5a6;margin-top:6vh}
+@media(prefers-reduced-motion:reduce){.chapter2-image{transform:none!important}}

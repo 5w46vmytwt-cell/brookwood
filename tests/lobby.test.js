@@ -6,8 +6,9 @@ import player from '../api/player.js';
 import host from '../api/host.js';
 import me from '../api/me.js';
 import stateHandler from '../api/state.js';
+import progress from '../api/progress.js';
 
-const handlers = { join, player, host, me, state: stateHandler };
+const handlers = { join, player, host, me, state: stateHandler, progress };
 let raw, readBarrier, heldCommit, heldRead, fault, persisted;
 const KEY = 'brookwood:1031:v3:state';
 const deferred = () => {
@@ -62,8 +63,8 @@ beforeEach(() => {
         held.entered.resolve(); await held.release.promise;
       }
       if ((raw ?? '') === args[4] && fault !== 'conflict') {
-        if(args[5]!==args[4])persisted.push(JSON.parse(args[5]));
-        raw = args[5]; result = 1;
+        if(args[5]!==args[4]){persisted.push(JSON.parse(args[5]));raw=args[5];}
+        result = 1;
       } else result = 0;
     }
     return { ok: true, json: async () => ({ result }) };
@@ -504,4 +505,80 @@ test('public serverNow is response-only UTC metadata; repeated reads preserve Re
     assert(!('confirmedPlayerIds' in first.photo));assert(first.players.every(p=>!('token' in p)));
     for(const p of before.players)assert(!JSON.stringify(first).includes(p.token));
   }finally{Date.now=originalNow;}
+});
+
+async function progressionRun(simulated=false){
+  const players=await checkpoint(simulated),s=state();s.phase='opening';s.startedAt=1000000;delete s.photo;
+  raw=JSON.stringify(s);persisted=[];return players;
+}
+async function serverClock(now,job){const original=Date.now;try{Date.now=()=>now;return await job();}finally{Date.now=original;}}
+test('public progression is POST-only and cannot create or change a lobby',async()=>{
+  assert.equal((await call('progress',{},'GET')).status,405);
+  const result=await call('progress',{phase:'photo',elapsed:999999,startedAt:1});
+  assert.equal(result.status,200);assert.equal(result.data.eligible,false);assert.equal(raw,null);
+});
+test('progress ignores forged client timing and is byte-identical before 88000',async()=>{
+  await progressionRun();const before=raw;
+  await serverClock(1087999,async()=>{
+    const r=await call('progress',{elapsed:999999,startedAt:1,serverNow:99999999999,phase:'photo',promptedAt:1});
+    assert.equal(r.status,200);assert.equal(r.data.eligible,false);assert.equal(raw,before);assert.equal(persisted.length,0);
+  });
+});
+test('progress at exactly 88000 initializes canonical photo once while preserving cast and startedAt',async()=>{
+  await progressionRun(true);const before=state();
+  await serverClock(1088000,async()=>{
+    const r=await call('progress',{confirmedPlayerIds:before.players.map(p=>p.id),confirmedAt:1});
+    assert.deepEqual(r.data,{ok:true,eligible:true,phase:'photo'});
+    const s=state();assert.equal(s.startedAt,before.startedAt);assert.deepEqual(s.players,before.players);
+    assert.deepEqual(s.photo,{promptedAt:1088000,confirmedPlayerIds:[],confirmedAt:null});
+    const saved=raw;await call('progress');assert.equal(raw,saved);assert.equal(persisted.length,1);
+  });
+});
+test('concurrent progression initializes exactly once with one persisted photo state',async()=>{
+  await progressionRun();overlapReads(12);
+  await serverClock(1088000,async()=>{
+    const results=await Promise.all(Array.from({length:12},()=>call('progress')));
+    assert(results.every(r=>r.status===200&&r.data.phase==='photo'));
+    assert.equal(persisted.length,1);assert.equal(state().startedAt,1000000);
+  });
+});
+test('progress is a no-op with partial or complete confirmations, preserving revision and timestamps',async()=>{
+  const players=await checkpoint();await photoConfirm(players[0]);let original=raw;await call('progress');assert.equal(raw,original);
+  for(const p of players.slice(1))await photoConfirm(p);original=raw;
+  const r=await call('progress');assert.equal(r.data.phase,'photo-complete');assert.equal(raw,original);
+});
+test('invalid start or invalid cast cannot progress',async()=>{
+  await progressionRun();const valid=state();
+  for(const startedAt of [null,0,-1,'1']){raw=JSON.stringify({...valid,startedAt});const before=raw;assert.equal((await call('progress')).data.eligible,false);assert.equal(raw,before);}
+  for(const mutate of [s=>s.players.pop(),s=>s.players[0].partnerId=s.players[0].id,s=>s.players[0].ready=false,s=>s.players[0].token='']){
+    const s=structuredClone(valid);mutate(s);raw=JSON.stringify(s);const before=raw;
+    await serverClock(1088000,async()=>{assert.equal((await call('progress')).status,409);assert.equal(raw,before);});
+  }
+});
+test('reset fences an overlapping public progression request',async()=>{
+  await progressionRun();const gate={entered:deferred(),release:deferred()};heldCommit=gate;
+  await serverClock(1088000,async()=>{
+    const old=call('progress');await gate.entered.promise;await reset();gate.release.resolve();
+    assert.equal((await old).status,409);assert.equal(state().phase,'lobby');assert.equal(state().players.length,0);
+  });
+});
+test('replay startedAt fences an old public progression request',async()=>{
+  await progressionRun();const gate={entered:deferred(),release:deferred()};heldCommit=gate;
+  await serverClock(1088000,async()=>{
+    const old=call('progress');await gate.entered.promise;await returnLobby();await start();gate.release.resolve();
+    assert.equal((await old).status,409);assert.equal(state().phase,'opening');assert.equal(state().startedAt,1088000);assert(!state().photo);
+  });
+});
+test('automatic progress supports host-only simulated confirmation and concurrent authenticated real final confirmations',async()=>{
+  const real=await progressionRun(true);
+  await serverClock(1088000,async()=>{
+    await call('progress');assert.equal((await call('host',{action:'test-confirm-simulated'})).status,403);
+    await testConfirm();assert.equal(state().photo.confirmedPlayerIds.length,10);
+    assert.equal((await photoConfirm({id:real[1].id,token:real[0].token})).status,401);
+    overlapReads(2);assert((await Promise.all(real.map(p=>photoConfirm(p)))).every(r=>r.status===200));
+    assert.equal(state().phase,'photo-complete');assert.equal(new Set(state().photo.confirmedPlayerIds).size,12);
+    assert.equal(state().photo.confirmedAt,1088000);
+    assert.equal(persisted.filter(s=>s.phase==='photo-complete').length,1);
+    const original=raw;await photoConfirm(real[0]);await call('progress');assert.equal(raw,original);
+  });
 });

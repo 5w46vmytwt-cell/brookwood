@@ -135,7 +135,7 @@ The photo prompt begins at 86,500 ms; the persistent photo checkpoint begins
 at 88,000 ms, exactly the Chapter 2 end. The prompt must not move to fit narration.
 
 The timing contract remains frozen. Chapter 2 narration and music consume it.
-Chapter 2 visuals and automatic photo progression are not implemented.
+Chapter 2 visuals are defined separately; automatic photo progression is not implemented.
 Opening at or after 44,000 ms continues to render Chapter 1's final black state.
 
 ## Chapter 2 audio integration
@@ -179,5 +179,77 @@ after 88000ms it holds .13 indefinitely. Narration ends at 85750ms; the locked
 Host Start primes the party element synchronously alongside narration. A
 blocked score attempt is caught and may retry on a subsequent interaction,
 seeking from the live scheduler clock. Loading or playback failures cannot
-stop the scheduler, narration, or visuals. No Chapter 2 SFX, visual cues,
-automatic begin-photo, or server/phase changes are introduced.
+stop the scheduler, narration, or visuals. No Chapter 2 SFX,
+automatic begin-photo, or server/phase changes are introduced by the audio layer.
+
+## Chapter 2 visual sequence
+
+`chapter2.js` defines absolute visual cues, rendered by the same reusable
+engine and scheduler clock as Chapter 1. `chapter2.css` scopes presentation to
+the new layers, leaving Chapter 1 CSS and its frozen fixture untouched.
+No additional visual assets, one-shot effects, glitches, or independent timers
+are used. Images preserve their aspect ratios; the portrait invitation has no
+push or crop. Landscape pushes are restrained to scale 1.000 to 1.025.
+
+| Absolute time (ms) | Visual |
+| --- | --- |
+| 44000-48000 | Pure black bridge; optional texture omitted |
+| 48000-50000 | OCTOBER 31 · 2026; fade in 48000-48350, out 49500-50000 |
+| 50500-54400 | Brandon dusk; fade in 50500-51100 |
+| 54400-59425 | Brookwood street; 600ms dissolve |
+| 59425-65100 | Halloween house; 600ms dissolve, continuous across both lines |
+| 65100-68875 | Invitation; 600ms dissolve, no movement |
+| 68875-69950 | Costumes; clean cut |
+| 69950-70700 | Drinks; clean cut |
+| 70700-71600 | Food; clean cut, holds through the short narration gap |
+| 71600-75500 | Party-ready; 350ms fade in, darken/fade from 74600 |
+| 75000 | BROOKWOOD enters, 500ms fade |
+| 75700 | Present date enters, 300ms fade |
+| 76500 | Frozen Brandon time enters, 300ms fade |
+| 80025-80500 | All present-time typography fades to black |
+| 80500-86500 | Black photo setup, including pure-black 85750-86500 pause |
+| 86500 | ONE PHOTO enters, 200ms fade |
+| 87000 | BEFORE THE NIGHT BEGINS enters, 200ms fade |
+| 87500 | GET EVERYONE TOGETHER enters, 200ms fade |
+| 88000 onward | Final prompt holds if still opening; checkpoint if server phase permits |
+
+Overlapping outgoing image layers finish their 600ms dissolves as the next
+scene appears. Party-ready finishes fading at 75500. The renderer supports
+optional `visual.textFromRun(startedAt)`, evaluated once per new run.
+The frozen time formats `startedAt + 76500` with Intl.DateTimeFormat,
+locale en-US, timezone America/Winnipeg, hour/minute and 12-hour AM/PM.
+It never reads the current client wall clock and remains identical on refresh.
+
+The TV checkpoint shows the requested instructions and only the server's
+aggregate `photo.confirmedCount`, for phase photo or photo-complete. Elapsed
+time alone never invents a checkpoint or confirmation count. No credential is
+embedded and no automatic privileged begin-photo call is made. The final
+three-line prompt stays visible while opening awaits server progression.
+
+## Safe photo progression and phones
+
+POST `/api/progress` ignores the request body. Only stored phase opening,
+positive finite startedAt, server elapsed >=88000ms, and a valid twelve-player
+ready/reciprocally paired cast permit opening -> photo. It initializes canonical
+photo state using server Date.now(). Other phases, invalid clocks, and early
+requests are harmless no-ops. Existing photo/photo-complete are preserved.
+CAS, generation fencing, and withinCinematicRun retry fencing protect reset,
+replay, concurrent progression, and existing confirmations. No-op calls preserve
+revision and updatedAt. Host-only begin-photo and simulated confirmation remain
+authenticated and unchanged.
+
+The TV scheduler elapsed callback requests this public capability at >=88000ms
+while still opening. There is one in-flight request, at most one attempt per
+1200ms of scheduler elapsed, and no added timer/polling loop. State polling,
+not the mutation response, reveals the authoritative checkpoint. Neither
+startedAt nor soundtrack playback is reset. The host enters a code only for
+TEST: CONFIRM SIMULATED PLAYERS; it is never supplied to public progression.
+
+The phone renders a dedicated photo screen from `/api/me`. I'M IN THE PHOTO
+submits the stored id/token and existing photo-confirm action, guards concurrent
+clicks, then reads `/api/me` for authoritative confirmation. Confirmed phones
+show YOU'RE IN and aggregate progress, without confirmation identities. On
+photo-complete they show PHOTO COMPLETE / Everyone is in. Refresh reconstructs
+both states without resubmitting. Invalid sessions clear local storage; network
+errors allow retry. The existing single phone polling loop is retained. No
+Chapter 3 progression or cinematic/audio retiming is introduced.

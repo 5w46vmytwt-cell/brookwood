@@ -99,11 +99,12 @@ test('lobby and photo phases bypass cinematic painting, preserving server phase 
   e.accept(0);assert.equal(paints,1);e.accept(50000,{phase:'photo'});e.frame(10);assert.equal(paints,1);
   e.accept(50000,{phase:'photo-complete'});e.frame(10);assert.equal(paints,1);
 });
-test('44000ms and later retain final black with no Chapter 2 or automatic photo transition',()=>{
+test('Chapter 1 remains black after 44000; Chapter 2 prompt never changes server phase automatically',()=>{
   const e=setup();for(const elapsed of [44000,86500,88000,200000]){
-    e.accept(elapsed,{hard:true});for(const node of e.nodes.values())assert.equal(Number(node.style.opacity),0);
+    e.accept(elapsed,{hard:true});for(const {node} of e.runtime.visuals.layers)assert.equal(Number(node.style.opacity),0);
     assert.equal(e.runtime.state.phase,'opening');assert.equal(e.runtime.audio.active,null);
   }
+  assert.equal(e.opacity('chapter2-getTogether'),1);
   assert(!fs.readFileSync('tv-cinematic.js','utf8').includes('begin-photo'));
   assert(!fs.readFileSync('tv.html','utf8').includes('begin-photo'));
 });

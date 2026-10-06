@@ -186,15 +186,92 @@ test('TV test-fill requires confirmation and sends the existing host code', asyn
   assert(fs.readFileSync('tv.html', 'utf8').includes('TEST: FILL LOBBY'));
 });
 
-test('existing phone and TV clients stay stable for photo and photo-complete without a new UI',async()=>{
+test('phone stays unchanged while TV renders the authoritative aggregate photo checkpoint',async()=>{
   for(const phase of ['photo','photo-complete']){
     const phone=environment(JSON.stringify({id:'id',token:'private'}));
     phone.context.lobbyRequest=async()=>({...response,phase,photo:{confirmed:true,confirmedCount:phase==='photo'?8:12,complete:phase==='photo-complete',confirmedAt:null}});
     vm.runInContext(inline('join.html'),phone.context);await flush();
     assert(phone.storage.has('brookwood-player-v3'));assert.equal(phone.document.getElementById('playerErr').textContent,'');assert.equal(phone.timers.size,1);
-    const tv=environment();tv.context.lobbyRequest=async()=>({phase,serverNow:Date.now(),startedAt:Date.now()-50000,players:[{id:'id',name:'Player',partnerId:null,ready:true}],photo:{confirmedCount:8,complete:false,confirmedAt:null}});
+    const count=phase==='photo'?8:12;
+    const tv=environment();tv.context.lobbyRequest=async()=>({phase,serverNow:Date.now(),startedAt:Date.now()-88000,players:[{id:'id',name:'Player',partnerId:null,ready:true}],photo:{confirmedCount:count,complete:phase==='photo-complete',confirmedAt:phase==='photo-complete'?Date.now():null}});
     vm.runInContext(inline('tv.html'),tv.context);await flush();
-    assert.equal(tv.document.getElementById('count').textContent,1);assert.equal(tv.document.getElementById('msg').textContent,'');
+    assert.equal(tv.document.getElementById('photoCounter').textContent,count+' / 12 READY FOR THE PHOTO');assert.equal(tv.document.getElementById('msg').textContent,'');
+    assert.equal(tv.document.getElementById('photoCheckpoint').hidden,false);
     assert(tv.document.getElementById('returnControl').hidden);
   }
+});
+
+test('elapsed past 88000 cannot invent a photo phase or counter; server phase controls checkpoint visibility',async()=>{
+  const tv=environment();tv.context.lobbyRequest=async()=>({phase:'opening',serverNow:Date.now(),startedAt:Date.now()-90000,players:[]});
+  vm.runInContext(inline('tv.html'),tv.context);await flush();assert(tv.document.getElementById('photoCheckpoint').hidden);
+  vm.runInContext("render({phase:'photo',serverNow:Date.now(),startedAt:Date.now()-90000,players:[],photo:{confirmedCount:0}})",tv.context);
+  assert.equal(tv.document.getElementById('photoCounter').textContent,'0 / 12 READY FOR THE PHOTO');
+  vm.runInContext("render({phase:'lobby',serverNow:Date.now(),startedAt:null,players:[]})",tv.context);
+  assert(tv.document.getElementById('photoCheckpoint').hidden);
+});
+
+function photoResponse(confirmed=false,count=7,phase='photo'){
+  return {...response,phase,photo:{confirmed,confirmedCount:count,complete:phase==='photo-complete',confirmedAt:phase==='photo-complete'?12345:null}};
+}
+test('unconfirmed phone renders dedicated photo screen and authenticated button, hiding lobby',async()=>{
+  const env=environment(JSON.stringify({id:'real',token:'private'}));env.context.lobbyRequest=async()=>photoResponse();
+  vm.runInContext(inline('join.html'),env.context);await flush();
+  assert(env.document.getElementById('playerBox').classList.contains('hidden'));
+  assert(!env.document.getElementById('photoBox').classList.contains('hidden'));
+  assert.equal(env.document.getElementById('photoConfirm').disabled,false);
+  assert.equal(env.document.getElementById('photoProgress').textContent,'7 / 12 CONFIRMED');
+});
+test('phone confirms only its own stored session, suppresses duplicate clicks and reads authoritative result',async()=>{
+  const env=environment(JSON.stringify({id:'real',token:'private'}));let confirmed=false,release;const calls=[];
+  const pending=new Promise(r=>{release=r;});
+  env.context.lobbyRequest=async(url,body)=>{
+    if(url==='/api/player'){calls.push({url,body});await pending;confirmed=true;return {ok:true};}
+    return photoResponse(confirmed,confirmed?8:7);
+  };
+  vm.runInContext(inline('join.html'),env.context);await flush();
+  const first=vm.runInContext('confirmPhoto()',env.context);vm.runInContext('confirmPhoto()',env.context);
+  assert.equal(calls.length,1);assert.equal(env.document.getElementById('photoConfirm').disabled,true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body)),{id:'real',token:'private',action:'photo-confirm'});
+  assert.equal(env.document.getElementById('photoStatus').textContent,'');
+  release();await first;assert(env.document.getElementById('photoConfirm').classList.contains('hidden'));
+  assert(env.document.getElementById('photoStatus').textContent.includes("YOU'RE IN"));
+  vm.runInContext('confirmPhoto()',env.context);assert.equal(calls.length,1);
+});
+test('phone reconnect restores confirmed state and complete screen without resubmitting',async()=>{
+  for(const phase of ['photo','photo-complete']){
+    const env=environment(JSON.stringify({id:'real',token:'private'}));const requests=[];
+    env.context.lobbyRequest=async(url)=>{requests.push(url);return photoResponse(true,phase==='photo'?8:12,phase);};
+    vm.runInContext(inline('join.html'),env.context);await flush();
+    assert(env.document.getElementById('photoConfirm').classList.contains('hidden'));
+    assert.equal(env.document.getElementById('photoTitle').textContent,phase==='photo'?'ONE PHOTO BEFORE THE NIGHT BEGINS':'PHOTO COMPLETE');
+    assert(requests.every(url=>url==='/api/me'));assert.equal(env.timers.size,1);
+  }
+});
+test('phone failed confirmation stays unconfirmed, re-enables retry, and invalid token clears session',async()=>{
+  const env=environment(JSON.stringify({id:'real',token:'private'}));let failure=Error('offline');
+  env.context.lobbyRequest=async(url)=>{if(url==='/api/player')throw failure;return photoResponse();};
+  vm.runInContext(inline('join.html'),env.context);await flush();await vm.runInContext('confirmPhoto()',env.context);
+  assert.equal(env.document.getElementById('photoErr').textContent,'offline');assert.equal(env.document.getElementById('photoConfirm').disabled,false);
+  failure=Object.assign(Error('invalid session'),{status:401});await vm.runInContext('confirmPhoto()',env.context);
+  assert(!env.storage.has('brookwood-player-v3'));assert(env.document.getElementById('photoBox').classList.contains('hidden'));
+});
+test('TV progression is credential-free, threshold-gated, guarded in flight and retryable',async()=>{
+  const env=environment();env.context.lobbyRequest=async()=>({phase:'lobby',startedAt:null,serverNow:100000,players:[]});
+  vm.runInContext(inline('tv.html'),env.context);await flush();let release;const calls=[];
+  env.context.lobbyRequest=(url,body)=>{calls.push({url,body});return new Promise(r=>{release=r;});};
+  vm.runInContext("requestPhotoProgress(87999,{phase:'opening',startedAt:100000})",env.context);assert.equal(calls.length,0);
+  const first=vm.runInContext("requestPhotoProgress(88000,{phase:'opening',startedAt:100000})",env.context);
+  for(let i=0;i<30;i++)vm.runInContext("requestPhotoProgress(90000,{phase:'opening',startedAt:100000})",env.context);
+  assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/progress');assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body)),{});
+  release({ok:true});await first;
+  vm.runInContext("requestPhotoProgress(90000,{phase:'photo',startedAt:100000})",env.context);assert.equal(calls.length,1);
+  const retry=vm.runInContext("requestPhotoProgress(90000,{phase:'opening',startedAt:100000})",env.context);assert.equal(calls.length,2);release({ok:true});await retry;
+});
+test('TV simulated confirmation still sends only the entered host code to authenticated host action',async()=>{
+  const env=environment();env.context.lobbyRequest=async()=>({phase:'lobby',startedAt:null,serverNow:100000,players:[]});
+  vm.runInContext(inline('tv.html'),env.context);await flush();const calls=[];
+  env.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true};};
+  env.document.getElementById('photoHostCode').value='typed-host';await vm.runInContext('confirmSimulated()',env.context);
+  assert.equal(calls[0].url,'/api/host');assert.equal(calls[0].body.action,'test-confirm-simulated');assert.equal(calls[0].body.code,'typed-host');
+  assert(!fs.readFileSync('tv.html','utf8').includes('HOST_KEY'));
 });

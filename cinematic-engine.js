@@ -42,7 +42,10 @@
   update(state){
    const startedAt=Number(state.startedAt);
    if(state.phase!=='opening'||!Number.isFinite(startedAt)||startedAt<=0){this.stop();return}
-   if(this.startedAt!==startedAt){this.stop();this.startedAt=startedAt}
+   if(this.startedAt!==startedAt){
+    this.stop();this.startedAt=startedAt;
+    for(const {cue,node} of this.layers)if(cue.visual.textFromRun)node.textContent=cue.visual.textFromRun(startedAt);
+   }
    const frame=this.paint();
    if(!this.externallyDriven&&this.raf===null&&!frame.done)this.raf=requestAnimationFrame(()=>this.tick());
   }
