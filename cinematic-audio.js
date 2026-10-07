@@ -45,20 +45,24 @@
   }
   // Canonical, reusable looping score. A single element survives cue changes.
   class SynchronizedTrack {
-    constructor(config, elapsedNow, canSync) {
+    constructor(config, elapsedNow, canSync, media) {
       this.config=config;this.elapsedNow=elapsedNow;this.canSync=canSync;
+      this.shared=!!media;this.needsSeek=false;
       this.startedAt=null;this.attempted=false;this.pending=false;this.generation=0;this.gain=1;
       try{
-        this.audio=new Audio(config.src);this.audio.loop=true;this.audio.preload='auto';this.audio.volume=0;
+        this.audio=media||new Audio(config.src);this.audio.loop=true;this.audio.preload='auto';this.audio.volume=0;
         this.audio.addEventListener('canplay',()=>this.sync());
         this.audio.addEventListener('error',()=>{this.unavailable=true;console.warn(`Score unavailable: ${config.id}`)});
-        this.audio.load();
+        if(!this.shared)this.audio.load();
       }catch(error){this.unavailable=true;console.warn('Score preload failed',error)}
     }
     reset(startedAt){
       if(this.startedAt===startedAt)return;
       this.startedAt=startedAt;this.attempted=false;this.pending=false;++this.generation;
-      this.audio?.pause();
+      // A borrowed persistent element retains its successful gesture unlock.
+      // Returning ownership must not pause the lobby's continuing soundtrack.
+      if(!this.shared)this.audio?.pause();
+      this.needsSeek=this.shared&&startedAt!==null;
     }
     sync({gesture=false,reconstruct=false}={}){
       if(this.unavailable||this.startedAt===null||!this.canSync())return;
@@ -69,7 +73,7 @@
         const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration*1000:c.durationMs;
         audio.currentTime=((this.elapsedNow()-c.at)%duration)/1000;
       };
-      if(reconstruct&&audio.readyState>=1)try{seek()}catch(error){console.warn('Score seek failed',error)}
+      if((reconstruct||this.needsSeek)&&audio.readyState>=1)try{seek();this.needsSeek=false}catch(error){console.warn('Score seek failed',error)}
       if(!audio.paused||this.pending||audio.readyState<1||(this.attempted&&!gesture))return;
       this.attempted=true;this.pending=true;const generation=this.generation;
       try{
@@ -88,7 +92,7 @@
       this.canSync = options.canSync || (() => true);
       this.timeline = timeline;
       this.extension = options.audioExtension;
-      this.tracks=(this.extension?.tracks||[]).map(c=>new SynchronizedTrack(c,this.elapsedNow,this.canSync));
+      this.tracks=(this.extension?.tracks||[]).map(c=>new SynchronizedTrack(c,this.elapsedNow,this.canSync,options.trackMedia?.get(c.id)));
       this.cues = [...timeline.cues.filter(c => c.type === 'narration'),...(this.extension?.narration||[])];
       this.sfxCues = timeline.cues.filter(c => c.type === 'sfx');
       this.activeSfx = new Map();

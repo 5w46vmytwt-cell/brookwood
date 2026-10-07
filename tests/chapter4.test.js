@@ -7,16 +7,16 @@ import {chapter4Timeline,chapter4AudioTimeline} from '../chapter4.js';
 import {chapter4Scenes,CHAPTER4_VOTING_MS} from '../chapter4-timing.js';
 import {TVCinematicRuntime} from '../tv-cinematic.js';
 import {chapter4Score,chapter4ScoreVolume} from '../chapter4-audio.js';
-function setup(elapsed=0,blocked=false){
-  let perf=0;const nodes=new Map(),warnings=[];
-  class Audio{constructor(src){this.src=src;this.readyState=1;this.currentTime=0;this.paused=true;this.plays=0;this.listeners={};}addEventListener(n,cb){this.listeners[n]=cb;}load(){}play(){this.plays++;this.paused=false;return blocked?Promise.reject(Error('autoplay blocked')):Promise.resolve();}pause(){this.paused=true;}}
+function setup(elapsed=0,blocked=false,perElementUnlock=false){
+  let perf=0,gesture=false;const nodes=new Map(),warnings=[];
+  class Audio{constructor(src){this.src=src;this.readyState=1;this.currentTime=0;this.paused=true;this.plays=0;this.listeners={};}addEventListener(n,cb){this.listeners[n]=cb;}load(){}play(){this.plays++;if(gesture&&!this.muted)this.unlocked=true;if(blocked||(perElementUnlock&&this.src===chapter4Score.src&&!gesture&&!this.unlocked)){this.paused=true;return Promise.reject(Error('autoplay blocked'));}this.paused=false;return Promise.resolve();}pause(){this.paused=true;}}
   const document={getElementById(id){if(!nodes.has(id))nodes.set(id,{style:{},hidden:false,addEventListener(){}});return nodes.get(id);}};
   const context=vm.createContext({document,Audio,Date:{now:()=>perf},console:{warn:(...args)=>warnings.push(args)},requestAnimationFrame:()=>1,cancelAnimationFrame(){}});
   for(const f of ['cinematic-engine.js','chapter1.js','cinematic-audio.js'])vm.runInContext(fs.readFileSync(f,'utf8'),context);
   const runtime=new TVCinematicRuntime({document,timeline:context.BrookwoodChapter1.chapter1Timeline,Renderer:context.BrookwoodTimeline.Renderer,Player:context.BrookwoodAudio.Player,soundtrack:context.BrookwoodAudio.tvSoundtrack,now:()=>perf,requestFrame:()=>1,cancelFrame(){}});
   const state={phase:'chapter4-opening',startedAt:100000,chapter3:{startedAt:200000,completedAt:220000,readCount:12},chapter4:{startedAt:300000,complete:false,voteCount:0,selectedPlayer:null}};
   const accept=(at,run=300000)=>runtime.acceptState({...state,chapter4:{...state.chapter4,startedAt:run},serverNow:run+at},{hard:true});accept(elapsed);
-  return {runtime,context,nodes,warnings,accept,audio:id=>runtime.chapter4Audio.media.get(id),frame(ms){perf+=ms;runtime.scheduler.frame();},opacity:id=>Number(nodes.get('chapter4-'+id).style.opacity)};
+  return {runtime,context,nodes,warnings,accept,gesture(fn){gesture=true;try{return fn()}finally{gesture=false}},audio:id=>runtime.chapter4Audio.media.get(id),frame(ms){perf+=ms;runtime.scheduler.frame();},opacity:id=>Number(nodes.get('chapter4-'+id).style.opacity)};
 }
 test('all six approved images and exact WAV formats/durations match locked scene/audio cues',()=>{
   const durations=[16050,17425,12350,25250,15725,11650];let total=0;
@@ -69,7 +69,7 @@ test('Chapter 4 reuses the original score and reconstructs its loop from the can
   }
   const e=setup(12000),track=e.runtime.chapter4Audio.tracks[0];e.frame(1000);
   assert.equal(track.audio.plays,1);e.accept(50000);assert.equal(track.audio.currentTime,50);
-  e.accept(0,400000);assert.equal(track.audio.currentTime,0);assert.equal(track.audio.plays,2);
+  e.accept(0,400000);assert.equal(track.audio.currentTime,0);assert.equal(track.audio.plays,1);assert.equal(track.audio.paused,false);
 });
 
 test('Chapter 4 score ducks from locked narration intervals and uses smooth section ramps',()=>{
@@ -101,4 +101,31 @@ test('Chapter 4 score autoplay failure retries on interaction without disrupting
   track.audio.play=()=>{track.audio.plays++;track.audio.paused=false;return Promise.resolve();};
   e.runtime.unlockBackground();for(let i=0;i<10;i++)await Promise.resolve();
   assert.equal(track.audio.paused,false);assert.equal(track.audio.currentTime,4);assert.equal(e.audio('chapter4-narration-01').volume,1);
+});
+
+for(const path of ['chapter-select','chapter3-completion'])test(`Chapter 4 actually plays with the existing element unlock after ${path}`,async()=>{
+  const e=setup(0,false,true);for(let i=0;i<10;i++)await Promise.resolve();
+  e.runtime.acceptState({phase:'lobby',startedAt:null,serverNow:300000});
+  for(let i=0;i<10;i++)await Promise.resolve();
+  const background=e.runtime.audio.soundtrack.audio;
+  e.gesture(()=>{e.runtime.unlockBackground();if(path==='chapter-select')e.runtime.unlockForTestJump();else e.runtime.unlockChapter4();});
+  for(let i=0;i<10;i++)await Promise.resolve();assert.equal(background.paused,false);assert.equal(background.unlocked,true);
+  if(path==='chapter3-completion')e.runtime.acceptState({phase:'private-messages-complete',startedAt:100000,serverNow:222000,chapter3:{startedAt:200000,completedAt:220000,readCount:12}});
+  e.accept(0);e.frame(4000);for(let i=0;i<10;i++)await Promise.resolve();
+  const track=e.runtime.chapter4Audio.tracks[0];assert.equal(track.audio,background);
+  assert.equal(track.audio.paused,false);assert.notEqual(track.audio.muted,true);assert.equal(track.audio.volume,chapter4ScoreVolume(4000));
+  e.accept(6000);assert.equal(track.audio.paused,false);assert.equal(track.audio.currentTime,6);
+  // A return to lobby gives ownership back without pausing/reloading the shared media.
+  e.runtime.acceptState({phase:'lobby',startedAt:null,serverNow:306000});assert.equal(background.paused,false);
+});
+
+test('Chapter 4 waits for metadata and retains existing element playback permission when it becomes ready',async()=>{
+  const e=setup(0,false,true);for(let i=0;i<10;i++)await Promise.resolve();
+  e.runtime.acceptState({phase:'lobby',startedAt:null,serverNow:300000});
+  for(let i=0;i<10;i++)await Promise.resolve();
+  const track=e.runtime.chapter4Audio.tracks[0];e.gesture(()=>e.runtime.unlockBackground());
+  for(let i=0;i<10;i++)await Promise.resolve();track.audio.pause();track.audio.readyState=0;
+  e.accept(12000);assert.equal(track.audio.paused,true);
+  track.audio.readyState=1;track.audio.listeners.canplay();for(let i=0;i<10;i++)await Promise.resolve();
+  assert.equal(track.audio.paused,false);assert.equal(track.audio.currentTime,12);assert.equal(track.audio.volume,chapter4ScoreVolume(12000));
 });
