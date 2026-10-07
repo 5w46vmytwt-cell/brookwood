@@ -34,7 +34,8 @@ test('every Chapter 4 scene boundary, black transition and hard-cut entry resolv
     assert.equal(resolve(s.end+1)['scene-'+s.id].opacity,0);
   }
   for(const t of [0,2999,19050,19500,20049,37475,38474,50825,52324,77575,79574,95300,96799,108450,109500,111449])for(const v of Object.values(resolve(t)))assert.equal(v.opacity,0,`black at ${t}`);
-  assert.equal(resolve(111450).door.opacity,1);assert.equal(resolve(114473).door.opacity,1);assert.equal(resolve(114474).door.opacity,0);assert.equal(resolve(114474).vote.opacity,1);
+  for(const t of [111450,112000,114473])for(const v of Object.values(resolve(t)))assert.equal(v.opacity,0,`doorbell stays black at ${t}`);
+  assert.equal(resolve(114474).vote.opacity,1);
 });
 test('Chapter 4 refresh at every scene seeks active narration, skips history and uses its own authoritative clock',()=>{
   for(const s of chapter4Scenes){const e=setup(s.at+500);assert.equal(e.runtime.elapsedNow(),s.at+500);assert.equal(e.audio('chapter4-narration-'+s.id).currentTime,.5);assert.equal(e.opacity('scene-'+s.id),1);for(const earlier of chapter4Scenes.filter(c=>c.end<s.at))assert.equal(e.audio('chapter4-narration-'+earlier.id).plays,0);}
@@ -51,10 +52,36 @@ test('silence window contains no active narration, SFX, horror score or party sc
 });
 test('host gestures and priming during Chapter 4 cannot restart background score',()=>{const e=setup(109000);e.runtime.unlockBackground();e.runtime.unlockForTestJump();assert.equal(e.runtime.audio.soundtrack.target,0);assert.equal(e.runtime.audio.soundtrack.audio.volume,0);assert.equal(e.runtime.audio.raf,null);});
 test('failed audio is isolated from Chapter 4 visuals and voting checkpoint',async()=>{
-  const e=setup(111450,true);for(let i=0;i<10;i++)await Promise.resolve();assert.equal(e.opacity('door'),1);assert(e.warnings.length>0);e.accept(114474);assert.equal(e.opacity('vote'),1);
+  const e=setup(111450,true);for(let i=0;i<10;i++)await Promise.resolve();assert.equal(e.opacity('vote'),0);assert(e.warnings.length>0);e.accept(114474);assert.equal(e.opacity('vote'),1);
 });
 test('late reconstruction across the doorbell consumes history instead of burst-playing it',()=>{
   const e=setup(108450);e.accept(115000);assert.equal(e.audio('chapter4-doorbell').plays,0);assert.equal(e.opacity('vote'),1);for(const s of chapter4Scenes)assert.equal(e.audio('chapter4-narration-'+s.id).plays,0);
+});
+
+test('door/package reveal uses the approved image and exact HTML copy only at the voting boundary',()=>{
+  const html=fs.readFileSync('tv.html','utf8'),image=fs.readFileSync('assets/chapter4/doorbell-package.png');
+  assert.equal(image.subarray(1,4).toString(),'PNG');
+  const vote=html.match(/<div id="chapter4-vote"[\s\S]*?<\/div>/)[0];
+  assert(vote.includes('src="/assets/chapter4/doorbell-package.png"'));
+  assert(vote.includes('<h2>SOMEONE LEFT SOMETHING AT THE DOOR.</h2>'));
+  assert(vote.includes('Who is brave enough to go check?'));
+  const cue=chapter4Timeline.cues.find(c=>c.id==='vote');assert.equal(cue.at,114474);
+  assert.deepEqual(cue.visual.content.map(c=>c.text),['SOMEONE LEFT SOMETHING AT THE DOOR.','Who is brave enough to go check?']);
+  for(const at of [108450,111449,111450,112500,114473])assert.equal(setup(at).opacity('vote'),0);
+  assert.equal(setup(114474).opacity('vote'),1);
+  assert.equal(chapter4AudioTimeline.cues.at(-1).at,111450);assert.equal(chapter4AudioTimeline.cues.at(-1).durationMs,3024);
+});
+
+test('voting refresh reconstructs the door/package reveal and current aggregate progress without replaying audio',()=>{
+  const e=setup(120000),state={phase:'door-vote',startedAt:100000,serverNow:420000,
+    chapter3:{startedAt:200000,completedAt:220000,readCount:12},
+    chapter4:{startedAt:300000,active:true,complete:false,voteCount:7,selectedPlayer:null}};
+  e.runtime.acceptState(state,{hard:true});assert.equal(e.opacity('vote'),1);
+  assert.equal(e.nodes.get('chapter4-count').textContent,'7 / 12 VOTES RECORDED');
+  assert.equal(e.nodes.get('chapter4-cinematic').hidden,false);assert.equal(e.nodes.get('chapter4-result').hidden,true);
+  assert.equal(e.audio('chapter4-doorbell').plays,0);
+  e.runtime.acceptState({...state,chapter4:{...state.chapter4,voteCount:8}});assert.equal(e.opacity('vote'),1);
+  assert.equal(e.nodes.get('chapter4-count').textContent,'8 / 12 VOTES RECORDED');
 });
 
 test('Chapter 4 reuses the original score and reconstructs its loop from the canonical clock',()=>{
