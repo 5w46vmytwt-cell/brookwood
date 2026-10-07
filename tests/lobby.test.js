@@ -1,6 +1,6 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { CAS_SCRIPT, publicState } from '../api/_state.js';
+import { CAS_SCRIPT, publicState,makeDoorVoter } from '../api/_state.js';
 import join from '../api/join.js';
 import player from '../api/player.js';
 import host from '../api/host.js';
@@ -595,6 +595,86 @@ const messageOpen=p=>call('player',{id:p.id,token:p.token,action:'message-open'}
 const messageRead=p=>call('player',{id:p.id,token:p.token,action:'message-read'});
 const testRead=()=>call('host',{action:'test-read-simulated',code:'test-host'});
 const selectChapter=(checkpoint,extra={})=>call('host',{action:'chapter-select',checkpoint,code:'test-host',...extra});
+async function chapter4Run(){const real=await testCast();await serverClock(4000000,()=>selectChapter('chapter4'));persisted=[];return real;}
+const doorVote=(p,target,run=4000000)=>call('player',{id:p.id,token:p.token,action:'door-vote',targetId:target,chapter4StartedAt:run});
+const simulatedVotes=()=>call('host',{action:'test-vote-simulated',code:'test-host',chapter4StartedAt:4000000});
+test('Chapter 4 natural start waits for full 2000ms completion, ignores clocks, and races safely',async()=>{
+  const players=await chapter3Run();await serverClock(2012600,async()=>{for(const p of players){await messageOpen(p);await messageRead(p);}});
+  const complete=state(),before=raw;await serverClock(2014599,async()=>{assert.equal((await call('progress',{elapsed:999999999,startedAt:1})).status,200);assert.equal(raw,before);});
+  overlapReads(8);await serverClock(2014600,async()=>{const results=await Promise.all(Array.from({length:8},()=>call('progress')));assert(results.every(r=>r.status===200));});
+  assert.equal(state().phase,'chapter4-opening');assert.equal(state().chapter4.startedAt,2014600);assert.equal(state().generation,complete.generation);assert.deepEqual(state().chapter3,complete.chapter3);assert.deepEqual(state().players,complete.players);
+  const after=raw;await serverClock(2014600,()=>call('progress'));assert.equal(raw,after);
+});
+test('Chapter 4 chapter-select creates coherent completed prerequisites and fresh unopened voting state',async()=>{
+  await chapter4Run();const a=state();assert.equal(a.phase,'chapter4-opening');assert.equal(a.chapter4.startedAt,4000000);assert.deepEqual(a.chapter4.votes,{});assert.equal(a.chapter4.completedAt,null);assert.equal(a.chapter4.selectedPlayerId,null);assert.equal(publicState(a).chapter3.readCount,12);
+  await serverClock(4000000,()=>selectChapter('chapter4'));assert.notEqual(state().generation,a.generation);assert.notEqual(state().chapter4.startedAt,a.chapter4.startedAt);assert.deepEqual(state().chapter4.votes,{});
+});
+test('door voting requires player token, valid other target and matching run, rejecting early or malformed votes',async()=>{
+  const real=await chapter4Run();const before=raw;
+  await serverClock(4114473,async()=>{assert.equal((await doorVote(real[0],real[1].id)).status,409);assert.equal((await simulatedVotes()).status,409);assert.equal(raw,before);});
+  await serverClock(4114474,async()=>{
+    assert.equal((await doorVote({...real[0],token:'wrong'},real[1].id)).status,401);
+    for(const target of [real[0].id,'missing',null,{},12])assert.equal((await doorVote(real[0],target)).status,400);
+    assert.equal((await doorVote(real[0],real[1].id,1)).status,409);
+    assert.equal((await call('player',{...real[0],action:'door-vote',targetId:real[1].id})).status,409);
+    assert.equal(raw,before);assert.equal(publicState(state()).chapter4.active,true);
+  });
+});
+test('one vote per player is persisted; duplicates cannot change choices or revision',async()=>{
+  const real=await chapter4Run();await serverClock(4114474,async()=>{
+    assert.equal((await doorVote(real[0],real[1].id)).status,200);const before=raw;
+    assert.equal((await doorVote(real[0],state().players[2].id)).status,200);assert.equal(raw,before);assert.equal(state().chapter4.votes[real[0].id],real[1].id);assert.equal(state().phase,'door-vote');
+  });
+});
+test('simulated door helper remains host-only, confirms only ten, then real phones reach 11 and 12',async()=>{
+  const real=await chapter4Run();await serverClock(4114474,async()=>{
+    assert.equal((await call('host',{action:'test-vote-simulated',chapter4StartedAt:4000000})).status,403);
+    assert.equal((await simulatedVotes()).status,200);assert.equal(Object.keys(state().chapter4.votes).length,10);assert(!Object.hasOwn(state().chapter4.votes,real[0].id));assert(!Object.hasOwn(state().chapter4.votes,real[1].id));
+    const before=raw;await simulatedVotes();assert.equal(raw,before);
+    await doorVote(real[0],real[1].id);assert.equal(publicState(state()).chapter4.voteCount,11);await doorVote(real[1],real[0].id);assert.equal(state().phase,'door-vote-complete');assert.equal(publicState(state()).chapter4.voteCount,12);assert.equal(state().chapter4.completedAt,4114474);
+    const completed=raw;await doorVote(real[1],state().players[2].id);await simulatedVotes();assert.equal(raw,completed);
+  });
+});
+test('concurrent final door votes and duplicates finalize a correct maximum exactly once',async()=>{
+  const real=await chapter4Run();await serverClock(4114474,async()=>{
+    await simulatedVotes();overlapReads(4);const responses=await Promise.all([doorVote(real[0],real[1].id),doorVote(real[1],real[0].id),doorVote(real[0],real[1].id),doorVote(real[1],real[0].id)]);assert(responses.every(r=>r.status===200));
+    const s=state(),counts={};for(const id of Object.values(s.chapter4.votes))counts[id]=(counts[id]||0)+1;assert.equal(Object.keys(s.chapter4.votes).length,12);assert.equal(counts[s.chapter4.selectedPlayerId],Math.max(...Object.values(counts)));assert.equal(persisted.filter(s=>s.phase==='door-vote-complete').length,1);
+  });
+});
+test('door tie-break is uniform over tied leaders and cached across mutation retries',async()=>{
+  await chapter4Run();await serverClock(4114474,async()=>{
+    const s=state(),ids=s.players.map(p=>p.id),entries=ids.map((id,i)=>[id,ids[(i+1)%12]]);let draws=0;
+    const vote=makeDoorVoter(length=>{draws++;assert.equal(length,12);return 7;});
+    const a=structuredClone(s),b=structuredClone(s);vote(a,entries);vote(b,entries);assert.equal(draws,1);assert.equal(a.chapter4.selectedPlayerId,[...ids].sort()[7]);assert.deepEqual(a.chapter4,b.chapter4);
+    // Every injected fair random index can select its corresponding tied candidate.
+    for(let index=0;index<12;index++){const c=structuredClone(s);makeDoorVoter(()=>index)(c,entries);assert.equal(c.chapter4.selectedPlayerId,[...ids].sort()[index]);}
+  });
+});
+test('unique majority needs no tie resolution and corrupt or non-maximum completion is rejected',async()=>{
+  await chapter4Run();await serverClock(4114474,async()=>{
+    const s=state(),ids=s.players.map(p=>p.id),vote=makeDoorVoter(n=>{assert.equal(n,1);return 0;});vote(s,ids.map((id,i)=>[id,i===0?ids[1]:ids[0]]));raw=JSON.stringify(s);assert.equal((await call('state',{},'GET')).status,200);assert.equal(s.chapter4.selectedPlayerId,ids[0]);
+    for(const mutate of [s=>s.chapter4.selectedPlayerId=ids[1],s=>s.chapter4.votes[ids[0]]=ids[0],s=>s.chapter4.completedAt=null,s=>delete s.chapter4.votes[ids[3]]]){const corrupt=structuredClone(s);mutate(corrupt);raw=JSON.stringify(corrupt);assert.equal((await call('state',{},'GET')).status,503);}
+  });
+});
+test('public Chapter 4 projection reveals only aggregate counts and result; me restores own vote without private assignments',async()=>{
+  const real=await chapter4Run();await serverClock(4114474,async()=>{
+    await doorVote(real[0],real[1].id);const pub=(await call('state',{},'GET')).data;
+    for(const secret of ['votes','templateId','assignments','openedAt','readAt','token'])assert(!Object.hasOwn(pub.chapter4,secret)&&!JSON.stringify(pub).includes('"'+secret+'"'));
+    const mine=(await call('me',real[0])).data,other=(await call('me',real[1])).data;assert.equal(mine.chapter4.voted,true);assert.equal(other.chapter4.voted,false);assert(!mine.chapter3.assignment);assert.equal(mine.chapter3.readAt,state().chapter3.assignments[real[0].id].readAt);
+  });
+});
+test('reset, return and chapter-select fence in-flight door votes and clear downstream Chapter 4',async()=>{
+  for(const action of ['reset','return','select']){
+    const real=await chapter4Run();await serverClock(4114474,async()=>{
+      const gate={entered:deferred(),release:deferred()};heldCommit=gate;const old=doorVote(real[0],real[1].id);await gate.entered.promise;
+      if(action==='reset')await reset();else if(action==='return')await returnLobby();else await selectChapter('photo');
+      const after=raw;gate.release.resolve();assert.equal((await old).status,409);assert.equal(raw,after);assert(!state().chapter4);
+    });await reset();
+  }
+});
+test('fresh Chapter 4 run rejects delayed old votes even with same valid player token',async()=>{
+  const real=await chapter4Run();await serverClock(4200000,async()=>{await selectChapter('chapter4');const before=raw;assert.equal((await doorVote(real[0],real[1].id)).status,409);assert.equal(raw,before);});
+});
 async function testCast(){const a=(await call('join',{name:'Real A'})).data.player,b=(await call('join',{name:'Real B'})).data.player;await pair([a,b]);for(const p of [a,b])await call('player',{...p,action:'ready',ready:true});await call('host',{action:'test-fill',code:'test-host'});return [a,b];}
 test('Chapter Select is host-only, uses a fixed allowlist and rejects incomplete or invalid couples',async()=>{
   assert.equal((await selectChapter('photo',{code:'wrong'})).status,403);

@@ -1,10 +1,15 @@
-import {updateState,send,fail,LobbyError,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction} from "./_state.js";
+import {updateState,send,fail,LobbyError,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,withinChapter4Run,makeDoorVoter} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
   try{
+    const vote=makeDoorVoter();
     const change=s=>{
       const p=s.players.find(x=>x.id===req.body?.id&&x.token===req.body?.token);
       if(!p)throw new LobbyError(401,"Player session not found.");
+      if(req.body.action==='door-vote'){
+        if(!Number.isFinite(req.body.chapter4StartedAt)||req.body.chapter4StartedAt!==s.chapter4?.startedAt)throw new LobbyError(409,'Chapter 4 changed. Refresh your vote screen.');
+        return vote(s,[[p.id,req.body.targetId]]);
+      }
       if(['message-open','message-read'].includes(req.body.action))return privateMessageAction(s,[p.id],req.body.action);
       if(req.body.action==="photo-confirm")return confirmPhoto(s,[p.id]);
       if(s.phase!=="lobby")throw new LobbyError(409,"The Final Session has already begun.");
@@ -19,7 +24,7 @@ export default async function handler(req,res){
         p.ready=!!req.body.ready;
       }else throw new LobbyError(400,"Unknown action.");
     };
-    await updateState(['message-open','message-read'].includes(req.body?.action)?withinChapter3Run(change):req.body?.action==="photo-confirm"?withinCinematicRun(change):change);
+    await updateState(req.body?.action==='door-vote'?withinChapter4Run(change):['message-open','message-read'].includes(req.body?.action)?withinChapter3Run(change):req.body?.action==="photo-confirm"?withinCinematicRun(change):change);
     return send(res,200,{ok:true});
   }catch(e){return fail(res,e);}
 }

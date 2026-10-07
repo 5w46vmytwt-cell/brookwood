@@ -1,7 +1,9 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID,randomInt } from "node:crypto";
 import {createAssignments,messageTemplates} from './_chapter3-messages.js';
 import {chapter3Phases,PRIVATE_MESSAGES_MS} from '../chapter3-timing.js';
 import {CHAPTER2_START_MS,PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
+import {chapter4Phases,CHAPTER4_VOTING_MS} from '../chapter4-timing.js';
+import {chapter3CompletionTimeline} from '../chapter3.js';
 const KEY = "brookwood:1031:v3:state";
 // Compare the exact snapshot and write in one Redis operation, across all instances.
 export const CAS_SCRIPT = `local current = redis.call('GET', KEYS[1])
@@ -37,11 +39,13 @@ export function validatePhoto(s){
   return confirmed;
 }
 function validateState(s){
-  if(!s||!Array.isArray(s.players)||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases].includes(s.phase))throw new Error("Invalid lobby data.");
+  if(!s||!Array.isArray(s.players)||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases,...chapter4Phases].includes(s.phase))throw new Error("Invalid lobby data.");
   if(photoPhases.includes(s.phase))validatePhoto(s);
   if(chapter3Phases.includes(s.phase))validateChapter3(s);
+  if(isChapter4(s))validateChapter4(s);
 }
 export const isChapter3=s=>chapter3Phases.includes(s.phase);
+export const isChapter4=s=>chapter4Phases.includes(s.phase);
 export function validChapter3Cast(s){
   const cast=new Map(s.players.map(p=>[p.id,p]));
   return s.players.length===12&&cast.size===12&&s.players.every(p=>typeof p.id==='string'&&p.id&&typeof p.name==='string'&&p.name&&
@@ -86,7 +90,7 @@ export function makeChapter3Starter(){
   });
 }
 function setOpening(s,startedAt){
-  s.phase='opening';s.startedAt=startedAt;delete s.photo;delete s.chapter3;
+  s.phase='opening';s.startedAt=startedAt;delete s.photo;delete s.chapter3;delete s.chapter4;
 }
 export function startSession(s,startedAt=Date.now()){
   if(s.players.length!==12)throw new LobbyError(409,"The cast must contain exactly 12 players.");
@@ -96,7 +100,7 @@ export function startSession(s,startedAt=Date.now()){
   setOpening(s,startedAt);
 }
 export function makeTestChapterSelector(checkpoint){
-  if(!['chapter1','chapter2','photo','chapter3'].includes(checkpoint))throw new LobbyError(400,'Unknown test checkpoint.');
+  if(!['chapter1','chapter2','photo','chapter3','chapter4'].includes(checkpoint))throw new LobbyError(400,'Unknown test checkpoint.');
   let prepared;
   return withinCinematicRun(s=>{
     if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter Select requires twelve players in six reciprocal couples.');
@@ -104,10 +108,17 @@ export function makeTestChapterSelector(checkpoint){
       const now=Date.now(),offset=checkpoint==='chapter1'?0:checkpoint==='chapter2'?CHAPTER2_START_MS:PHOTO_CHECKPOINT_MS;
       // Distinct server-generated clocks also distinguish intentional same-ms reruns.
       const startedAt=now-offset+(now-offset===s.startedAt?1:0);
-      prepared={startedAt,now,generation:randomUUID(),chapter3:checkpoint==='chapter3'?{
+      prepared={startedAt,now,generation:randomUUID(),chapter3:['chapter3','chapter4'].includes(checkpoint)?{
         startedAt:Math.max(now,(s.chapter3?.startedAt??0)+1),privateMessagesActivatedAt:null,
         assignments:createAssignments(s.players),completedAt:null
       }:null};
+      if(checkpoint==='chapter4'){
+        const c=prepared.chapter3;
+        c.startedAt=now-16600;c.privateMessagesActivatedAt=now-4000;c.completedAt=now-chapter3CompletionTimeline.end;
+        for(const a of Object.values(c.assignments)){a.openedAt=c.completedAt;a.readAt=c.completedAt;}
+        prepared.startedAt=c.startedAt-PHOTO_CHECKPOINT_MS;
+        prepared.chapter4=freshChapter4(Math.max(now,(s.chapter4?.startedAt??0)+1));
+      }
     }
     s.generation=prepared.generation;
     if(checkpoint==='chapter1'){startSession(s,prepared.startedAt);return;}
@@ -116,6 +127,7 @@ export function makeTestChapterSelector(checkpoint){
     s.photo={promptedAt:prepared.now,confirmedPlayerIds:checkpoint==='chapter3'?s.players.map(p=>p.id):[],confirmedAt:checkpoint==='chapter3'?prepared.now:null};
     s.phase=checkpoint==='photo'?'photo':'chapter3-opening';
     if(prepared.chapter3)s.chapter3=structuredClone(prepared.chapter3);
+    if(prepared.chapter4){s.photo={promptedAt:prepared.chapter3.startedAt,confirmedPlayerIds:s.players.map(p=>p.id),confirmedAt:prepared.chapter3.startedAt};s.chapter4=structuredClone(prepared.chapter4);s.phase='chapter4-opening';}
   });
 }
 export function activatePrivateMessages(s){
@@ -139,6 +151,7 @@ export function privateMessageAction(s,ids,action){
   }
 }
 export function chapter3Progress(s){
+  if(isChapter4(s))return chapter3Progress({...s,phase:'private-messages-complete'});
   if(!isChapter3(s))return null;
   return {startedAt:s.chapter3.startedAt,privateMessagesActivatedAt:s.chapter3.privateMessagesActivatedAt,completedAt:s.chapter3.completedAt,readCount:validateChapter3(s)};
 }
@@ -154,7 +167,7 @@ export function confirmPhoto(s,ids){
   if(confirmed.size===12&&[...cast].every(id=>confirmed.has(id))){s.photo.confirmedAt=Date.now();s.phase="photo-complete";}
 }
 export function photoProgress(s){
-  if(isChapter3(s))return photoProgress({...s,phase:'photo-complete'});
+  if(isChapter3(s)||isChapter4(s))return photoProgress({...s,phase:'photo-complete'});
   if(!photoPhases.includes(s.phase))return null;
   const confirmed=validatePhoto(s);
   return {promptedAt:s.photo.promptedAt,confirmedCount:confirmed.size,complete:s.phase==="photo-complete",confirmedAt:s.photo.confirmedAt};
@@ -203,4 +216,55 @@ export function fail(res,error){
   console.error("Lobby request failed:",error.message);
   return send(res,503,{error:"Brookwood could not reach the lobby database. Please try again."});
 }
-export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s);return {room:s.room,phase:s.phase,startedAt:s.startedAt,...(photo?{photo}:{}),...(chapter3?{chapter3}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
+export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s),chapter4=chapter4Progress(s);return {room:s.room,phase:s.phase,startedAt:s.startedAt,...(photo?{photo}:{}),...(chapter3?{chapter3}:{}),...(chapter4?{chapter4}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
+const freshChapter4=startedAt=>({startedAt,votingActivatedAt:null,votes:{},selectedPlayerId:null,completedAt:null});
+export function validateChapter4(s){
+  validateChapter3({...s,phase:'private-messages-complete'});
+  const c=s.chapter4,cast=new Set(s.players.map(p=>p.id));
+  if(!c||!positiveTime(c.startedAt)||c.startedAt<s.chapter3.completedAt+chapter3CompletionTimeline.end||!c.votes||Array.isArray(c.votes))throw Error('Invalid Chapter 4 state.');
+  const entries=Object.entries(c.votes),active=c.votingActivatedAt!==null;
+  if(active&&(!positiveTime(c.votingActivatedAt)||c.votingActivatedAt<c.startedAt+CHAPTER4_VOTING_MS))throw Error('Invalid door voting activation.');
+  if(entries.some(([voter,target])=>!cast.has(voter)||!cast.has(target)||voter===target))throw Error('Invalid door votes.');
+  if(s.phase==='chapter4-opening'&&(active||entries.length||c.completedAt!==null||c.selectedPlayerId!==null))throw Error('Invalid Chapter 4 opening.');
+  if(s.phase==='door-vote'&&(!active||entries.length>=12||c.completedAt!==null||c.selectedPlayerId!==null))throw Error('Invalid incomplete vote.');
+  if(s.phase==='door-vote-complete'){
+    const counts=new Map();for(const [,target] of entries)counts.set(target,(counts.get(target)||0)+1);
+    if(!active||entries.length!==12||!positiveTime(c.completedAt)||c.completedAt<c.votingActivatedAt||!cast.has(c.selectedPlayerId)||counts.get(c.selectedPlayerId)!==Math.max(...counts.values()))throw Error('Invalid completed vote.');
+  }
+  return entries.length;
+}
+export function chapter4Progress(s){
+  if(!isChapter4(s))return null;
+  const c=s.chapter4,p=s.players.find(p=>p.id===c.selectedPlayerId);
+  return {startedAt:c.startedAt,votingActivatedAt:c.votingActivatedAt,active:c.votingActivatedAt!==null||Date.now()>=c.startedAt+CHAPTER4_VOTING_MS,voteCount:validateChapter4(s),complete:s.phase==='door-vote-complete',completedAt:c.completedAt,selectedPlayer:p?{id:p.id,name:p.name}:null};
+}
+export function withinChapter4Run(change){let seen=false,start;return s=>{if(seen&&s.chapter4?.startedAt!==start)throw new LobbyError(409,'Chapter 4 changed. Please try again.');seen=true;start=s.chapter4?.startedAt;return change(s);};}
+export function makeChapter4Starter(){
+  let prepared;
+  return withinChapter3Run(s=>{
+    if(isChapter4(s))return UNCHANGED;
+    if(s.phase!=='private-messages-complete'||Date.now()-s.chapter3.completedAt<chapter3CompletionTimeline.end)return UNCHANGED;
+    validateChapter3(s);prepared??=freshChapter4(Date.now());s.chapter4=structuredClone(prepared);s.phase='chapter4-opening';
+  });
+}
+export function activateDoorVoting(s){
+  if(!isChapter4(s)||s.phase!=='chapter4-opening'||Date.now()-s.chapter4.startedAt<CHAPTER4_VOTING_MS)return UNCHANGED;
+  s.chapter4.votingActivatedAt=Date.now();s.phase='door-vote';
+}
+export function makeDoorVoter(choose=randomInt){
+  const decisions=new Map();
+  return (s,entries)=>{
+    if(!isChapter4(s)||Date.now()-s.chapter4.startedAt<CHAPTER4_VOTING_MS)throw new LobbyError(409,'Door voting is not active.');
+    const cast=new Set(s.players.map(p=>p.id));
+    if(entries.some(([voter,target])=>typeof target!=='string'||!cast.has(voter)||!cast.has(target)||voter===target))throw new LobbyError(400,'Choose another current player.');
+    const pending=entries.filter(([id])=>!Object.hasOwn(s.chapter4.votes,id));
+    if(!pending.length)return UNCHANGED;
+    activateDoorVoting(s);for(const [id,target] of pending)s.chapter4.votes[id]=target;
+    if(Object.keys(s.chapter4.votes).length===12){
+      const counts=new Map();for(const target of Object.values(s.chapter4.votes))counts.set(target,(counts.get(target)||0)+1);
+      const maximum=Math.max(...counts.values()),leaders=[...counts].filter(([,n])=>n===maximum).map(([id])=>id).sort(),key=JSON.stringify(leaders);
+      if(!decisions.has(key))decisions.set(key,leaders[choose(leaders.length)]);
+      s.chapter4.selectedPlayerId=decisions.get(key);s.chapter4.completedAt=Date.now();s.phase='door-vote-complete';
+    }
+  };
+}

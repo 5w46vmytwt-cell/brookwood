@@ -11,6 +11,30 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 const response = { phase: 'lobby', player: { name: 'Player', partner: null, partnerId: null, inventory: [], ready: false }, others: [] };
 function privateResponse(elapsed=12600,openedAt=null,readAt=null){return {...response,phase:elapsed<12600?'chapter3-opening':'private-messages',player:{...response.player,id:'real'},photo:{confirmed:true,confirmedCount:12,complete:true},serverNow:200000+elapsed,chapter3:{startedAt:200000,openedAt,readAt,assignment:openedAt!==null&&readAt===null?{title:'KEEP THIS TO YOURSELF',body:'Persisted private message.'}:null}};}
 async function privateEnvironment(state){const e=environment(JSON.stringify({id:'real',token:'secret'}));e.context.lobbyRequest=async()=>state;vm.runInContext(inline('join.html'),e.context);await flush();return e;}
+function doorResponse(active=false,voted=false,complete=false){return {...privateResponse(15000,212600,213000),phase:complete?'door-vote-complete':active?'door-vote':'chapter4-opening',serverNow:4000000+(active?114474:3000),others:[{id:'other',name:'Other Player'}],chapter4:{startedAt:4000000,active,voted,complete,votingActivatedAt:active?4114474:null,voteCount:complete?12:voted?1:0,selectedPlayer:complete?{id:'other',name:'Other Player'}:null}};}
+test('Chapter 4 live phone polling transitions completed message to voting and restores recorded/result states',async()=>{
+  let state=doorResponse();const e=await privateEnvironment(state);assert.equal(e.document.getElementById('privateTitle').textContent,'MESSAGE RECEIVED');assert.equal(e.document.getElementById('privateBody').textContent,'');
+  e.context.lobbyRequest=async()=>state;const poll=async()=>{[...e.timers.values()][0]();await flush();assert.equal(e.timers.size,1);};
+  state=doorResponse(true);await poll();assert(!e.document.getElementById('voteBox').classList.contains('hidden'));assert.equal(e.document.getElementById('voteTitle').textContent,'CHOOSE WHO GOES');
+  state=doorResponse(true,true);await poll();assert.equal(e.document.getElementById('voteTitle').textContent,'VOTE RECORDED');assert(e.document.getElementById('voteSubmit').classList.contains('hidden'));
+  state=doorResponse(true,true,true);await poll();assert.equal(e.document.getElementById('voteTitle').textContent,'Other Player');assert(e.document.getElementById('voteCopy').textContent.includes('sealed package'));assert(!e.document.getElementById('voteCopy').textContent.includes('open'));
+  const reconnect=await privateEnvironment(state);assert.equal(reconnect.document.getElementById('voteTitle').textContent,'Other Player');
+});
+test('phone door vote sends own token and canonical run, suppresses duplicate clicks and uses authoritative readback',async()=>{
+  const e=await privateEnvironment(doorResponse(true)),calls=[];e.document.getElementById('voteTarget').value='other';e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return url==='/api/me'?doorResponse(true,true):{ok:true};};
+  vm.runInContext('castDoorVote();castDoorVote()',e.context);await flush();assert.equal(calls.length,2);assert.equal(calls[0].body.action,'door-vote');assert.equal(calls[0].body.id,'real');assert.equal(calls[0].body.token,'secret');assert.equal(calls[0].body.targetId,'other');assert.equal(calls[0].body.chapter4StartedAt,4000000);assert.equal(e.document.getElementById('voteTitle').textContent,'VOTE RECORDED');
+});
+test('delayed phone poll cannot undo own recorded vote or completed result, but a new run resets voting',async()=>{
+  const e=await privateEnvironment(doorResponse(true,true));e.context.next=doorResponse(true);vm.runInContext('render(next)',e.context);assert.equal(e.document.getElementById('voteTitle').textContent,'VOTE RECORDED');
+  e.context.next=doorResponse(true,true,true);vm.runInContext('render(next)',e.context);e.context.next=doorResponse(true,true);vm.runInContext('render(next)',e.context);assert.equal(e.document.getElementById('voteTitle').textContent,'Other Player');
+  e.context.next=doorResponse(true);e.context.next.chapter4.startedAt=5000000;vm.runInContext('render(next)',e.context);assert.equal(e.document.getElementById('voteTitle').textContent,'CHOOSE WHO GOES');
+});
+test('TV triggers Chapter 4 only after Chapter 3 completion and requests voting at its canonical boundary',async()=>{
+  const e=returnEnvironment();await flush();const calls=[];e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true};};
+  e.context.next={phase:'private-messages-complete',startedAt:1,serverNow:121999,players:[],chapter3:{startedAt:100000,completedAt:120000,readCount:12}};vm.runInContext('render(next)',e.context);await flush();assert.equal(calls.length,0);
+  e.context.next.serverNow=122000;vm.runInContext('render(next)',e.context);await flush();assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/progress');assert.deepEqual(Object.keys(calls[0].body),[]);
+  e.context.next={phase:'chapter4-opening',startedAt:1,serverNow:414474,players:[],chapter3:{startedAt:200000,completedAt:220000,readCount:12},chapter4:{startedAt:300000,complete:false,active:true,voteCount:0}};vm.runInContext('render(next)',e.context);await flush();assert.equal(calls.length,2);assert.equal(calls[1].url,'/api/progress');
+});
 test('untouched PHOTO COMPLETE phone transitions on active poll even while RAF clock lags',async()=>{
   let state={...privateResponse(),phase:'photo-complete'};delete state.chapter3;delete state.serverNow;
   const e=await privateEnvironment(state);let requests=0;
@@ -332,4 +356,9 @@ test('TV simulated confirmation still sends only the entered host code to authen
   env.document.getElementById('photoHostCode').value='typed-host';await vm.runInContext('confirmSimulated()',env.context);
   assert.equal(calls[0].url,'/api/host');assert.equal(calls[0].body.action,'test-confirm-simulated');assert.equal(calls[0].body.code,'typed-host');
   assert(!fs.readFileSync('tv.html','utf8').includes('HOST_KEY'));
+});
+
+test('phone vote UI includes every real DOM node required for live activation',()=>{
+  const html=fs.readFileSync('join.html','utf8');
+  for(const id of ['voteBox','voteTitle','voteCopy','voteTarget','voteSubmit','voteProgress','voteErr']) assert(html.includes('id='+String.fromCharCode(34)+id+String.fromCharCode(34)),id);
 });

@@ -112,9 +112,9 @@
         }
       }
     }
-    unlock() {
+    unlock({background=true}={}) {
       // Called synchronously by the host's Start click, before its API await.
-      this.unlockBackground();
+      if(background)this.unlockBackground();
       for (const [id, audio] of [...this.media,...this.tracks.filter(t=>t.audio&&t.audio.paused).map(t=>[t.config.id,t.audio])]) {
         if (this.unavailable.has(id)) continue;
         try {
