@@ -6,6 +6,7 @@ import {wavMetadata} from './wav-metadata.js';
 import {chapter4Timeline,chapter4AudioTimeline} from '../chapter4.js';
 import {chapter4Scenes,CHAPTER4_VOTING_MS} from '../chapter4-timing.js';
 import {TVCinematicRuntime} from '../tv-cinematic.js';
+import {chapter4Score,chapter4ScoreVolume} from '../chapter4-audio.js';
 function setup(elapsed=0,blocked=false){
   let perf=0;const nodes=new Map(),warnings=[];
   class Audio{constructor(src){this.src=src;this.readyState=1;this.currentTime=0;this.paused=true;this.plays=0;this.listeners={};}addEventListener(n,cb){this.listeners[n]=cb;}load(){}play(){this.plays++;this.paused=false;return blocked?Promise.reject(Error('autoplay blocked')):Promise.resolve();}pause(){this.paused=true;}}
@@ -54,4 +55,50 @@ test('failed audio is isolated from Chapter 4 visuals and voting checkpoint',asy
 });
 test('late reconstruction across the doorbell consumes history instead of burst-playing it',()=>{
   const e=setup(108450);e.accept(115000);assert.equal(e.audio('chapter4-doorbell').plays,0);assert.equal(e.opacity('vote'),1);for(const s of chapter4Scenes)assert.equal(e.audio('chapter4-narration-'+s.id).plays,0);
+});
+
+test('Chapter 4 reuses the original score and reconstructs its loop from the canonical clock',()=>{
+  const metadata=wavMetadata(fs.readFileSync('.'+chapter4Score.src));
+  assert.equal(metadata.durationMs,chapter4Score.durationMs);
+  for(const elapsed of [0,12000,80000,100000,108450,112000,114474]){
+    const e=setup(elapsed),track=e.runtime.chapter4Audio.tracks[0],audio=track.audio;
+    assert.equal(audio.src,'/assets/chapter1/audio/brookwood-background.wav');assert.equal(audio.loop,true);
+    assert(Math.abs(audio.currentTime-(elapsed%metadata.durationMs)/1000)<1e-9);
+    assert.equal(audio.volume,chapter4ScoreVolume(elapsed));
+    e.accept(elapsed);assert.equal(track.audio,audio);assert.equal(audio.plays,1);
+  }
+  const e=setup(12000),track=e.runtime.chapter4Audio.tracks[0];e.frame(1000);
+  assert.equal(track.audio.plays,1);e.accept(50000);assert.equal(track.audio.currentTime,50);
+  e.accept(0,400000);assert.equal(track.audio.currentTime,0);assert.equal(track.audio.plays,2);
+});
+
+test('Chapter 4 score ducks from locked narration intervals and uses smooth section ramps',()=>{
+  assert.equal(chapter4ScoreVolume(0),0);assert(chapter4ScoreVolume(1500)>0);
+  assert(chapter4ScoreVolume(40000)>chapter4ScoreVolume(10000));
+  assert(chapter4ScoreVolume(60000)>chapter4ScoreVolume(40000));
+  assert(chapter4ScoreVolume(80000)<chapter4ScoreVolume(60000)/3);
+  assert(chapter4ScoreVolume(103000)>chapter4ScoreVolume(98000));
+  for(const scene of chapter4Scenes){
+    const e=setup(scene.at+500);assert.equal(e.audio('chapter4-narration-'+scene.id).volume,1);
+    assert(e.runtime.chapter4Audio.tracks[0].audio.volume<=.084);
+    for(const boundary of [scene.at-150,scene.at,scene.end+100,scene.end+400])
+      assert(Math.abs(chapter4ScoreVolume(boundary-.001)-chapter4ScoreVolume(boundary+.001))<1e-6);
+  }
+  for(let t=0;t<=120000;t+=25){assert(Number.isFinite(chapter4ScoreVolume(t)));assert(chapter4ScoreVolume(t)>=0&&chapter4ScoreVolume(t)<=.14);}
+});
+
+test('Chapter 4 final fade is silent at 108450 and throughout black, doorbell and voting',()=>{
+  assert(chapter4ScoreVolume(104000)>chapter4ScoreVolume(107000));assert(chapter4ScoreVolume(108449)>0);
+  for(const at of [108450,109000,111449,111450,112000,114473,114474,120000]){
+    const e=setup(at);assert.equal(chapter4ScoreVolume(at),0);assert.equal(e.runtime.chapter4Audio.tracks[0].audio.volume,0);
+    e.runtime.unlockBackground();assert.equal(e.runtime.chapter4Audio.tracks[0].audio.volume,0);
+  }
+});
+
+test('Chapter 4 score autoplay failure retries on interaction without disrupting narration or visuals',async()=>{
+  const e=setup(4000,true),track=e.runtime.chapter4Audio.tracks[0];
+  for(let i=0;i<10;i++)await Promise.resolve();assert.equal(track.audio.paused,true);assert.equal(e.opacity('scene-01'),1);
+  track.audio.play=()=>{track.audio.plays++;track.audio.paused=false;return Promise.resolve();};
+  e.runtime.unlockBackground();for(let i=0;i<10;i++)await Promise.resolve();
+  assert.equal(track.audio.paused,false);assert.equal(track.audio.currentTime,4);assert.equal(e.audio('chapter4-narration-01').volume,1);
 });

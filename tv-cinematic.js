@@ -7,6 +7,7 @@ import {chapter3AudioTimeline,chapter3PartyGain} from './chapter3-audio.js';
 import {chapter3Phases} from './chapter3-timing.js';
 import {chapter4Phases,CHAPTER4_VOTING_MS} from './chapter4-timing.js';
 import {Chapter4View,chapter4AudioTimeline} from './chapter4.js';
+import {chapter4Audio} from './chapter4-audio.js';
 
 // One scheduler clock, fed by the TV's existing /api/state poller.
 export class TVCinematicRuntime {
@@ -45,7 +46,7 @@ export class TVCinematicRuntime {
     this.audio=new Player(timeline,{...clock,elapsedNow:()=>this.originalElapsedNow(),soundtrack,audioExtension:chapter2Audio,canSync:()=>!this.scheduler.recovering});
     this.chapter3Audio=new Player(chapter3AudioTimeline,{...clock,canSync:()=>!this.scheduler.recovering});
     this.chapter4Visuals=new Chapter4View(document,Renderer,clock);
-    this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,canSync:()=>!this.scheduler.recovering});
+    this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,audioExtension:chapter4Audio,canSync:()=>!this.scheduler.recovering});
     this.scheduler.start();
   }
   acceptState(state,timing={}) {
@@ -65,7 +66,7 @@ export class TVCinematicRuntime {
   originalElapsedNow(){return this.elapsedNow()+(chapter4Phases.includes(this.state?.phase)?this.state.chapter4.startedAt-this.state.startedAt:chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
   unlockChapter3(){if(this.chapter3Audio.startedAt===null)this.chapter3Audio.unlock();}
   unlockChapter4(){if(this.chapter4Audio.startedAt===null)this.chapter4Audio.unlock();}
-  unlockBackground(){if(!chapter4Phases.includes(this.state?.phase))this.audio.unlockBackground();}
+  unlockBackground(){if(chapter4Phases.includes(this.state?.phase))this.chapter4Audio.unlockBackground();else this.audio.unlockBackground();}
   unlockForTestJump(){this.audio.unlock({background:!chapter4Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();}
 }
 // Classic Chapter 1 assets load first; the TV's following module uses this bridge.
