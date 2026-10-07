@@ -362,3 +362,26 @@ test('phone vote UI includes every real DOM node required for live activation',(
   const html=fs.readFileSync('join.html','utf8');
   for(const id of ['voteBox','voteTitle','voteCopy','voteTarget','voteSubmit','voteProgress','voteErr']) assert(html.includes('id='+String.fromCharCode(34)+id+String.fromCharCode(34)),id);
 });
+
+test('untouched phone keeps polling from Chapter 3 completion through Chapter 4 activation and final result',async()=>{
+  let state={...privateResponse(15000,212600,213000),phase:'private-messages-complete'};
+  const e=await privateEnvironment(state),completedMessage=state;let requests=0;
+  e.context.lobbyRequest=async(url,body)=>{assert.equal(url,'/api/me');assert.equal(body.id,'real');requests++;return state;};
+  const poll=async()=>{assert.equal(e.timers.size,1);[...e.timers.values()][0]();await flush();assert.equal(e.timers.size,1);};
+  assert.equal(e.document.getElementById('privateTitle').textContent,'MESSAGE RECEIVED');
+  for(const elapsed of [0,3000,108450,111450,114473]){
+    state=doorResponse();state.serverNow=state.chapter4.startedAt+elapsed;
+    await poll();assert.equal(e.document.getElementById('privateTitle').textContent,'MESSAGE RECEIVED');
+    assert(e.document.getElementById('voteBox').classList.contains('hidden'));
+  }
+  // Identity and completed Chapter 3 fields do not change; only authoritative phase/activation does.
+  state=doorResponse(true);await poll();assert.equal(e.document.getElementById('voteTitle').textContent,'CHOOSE WHO GOES');
+  assert(!e.document.getElementById('voteBox').classList.contains('hidden'));
+  // A superseded Chapter 3 render callback must not roll back the latest polled state.
+  e.context.oldMessage=completedMessage;vm.runInContext('privateRuntime.onState(oldMessage,true)',e.context);
+  assert(!e.document.getElementById('voteBox').classList.contains('hidden'));
+  assert(vm.runInContext('me.chapter4.active',e.context));
+  state=doorResponse(true,true);await poll();assert.equal(e.document.getElementById('voteTitle').textContent,'VOTE RECORDED');
+  state=doorResponse(true,true,true);await poll();assert.equal(e.document.getElementById('voteTitle').textContent,'Other Player');
+  assert(e.document.getElementById('voteCopy').textContent.includes('sealed package'));assert.equal(requests,8);
+});

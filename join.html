@@ -73,9 +73,12 @@ async function confirmPhoto(){
   finally{photoPending=false;if(auth===session)document.getElementById('photoConfirm').disabled=me?.photo?.confirmed||me?.phase==='photo-complete';}
 }
 function renderPrivate(j,active){
+  // Only the latest authoritative poll/action response owns the phone screen.
+  // Chapter 3 callbacks must not replace a newer Chapter 4 vote/result state.
+  if(j!==me)return;
   if(j.chapter4){renderDoor(j);return;}
   if(!auth||j.player.id!==auth.id)return;
-  me=j;document.getElementById('opening').classList.remove('show');
+  document.getElementById('opening').classList.remove('show');
   if(!active){renderPhoto({...j,phase:'photo-complete'});return;}
   show('private');const c=j.chapter3,read=c.readAt!==null||acknowledgedRun===c.startedAt;
   const opened=c.openedAt!==null&&messagePending!=='message-open';
