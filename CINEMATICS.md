@@ -358,3 +358,47 @@ seek from authoritative elapsed; expired clips never replay. Audio is primed
 from existing user gestures without interrupting an active clip. Browser autoplay
 restrictions can still silence a newly opened TV; rejected playback is isolated
 from visuals and state. WAV files are original, unprocessed recordings.
+
+## Chapter 5: package handoff and casting
+
+After the final Chapter 4 door vote, only the selected player's existing
+authenticated session may send `package-open` with the current Chapter 4 clock.
+The same CAS transaction persists `packageOpenedAt`, `macheteHolderPlayerId`, and
+the new `chapter5.startedAt`. Repeated confirmations are no-ops. These package
+fields remain throughout casting and later checkpoints; reset, return to lobby,
+and an explicit host Chapter Select clear them for a fresh game.
+
+Chapter 5 uses the existing serverNow/AbsoluteCueScheduler and visual renderer.
+It has a silent 10-second explanatory intro, then six persisted rounds in order:
+screamer, terribleDecisionMaker, tripper, denier, sacrifice, killer. The approved
+cards are mapped in `chapter5-timing.js`; their original filenames, including
+`02-the-terrible-decision-make.png`, are used unchanged. No new audio is added.
+Earlier chapter audio stops without replaying historical cues.
+
+Each round has a server timestamp, private voter-to-target ballots, and immutable
+winner/completion fields. Voting opens after the ordinary 500ms black + 700ms
+card entrance, or the killer's 1500ms fade + 1000ms hold. Player tokens identify
+the voter; self-votes, stale runs, stale roles and foreign targets are rejected.
+The twelfth vote atomically chooses the highest candidate using cryptographically
+uniform random selection among tied leaders, cached across CAS retries.
+One player may win several roles. Counts are derived from ballots, never stored
+separately. Public state never includes ballots or winners before their reveal.
+
+Result timelines are declarative in `chapter5.js`. Ordinary rounds hold 1000ms,
+show the reveal intro 1200ms, winner 3500ms, fade 700ms, then black 500ms. That
+black tail is shared with the next card's initial black, avoiding a double pause.
+Sacrifice holds its winner 4000ms, fades 700ms, then stays black 2500ms. Killer
+uses 2000ms hold, 800ms fade, 1500ms black, 2000ms reveal intro, 3000ms winner,
+and 2000ms THE CAST IS COMPLETE. Killer is explicitly a fictional casting role.
+
+All six winners appear for 7000ms then fade 1500ms. The final mystery text uses
+the specified silent pauses, paired reveals, holds and fades; its total duration
+including cast summary is 30100ms. After that the TV remains black. There is no
+Chapter 6. `/api/progress` advances only server-time-eligible persisted stages;
+phones poll authoritative state rather than running an independent countdown.
+
+Host Chapter Select adds `package` (completed door vote, package unopened) and
+`chapter5` (package confirmed, casting intro). Both preserve the cast and tokens,
+construct valid prerequisites and rotate the existing generation fence. The
+host-only `test-cast-simulated` action votes only for simulated players in the
+current activated role; two real phones finish the usual 10/12 test setup.

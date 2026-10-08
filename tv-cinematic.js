@@ -8,6 +8,8 @@ import {chapter3Phases} from './chapter3-timing.js';
 import {chapter4Phases,CHAPTER4_VOTING_MS} from './chapter4-timing.js';
 import {Chapter4View,chapter4AudioTimeline} from './chapter4.js';
 import {chapter4Audio,chapter4Score} from './chapter4-audio.js';
+import {chapter5Phases} from './chapter5-timing.js';
+import {Chapter5View} from './chapter5.js';
 
 // One scheduler clock, fed by the TV's existing /api/state poller.
 export class TVCinematicRuntime {
@@ -20,6 +22,9 @@ export class TVCinematicRuntime {
     this.chapter4VoteAt=CHAPTER4_VOTING_MS;
     this.scheduler=new AbsoluteCueScheduler({autoSync:false,now,requestFrame,cancelFrame,
       onElapsed:(elapsed,meta)=>{
+        if(chapter5Phases.includes(this.state?.phase)){
+          this.chapter5Visuals.update(this.state);this.onElapsed(elapsed,this.state);return;
+        }
         if(chapter4Phases.includes(this.state?.phase)){
           this.chapter4Visuals.update(this.state);
           this.chapter4Audio.update({phase:'opening',startedAt:this.state.chapter4.startedAt},meta);
@@ -48,27 +53,30 @@ export class TVCinematicRuntime {
     this.chapter4Visuals=new Chapter4View(document,Renderer,clock);
     this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,audioExtension:chapter4Audio,
       trackMedia:new Map([[chapter4Score.id,this.audio.soundtrack?.audio]]),canSync:()=>!this.scheduler.recovering});
+    this.chapter5Visuals=new Chapter5View(document,Renderer,clock);
     this.scheduler.start();
   }
   acceptState(state,timing={}) {
     const previous=this.state;this.state=state;
     const chapter3=chapter3Phases.includes(state.phase);
     const chapter4=chapter4Phases.includes(state.phase);
-    if(chapter4){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
-    if(!this.scheduler.acceptState(chapter4?{...state,startedAt:state.chapter4.startedAt}:chapter3?{...state,startedAt:state.chapter3.startedAt}:state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
+    const chapter5=chapter5Phases.includes(state.phase);
+    if(chapter4||chapter5){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
+    if(!this.scheduler.acceptState(chapter5?{...state,startedAt:state.chapter5.startedAt}:chapter4?{...state,startedAt:state.chapter4.startedAt}:chapter3?{...state,startedAt:state.chapter3.startedAt}:state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
+    if(!chapter5)this.chapter5Visuals.stop();
     if(!chapter4){this.chapter4Audio.stop();this.chapter4Visuals.stop();}
     if(!chapter3){this.chapter3Audio.stop();this.chapter3Visuals.stop();this.audio.setTrackGain(1);}
     if(state.phase!=='opening'){
-      this.visuals.stop();this.chapter2Visuals.stop();if(!chapter3&&!chapter4)this.audio.update(state);
+      this.visuals.stop();this.chapter2Visuals.stop();if(!chapter3&&!chapter4&&!chapter5)this.audio.update(state);
     }
   }
   suspend(){this.scheduler.recovering=true;}
   elapsedNow(){return this.scheduler.elapsedNow();}
-  originalElapsedNow(){return this.elapsedNow()+(chapter4Phases.includes(this.state?.phase)?this.state.chapter4.startedAt-this.state.startedAt:chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
+  originalElapsedNow(){return this.elapsedNow()+(chapter5Phases.includes(this.state?.phase)?this.state.chapter5.startedAt-this.state.startedAt:chapter4Phases.includes(this.state?.phase)?this.state.chapter4.startedAt-this.state.startedAt:chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
   unlockChapter3(){if(this.chapter3Audio.startedAt===null)this.chapter3Audio.unlock();}
   unlockChapter4(){if(this.chapter4Audio.startedAt===null)this.chapter4Audio.unlock();}
-  unlockBackground(){if(chapter4Phases.includes(this.state?.phase))this.chapter4Audio.unlockBackground();else this.audio.unlockBackground();}
-  unlockForTestJump(){this.audio.unlock({background:!chapter4Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();}
+  unlockBackground(){if(chapter5Phases.includes(this.state?.phase))return;if(chapter4Phases.includes(this.state?.phase))this.chapter4Audio.unlockBackground();else this.audio.unlockBackground();}
+  unlockForTestJump(){this.audio.unlock({background:!chapter4Phases.includes(this.state?.phase)&&!chapter5Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();}
 }
 // Classic Chapter 1 assets load first; the TV's following module uses this bridge.
 globalThis.BrookwoodTV={Runtime:TVCinematicRuntime};

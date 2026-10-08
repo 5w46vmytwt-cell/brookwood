@@ -1,5 +1,6 @@
 import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail,isChapter4,withinChapter4Run,activateDoorVoting,makeChapter4Starter} from './_state.js';
 import {PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
+import {isChapter5,withinCastingRun,advanceCasting} from './_chapter5.js';
 
 // Public capability limited to one server-time-gated transition. Request body
 // intentionally unused: neither clocks, identity, nor target phase are trusted.
@@ -8,12 +9,14 @@ export default async function handler(req,res){
   try{
     let outcome;
     const startChapter4=makeChapter4Starter();
+    const castingChange=withinCastingRun(s=>{const result=advanceCasting(s);outcome={ok:true,phase:s.phase};return result;});
     const doorChange=withinChapter4Run(s=>{const result=activateDoorVoting(s);outcome={ok:true,eligible:s.phase!=='chapter4-opening',phase:s.phase};return result;});
     const chapter3Change=withinChapter3Run(s=>{
       const result=activatePrivateMessages(s);
       outcome={ok:true,eligible:s.phase!=='chapter3-opening',phase:s.phase};return result;
     });
     await updateState(withinCinematicRun(s=>{
+      if(isChapter5(s))return castingChange(s);
       if(isChapter4(s))return doorChange(s);
       if(s.phase==='private-messages-complete'){const result=startChapter4(s);outcome={ok:true,eligible:isChapter4(s),phase:s.phase};return result;}
       if(isChapter3(s))return chapter3Change(s);

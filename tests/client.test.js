@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { TVCinematicRuntime } from '../tv-cinematic.js';
 import {PhoneChapter3Runtime} from '../phone-chapter3.js';
+import {castingRoles} from '../chapter5-timing.js';
 
 const inline = file => [...fs.readFileSync(file, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => s.trim()).join('\n');
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -12,6 +13,61 @@ const response = { phase: 'lobby', player: { name: 'Player', partner: null, part
 function privateResponse(elapsed=12600,openedAt=null,readAt=null){return {...response,phase:elapsed<12600?'chapter3-opening':'private-messages',player:{...response.player,id:'real'},photo:{confirmed:true,confirmedCount:12,complete:true},serverNow:200000+elapsed,chapter3:{startedAt:200000,openedAt,readAt,assignment:openedAt!==null&&readAt===null?{title:'KEEP THIS TO YOURSELF',body:'Persisted private message.'}:null}};}
 async function privateEnvironment(state){const e=environment(JSON.stringify({id:'real',token:'secret'}));e.context.lobbyRequest=async()=>state;vm.runInContext(inline('join.html'),e.context);await flush();return e;}
 function doorResponse(active=false,voted=false,complete=false){return {...privateResponse(15000,212600,213000),phase:complete?'door-vote-complete':active?'door-vote':'chapter4-opening',serverNow:4000000+(active?114474:3000),others:[{id:'other',name:'Other Player'}],chapter4:{startedAt:4000000,active,voted,complete,votingActivatedAt:active?4114474:null,voteCount:complete?12:voted?1:0,selectedPlayer:complete?{id:'other',name:'Other Player'}:null}};}
+function castingResponse(index=0,voted=false,phase='chapter5-casting'){
+  const role=castingRoles[index];return {...doorResponse(true,true,true),phase,serverNow:5011200,
+    others:Array.from({length:11},(_,i)=>({id:'other'+i,name:'Friend '+i})),
+    chapter5:{startedAt:5000000,roundIndex:index,castStartedAt:null,completedAt:null,winners:[],
+      round:{...role,startedAt:5010000,completedAt:null,votingActive:phase==='chapter5-casting',voted,voteCount:voted?1:0,winner:null}}};
+}
+
+test('selected package phone alone shows authenticated confirmation and double clicks start one canonical Chapter 5',async()=>{
+  const selected=doorResponse(true,true,true);selected.chapter4.canOpenPackage=true;selected.chapter4.selectedPlayer={id:'real',name:'Player'};
+  const e=await privateEnvironment(selected),calls=[];
+  assert(!e.document.getElementById('packageOpen').classList.contains('hidden'));
+  e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return url==='/api/me'?castingResponse(0,false,'chapter5-intro'):{ok:true};};
+  vm.runInContext('openPhysicalPackage();openPhysicalPackage()',e.context);await flush();
+  assert.equal(calls.filter(c=>c.url==='/api/player').length,1);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body)),{id:'real',token:'secret',action:'package-open',chapter4StartedAt:4000000});
+  assert.equal(e.document.getElementById('castingTitle').textContent,'THE CAST');
+  e.context.previous=selected;vm.runInContext('render(previous)',e.context);
+  assert(!e.document.getElementById('castingBox').classList.contains('hidden'));
+  const other=await privateEnvironment(doorResponse(true,true,true));assert(other.document.getElementById('packageOpen').classList.contains('hidden'));
+});
+
+test('untouched casting phone polls through intro, immutable vote, next round and finale without reload or reveal animation',async()=>{
+  let state=castingResponse(0,false,'chapter5-intro');const e=await privateEnvironment(state);
+  e.context.lobbyRequest=async()=>state;
+  const poll=async()=>{assert.equal(e.timers.size,1);[...e.timers.values()][0]();await flush();assert.equal(e.timers.size,1);};
+  assert(e.document.getElementById('castingSubmit').classList.contains('hidden'));
+  state=castingResponse();await poll();assert.equal(e.document.getElementById('castingTitle').textContent,'THE SCREAMER');
+  assert(!e.document.getElementById('castingSubmit').classList.contains('hidden'));
+  assert.equal(e.document.getElementById('castingTarget').children.length,12);
+  assert(!e.document.getElementById('castingTarget').children.some(p=>p.value==='real'));
+  state=castingResponse(0,true);await poll();assert.equal(e.document.getElementById('castingTitle').textContent,'VOTE RECORDED');
+  e.context.oldState=castingResponse();vm.runInContext('render(oldState)',e.context);assert.equal(e.document.getElementById('castingTitle').textContent,'VOTE RECORDED');
+  state=castingResponse(1);await poll();assert.equal(e.document.getElementById('castingTitle').textContent,'THE TERRIBLE DECISION MAKER');
+  e.context.oldState=castingResponse(0,true);vm.runInContext('render(oldState)',e.context);assert.equal(e.document.getElementById('castingTitle').textContent,'THE TERRIBLE DECISION MAKER');
+  state=castingResponse(5,true,'chapter5-finale');await poll();assert.equal(e.document.getElementById('castingTitle').textContent,'THE CAST IS COMPLETE');
+  assert(e.document.getElementById('privateBlank').hidden);
+});
+
+test('casting phone sends only own authenticated immutable ballot, run and role and reconstructs recorded vote',async()=>{
+  const e=await privateEnvironment(castingResponse()),calls=[];e.document.getElementById('castingTarget').value='other0';
+  e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return url==='/api/me'?castingResponse(0,true):{ok:true};};
+  vm.runInContext('submitCastingVote();submitCastingVote()',e.context);await flush();
+  assert.equal(calls.filter(c=>c.url==='/api/player').length,1);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body)),{id:'real',token:'secret',action:'casting-vote',chapter5StartedAt:5000000,roleId:'screamer',targetId:'other0'});
+  assert.equal(e.document.getElementById('castingTitle').textContent,'VOTE RECORDED');
+  const reconnect=await privateEnvironment(castingResponse(0,true));assert.equal(reconnect.document.getElementById('castingTitle').textContent,'VOTE RECORDED');assert(reconnect.document.getElementById('privateBlank').hidden);
+});
+
+test('Chapter 5 phone and TV integration contains real DOM nodes, test destinations and no privileged credentials',()=>{
+  const phone=fs.readFileSync('join.html','utf8'),tv=fs.readFileSync('tv.html','utf8');
+  for(const id of ['packageOpen','castingBox','castingTitle','castingCopy','castingQuestion','castingTarget','castingSubmit','castingCount','castingErr'])assert(phone.includes('id="'+id+'"'),id);
+  for(const id of ['chapter5TV','chapter5-cardImage','chapter5-voteCount','chapter5-winnerName','chapter5HostCode'])assert(tv.includes('id="'+id+'"'),id);
+  assert(tv.includes('value="package"'));assert(tv.includes('value="chapter5"'));
+  assert(!phone.includes('HOST_KEY'));assert(!tv.includes('HOST_KEY'));
+});
 test('Chapter 4 live phone polling transitions completed message to voting and restores recorded/result states',async()=>{
   let state=doorResponse();const e=await privateEnvironment(state);assert.equal(e.document.getElementById('privateTitle').textContent,'MESSAGE RECEIVED');assert.equal(e.document.getElementById('privateBody').textContent,'');
   e.context.lobbyRequest=async()=>state;const poll=async()=>{[...e.timers.values()][0]();await flush();assert.equal(e.timers.size,1);};
@@ -94,7 +150,7 @@ function environment(stored = null) {
   if (stored !== null) storage.set('brookwood-player-v3', stored);
   function element() {
     const classes = new Set();
-    return { style: {}, textContent: '', innerHTML: '', value: '', options: [], children: [], events: {}, hidden: false,
+    return { style: {}, textContent: '', get innerHTML(){return this.markup||'';}, set innerHTML(value){this.markup=value;this.children=[];}, value: '', options: [], children: [], events: {}, hidden: false,
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, yes) { if (yes) classes.add(c); else classes.delete(c); } },
       focus() { this.focused=true; }, addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
   }

@@ -9,6 +9,8 @@ import stateHandler from '../api/state.js';
 import progress from '../api/progress.js';
 import chapter3 from '../api/chapter3.js';
 import {createAssignments,messageTemplates} from '../api/_chapter3-messages.js';
+import {makeCastingVoter} from '../api/_chapter5.js';
+import {castingRoles,castingVotingOffset,castingCompletionMs,castingRevealOffset,CHAPTER5_INTRO_MS,CHAPTER5_FINALE_MS} from '../chapter5-timing.js';
 
 const handlers = { join, player, host, me, state: stateHandler, progress, chapter3 };
 let raw, readBarrier, heldCommit, heldRead, fault, persisted;
@@ -840,5 +842,179 @@ test('corrupt private state is rejected without repair or public leakage',async(
   const players=await chapter3Run(),valid=state();
   for(const mutate of [s=>delete s.chapter3.assignments[players[0].id],s=>s.chapter3.assignments[players[0].id].readAt=1,s=>s.chapter3.completedAt=1,s=>s.chapter3.assignments[players[0].id].templateId='unknown']){
     const s=structuredClone(valid);mutate(s);raw=JSON.stringify(s);const before=raw;const r=await call('state',{},'GET');assert.equal(r.status,503);assert.equal(raw,before);assert(!r.data.chapter3);
+  }
+});
+
+async function packageTestRun(checkpoint='package'){
+  const real=await testCast();const selected=await serverClock(5000000,()=>selectChapter(checkpoint));assert.equal(selected.status,200);persisted=[];return real;
+}
+const packageOpen=p=>call('player',{id:p.id,token:p.token,action:'package-open',chapter4StartedAt:state().chapter4.startedAt});
+async function castingRun(){const real=await packageTestRun('chapter5');await serverClock(state().chapter5.startedAt+CHAPTER5_INTRO_MS,()=>call('progress'));return real;}
+const castVote=(p,target,roleId=state().chapter5.rounds[state().chapter5.roundIndex].id,run=state().chapter5.startedAt)=>call('player',{id:p.id,token:p.token,action:'casting-vote',targetId:target,roleId,chapter5StartedAt:run});
+const castSimulated=()=>call('host',{code:'test-host',action:'test-cast-simulated',chapter5StartedAt:state().chapter5.startedAt,roleId:state().chapter5.rounds[state().chapter5.roundIndex].id});
+function votingTime(){const c=state().chapter5,r=c.rounds[c.roundIndex];return r.startedAt+castingVotingOffset(r.id);}
+async function finishCastingRound(real){
+  await serverClock(votingTime(),async()=>{assert.equal((await castSimulated()).status,200);assert.equal((await castVote(real[0],real[1].id)).status,200);assert.equal((await castVote(real[1],real[0].id)).status,200);});
+  return state().chapter5.rounds[state().chapter5.roundIndex];
+}
+
+test('package retrieval checkpoint constructs valid prerequisites and only the selected session can open it',async()=>{
+  const real=await packageTestRun(),before=raw;
+  assert.equal(state().phase,'door-vote-complete');assert.equal(state().chapter4.selectedPlayerId,real[0].id);
+  assert.equal((await packageOpen({...real[0],token:'wrong'})).status,401);assert.equal((await packageOpen(real[1])).status,403);assert.equal(raw,before);
+  const selected=(await call('me',real[0])).data,other=(await call('me',real[1])).data;
+  assert.equal(selected.chapter4.canOpenPackage,true);assert.equal(other.chapter4.canOpenPackage,false);
+  assert.equal((await call('player',{...real[0],action:'package-open',chapter4StartedAt:1})).status,409);assert.equal(raw,before);
+  await serverClock(5000100,async()=>{assert.equal((await packageOpen(real[0])).status,200);});
+  assert.equal(state().phase,'chapter5-intro');assert.equal(state().packageOpenedAt,5000100);assert.equal(state().macheteHolderPlayerId,real[0].id);assert.equal(state().chapter5.startedAt,5000100);
+  assert.equal(state().chapter5.rounds.length,6);assert(state().chapter5.rounds.every(r=>r.startedAt===null&&!Object.keys(r.votes).length));
+  const after=raw;await serverClock(5000200,async()=>{assert.equal((await packageOpen(real[0])).status,200);});assert.equal(raw,after);
+});
+
+test('package opening concurrent duplicate requests start Chapter 5 exactly once with no replay or inventory mutation',async()=>{
+  const real=await packageTestRun(),players=structuredClone(state().players);overlapReads(8);
+  await serverClock(5000100,async()=>{const results=await Promise.all(Array.from({length:8},()=>packageOpen(real[0])));assert(results.every(r=>r.status===200));});
+  assert.equal(persisted.length,1);assert.equal(state().chapter5.startedAt,5000100);assert.deepEqual(state().players,players);
+});
+
+test('Chapter 5 intro is server-time gated and ignores client clocks/phase parameters',async()=>{
+  await packageTestRun('chapter5');const before=raw,start=state().chapter5.startedAt;
+  await serverClock(start+9999,async()=>{assert.equal((await call('progress',{elapsed:999999,phase:'chapter5-casting',startedAt:1})).status,200);});assert.equal(raw,before);
+  await serverClock(start+10000,async()=>{overlapReads(4);const result=await Promise.all(Array.from({length:4},()=>call('progress')));assert(result.every(r=>r.status===200));});
+  assert.equal(state().phase,'chapter5-casting');assert.equal(state().chapter5.rounds[0].startedAt,start+10000);assert.equal(persisted.length,1);
+});
+
+test('casting validates tokens, self-votes, current targets, current run/round and server voting activation',async()=>{
+  const real=await castingRun(),before=raw;
+  await serverClock(votingTime()-1,async()=>{assert.equal((await castVote(real[0],real[1].id)).status,409);assert.equal((await castSimulated()).status,409);});assert.equal(raw,before);
+  await serverClock(votingTime(),async()=>{
+    assert.equal((await castVote({...real[0],token:'wrong'},real[1].id)).status,401);
+    assert.equal((await castVote(real[0],real[0].id)).status,400);
+    for(const target of [null,{},'foreign'])assert.equal((await castVote(real[0],target)).status,400);
+    assert.equal((await castVote(real[0],real[1].id,'killer')).status,409);
+    assert.equal((await castVote(real[0],real[1].id,'screamer',1)).status,409);
+    assert.equal((await call('host',{code:'wrong',action:'test-cast-simulated'})).status,403);
+  });assert.equal(raw,before);
+});
+
+test('casting ballots are immutable and duplicate requests are atomic no-ops',async()=>{
+  const real=await castingRun();await serverClock(votingTime(),async()=>{
+    assert.equal((await castVote(real[0],real[1].id)).status,200);const before=raw;
+    assert.equal((await castVote(real[0],state().players[2].id)).status,200);assert.equal(raw,before);
+    assert.equal(state().chapter5.rounds[0].votes[real[0].id],real[1].id);
+    const mine=(await call('me',real[0])).data,other=(await call('me',real[1])).data;
+    assert.equal(mine.chapter5.round.voted,true);assert.equal(other.chapter5.round.voted,false);
+    assert.equal(mine.chapter5.round.voteCount,1);assert(!('votes' in mine.chapter5.round));
+  });
+});
+
+test('twelve simultaneous casting votes persist all ballots and atomically finalize exactly one valid winner',async()=>{
+  await castingRun();const players=state().players;overlapReads(12);
+  await serverClock(votingTime(),async()=>{const out=await Promise.all(players.map((p,i)=>castVote(p,players[(i+1)%12].id)));assert(out.every(r=>r.status===200));});
+  const r=state().chapter5.rounds[0];assert.equal(Object.keys(r.votes).length,12);assert(r.completedAt);assert(players.some(p=>p.id===r.winnerPlayerId));
+  assert(persisted.every(s=>Object.keys(s.chapter5.rounds[0].votes).length!==12||(s.chapter5.rounds[0].completedAt!==null&&s.chapter5.rounds[0].winnerPlayerId!==null)));
+});
+
+test('simulated helper confirms exactly ten votes, concurrent real finals and retries finish 12/12 once',async()=>{
+  const real=await castingRun();await serverClock(votingTime(),async()=>{
+    assert.equal((await castSimulated()).status,200);const before=raw;assert.equal((await castSimulated()).status,200);assert.equal(raw,before);
+    assert.equal(Object.keys(state().chapter5.rounds[0].votes).length,10);assert(real.every(p=>!Object.hasOwn(state().chapter5.rounds[0].votes,p.id)));
+    overlapReads(4);const out=await Promise.all([castVote(real[0],real[1].id),castVote(real[1],real[0].id),castVote(real[0],real[1].id),castVote(real[1],real[0].id)]);assert(out.every(r=>r.status===200));
+    const completed=raw;assert.equal((await castVote(real[0],real[1].id)).status,200);assert.equal(raw,completed);
+  });assert.equal(Object.keys(state().chapter5.rounds[0].votes).length,12);assert(state().chapter5.rounds[0].completedAt);
+});
+
+test('casting fair tie selection is among highest candidates and cached across CAS-style retries',async()=>{
+  await castingRun();const original=state(),players=original.players;
+  const r=original.chapter5.rounds[0];for(let i=0;i<11;i++)r.votes[players[i].id]=players[(i+1)%12].id;
+  let choices=0;const vote=makeCastingVoter(n=>{assert.equal(n,12);choices++;return n-1;});
+  await serverClock(votingTime(),async()=>{const a=structuredClone(original),b=structuredClone(original);vote(a,[[players[11].id,players[0].id]],a.chapter5.startedAt,'screamer');vote(b,[[players[11].id,players[0].id]],b.chapter5.startedAt,'screamer');assert.equal(a.chapter5.rounds[0].winnerPlayerId,b.chapter5.rounds[0].winnerPlayerId);assert.equal(a.chapter5.rounds[0].winnerPlayerId,players.map(p=>p.id).sort().at(-1));});assert.equal(choices,1);
+});
+
+test('unrevealed winners and all individual casting ballots remain private on state and me',async()=>{
+  const real=await castingRun(),round=await finishCastingRound(real);
+  for(const offset of [0,999,1000,2199])await serverClock(round.completedAt+offset,async()=>{
+    const pub=(await call('state',{},'GET')).data,mine=(await call('me',real[0])).data;
+    for(const projection of [pub,mine]){assert.equal(projection.chapter5.round.winner,null);assert.equal(projection.chapter5.winners.length,0);assert(!JSON.stringify(projection).includes('winnerPlayerId'));assert(!JSON.stringify(projection).includes('"votes"'));}
+  });
+  await serverClock(round.completedAt+2200,async()=>{const p=(await call('state',{},'GET')).data;assert.equal(p.chapter5.round.winner.id,round.winnerPlayerId);assert.equal(p.chapter5.winners.length,1);});
+});
+
+test('all six ordered casting rounds advance at exact server gates, preserve package, then finish on black',async()=>{
+  const real=await castingRun(),packageTime=state().packageOpenedAt,holder=state().macheteHolderPlayerId;
+  for(const [index,role] of castingRoles.entries()){
+    assert.equal(state().chapter5.roundIndex,index);assert.equal(state().chapter5.rounds[index].id,role.id);
+    const round=await finishCastingRound(real),before=raw;
+    await serverClock(round.completedAt+castingCompletionMs(role.id)-1,()=>call('progress'));assert.equal(raw,before);
+    await serverClock(round.completedAt+castingCompletionMs(role.id),()=>call('progress'));
+    assert.equal(state().packageOpenedAt,packageTime);assert.equal(state().macheteHolderPlayerId,holder);
+    if(index<5){assert.equal(state().chapter5.roundIndex,index+1);assert.equal(Object.keys(state().chapter5.rounds[index+1].votes).length,0);
+      await serverClock(votingTime(),async()=>{assert.equal((await castVote(real[0],real[1].id,role.id)).status,409);});}
+  }
+  assert.equal(state().phase,'chapter5-finale');const c=state().chapter5,before=raw;
+  await serverClock(c.castStartedAt+CHAPTER5_FINALE_MS-1,()=>call('progress'));assert.equal(raw,before);
+  await serverClock(c.castStartedAt+CHAPTER5_FINALE_MS,()=>call('progress'));
+  assert.equal(state().phase,'chapter5-complete');assert.equal(state().chapter5.completedAt,c.castStartedAt+CHAPTER5_FINALE_MS);
+  const complete=raw;await serverClock(c.castStartedAt+CHAPTER5_FINALE_MS+10000,()=>call('progress'));assert.equal(raw,complete);
+  assert.equal((await call('me',real[0])).data.chapter5.winners.length,6);
+});
+
+test('killer voting waits exactly 2500ms and result remains private until 6300ms after completion',async()=>{
+  const real=await castingRun();for(let i=0;i<5;i++){const r=await finishCastingRound(real);await serverClock(r.completedAt+castingCompletionMs(r.id),()=>call('progress'));}
+  assert.equal(state().chapter5.rounds[5].id,'killer');const before=raw;
+  await serverClock(votingTime()-1,async()=>{assert.equal((await castVote(real[0],real[1].id)).status,409);});assert.equal(raw,before);
+  const round=await finishCastingRound(real);
+  await serverClock(round.completedAt+6299,async()=>{assert.equal((await call('state',{},'GET')).data.chapter5.round.winner,null);});
+  await serverClock(round.completedAt+6300,async()=>{assert.equal((await call('state',{},'GET')).data.chapter5.round.winner.id,round.winnerPlayerId);});
+});
+
+test('reset, return-lobby and Chapter Select fence in-flight casting writes and clear package/Chapter 5',async()=>{
+  for(const operation of ['reset','return','select']){
+    const real=await castingRun();await serverClock(votingTime(),async()=>{
+      const gate={entered:deferred(),release:deferred()};heldCommit=gate;const old=castVote(real[0],real[1].id);await gate.entered.promise;
+      if(operation==='reset')await reset();else if(operation==='return')await returnLobby();else await selectChapter('photo');
+      const after=raw;gate.release.resolve();assert.equal((await old).status,409);assert.equal(raw,after);
+      assert.equal(state().chapter5,undefined);assert.equal(state().packageOpenedAt,undefined);assert.equal(state().macheteHolderPlayerId,undefined);
+    });await reset();
+  }
+});
+
+test('package confirmation is generation-fenced against reset and replay',async()=>{
+  for(const operation of ['reset','select']){
+    const real=await packageTestRun();await serverClock(5000200,async()=>{
+      const gate={entered:deferred(),release:deferred()};heldCommit=gate;const old=packageOpen(real[0]);await gate.entered.promise;
+      if(operation==='reset')await reset();else await selectChapter('package');const after=raw;
+      gate.release.resolve();assert.equal((await old).status,409);assert.equal(raw,after);assert(!state().packageOpenedAt);
+    });await reset();
+  }
+});
+
+test('Chapter Select package/Chapter 5 remains host-only, preserves cast and creates distinct clean runs',async()=>{
+  const real=await packageTestRun('chapter5'),players=structuredClone(state().players),run=state().chapter5.startedAt,generation=state().generation;
+  assert.equal((await selectChapter('chapter5',{code:'wrong'})).status,403);
+  await serverClock(5000000,async()=>{assert.equal((await selectChapter('chapter5')).status,200);});assert.notEqual(state().chapter5.startedAt,run);assert.notEqual(state().generation,generation);assert.deepEqual(state().players,players);
+  const before=raw;assert.equal((await castVote(real[0],real[1].id,'screamer',run)).status,409);assert.equal(raw,before);
+  assert.equal((await selectChapter('package')).status,200);assert.equal(state().phase,'door-vote-complete');assert(!state().chapter5);assert(!state().packageOpenedAt);
+});
+
+test('corrupt package, casting ballots, round clocks and winner states are rejected',async()=>{
+  await castingRun();const valid=state();const variants=[
+    s=>{s.packageOpenedAt=null;},s=>{s.macheteHolderPlayerId='foreign';},s=>{s.chapter5.rounds[0].votes[s.players[0].id]=s.players[0].id;},
+    s=>{s.chapter5.rounds[0].votes.foreign=s.players[0].id;},s=>{s.chapter5.rounds[0].winnerPlayerId=s.players[0].id;},
+    s=>{s.chapter5.rounds[0].startedAt=1;},s=>{s.chapter5.roundIndex=5;},s=>{s.chapter5.castStartedAt=Date.now();}
+  ];
+  for(const mutate of variants){const s=structuredClone(valid);mutate(s);raw=JSON.stringify(s);assert.equal((await call('state',{},'GET')).status,503);}
+});
+
+test('a unique highest-vote player may win multiple casting roles and adjacent rounds share one black tail',async()=>{
+  await castingRun();const cast=structuredClone(state().players),winner=cast[0];
+  for(let i=0;i<2;i++){
+    await serverClock(votingTime(),async()=>{
+      const results=await Promise.all(cast.map(p=>castVote(p,p.id===winner.id?cast[1].id:winner.id)));
+      assert(results.every(r=>r.status===200));
+    });
+    const r=state().chapter5.rounds[i];assert.equal(r.winnerPlayerId,winner.id);
+    await serverClock(r.completedAt+castingCompletionMs(r.id),()=>call('progress'));
+    assert.equal(state().chapter5.rounds[i+1].startedAt,r.completedAt+castingCompletionMs(r.id)-500);
   }
 });
