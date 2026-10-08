@@ -20,7 +20,7 @@ export function castingResultTimeline(role,revealVersion=0){
     return {id:role.id+'-narrated-result',end:t.end,cues:[
       text('hold',0,1000,'chapter5-card'),
       text('intro',1000,t.roleAt,'chapter5-revealIntro','THE GROUP HAS SPOKEN...'),
-      text('role',t.roleAt,t.winnerAt,'chapter5-revealRole','AND '+role.title+' IS...'),
+      text('role',t.roleAt,t.winnerAt,'chapter5-revealRole',role.title+' IS...'),
       text('winner',t.winnerAt,t.fadeEnd,'chapter5-winner',null,{fadeOut:[t.fadeAt,t.fadeEnd]})
     ]};
   }
@@ -55,6 +55,10 @@ export class Chapter5View{
     const previous=this.state?.chapter5,next=state.chapter5;
     // Ignore stale polling responses: a completed round can never become a card again.
     if(previous?.startedAt===next.startedAt&&(previous.roundIndex>next.roundIndex||(previous.roundIndex===next.roundIndex&&previous.round.completedAt!==null&&next.round.completedAt===null)||(previous.castStartedAt!==null&&next.castStartedAt===null)||(previous.completedAt!==null&&next.completedAt===null)))return;
+    // A late pre-reveal projection must not erase this same persisted result.
+    if(previous?.startedAt===next.startedAt&&previous.roundIndex===next.roundIndex&&previous.round.completedAt===next.round.completedAt&&previous.round.winner&&!next.round.winner){
+      state={...state,chapter5:{...next,round:{...next.round,winner:previous.round.winner}}};
+    }
     this.state=state;const c=state.chapter5,r=c.round,role=castingRoles[c.roundIndex],intro=state.phase==='chapter5-intro',finale=['chapter5-finale','chapter5-complete'].includes(state.phase);
     this.document.getElementById('chapter5TV').classList?.toggle('playful',c.audioVersion===1&&!finale&&this.clock.elapsedNow()>=chapter5Opening[2].at);
     this.document.getElementById('chapter5TV').classList?.toggle('killer',!finale&&role.id==='killer');
@@ -90,6 +94,15 @@ export class Chapter5View{
     this.document.getElementById('chapter5-killerNote').hidden=role.id!=='killer';
     for(const role of castingRoles)this.document.getElementById('chapter5-cast-'+role.id).textContent=c.winners.find(w=>w.roleId===role.id)?.player.name||'';
     this.renderer?.update({phase:'opening',startedAt:c.startedAt});
+    // Scheduler elapsed may reach the winner boundary before the next safe
+    // server projection includes its name. Keep the existing suspense visible;
+    // never paint the winner heading alone or disclose a result early.
+    const winner=this.document.getElementById('chapter5-winner');
+    const suspense=this.document.getElementById('chapter5-revealRole');
+    if(!this.renderer?.timeline.cues.some(cue=>cue.visual?.target==='chapter5-revealRole'))suspense.style.opacity=0;
+    if(!intro&&!waiting&&!rules&&!finale&&r.completedAt!==null&&!r.winner&&Number(winner.style.opacity)>0){
+      winner.style.opacity=0;suspense.textContent=role.title+' IS...';suspense.style.opacity=1;
+    }
   }
   progressDue(elapsed,state){
     const c=state.chapter5;

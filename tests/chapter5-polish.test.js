@@ -55,6 +55,32 @@ test('late next-round rendering never paints the previous bitmap while the new a
   pending[1]();await flush();assert.equal(image.hidden,false);assert.equal(image.src,castingRoles[1].src);
   next.chapter5.round.completedAt=310000;e.at(210500);e.view.update(next);assert.equal(pending.length,2,'same-round completion must not decode or flicker');
 });
+for(const [index,role] of castingRoles.entries())test(role.id+' suspense-to-winner polling and refresh never show a role-only frame',()=>{
+  const t=revealTiming(role.id),s=state(index);s.chapter5.round.winner=null;
+  for(const refresh of [false,true]){
+    const e=fixture();
+    if(!refresh){e.at(200000+t.winnerAt-1);e.view.update(s);}
+    e.at(200000+t.winnerAt);e.view.update(s);
+    assert.equal(Number(e.nodes.get('chapter5-winner').style.opacity),0);
+    assert.equal(Number(e.nodes.get('chapter5-revealRole').style.opacity),1);
+    assert.equal(e.nodes.get('chapter5-revealRole').textContent,role.title+' IS...');
+    assert.equal(Number(e.nodes.get('chapter5-card').style.opacity),0);
+    const revealed=structuredClone(s);revealed.chapter5.round.winner={id:'allan',name:'ALLAN'};e.view.update(revealed);
+    assert.equal(Number(e.nodes.get('chapter5-revealRole').style.opacity),0);
+    assert.equal(Number(e.nodes.get('chapter5-winner').style.opacity),1);
+    assert.equal(e.nodes.get('chapter5-winnerRole').textContent,role.title);
+    assert.equal(e.nodes.get('chapter5-winnerName').textContent,'ALLAN');
+    e.view.update(s);assert.equal(e.nodes.get('chapter5-winnerName').textContent,'ALLAN');
+    assert.equal(Number(e.nodes.get('chapter5-card').style.opacity),0);
+    e.at(200000+t.fadeEnd);e.view.update(revealed);
+    assert.equal(Number(e.nodes.get('chapter5-winner').style.opacity),0);
+    assert.equal(Number(e.nodes.get('chapter5-revealRole').style.opacity),0);
+  }
+  const timeline=castingResultTimeline(role,1);
+  assert.equal(timeline.cues.find(c=>c.id==='role').visual.text,role.title+' IS...');
+  assert.equal(timeline.cues.find(c=>c.id==='winner').at,t.winnerAt);
+  const css=fs.readFileSync('chapter5.css','utf8');assert(css.includes('#chapter5-winnerName{font-size:clamp(54px,9vw,160px)'));assert(css.includes('#chapter5-winnerRole{font:clamp(18px,2.2vw,34px)'));
+});
 test('full cast shows all six approved images for the entire narration plus 3s then preserves mystery relative timing',()=>{
   const e=fixture(),timeline=polishedFinaleTimeline(),shift=COMPLETE_CAST_END_MS-8500;
   assert.equal(COMPLETE_CAST_HOLD_MS,Math.ceil(completeCastRecording.durationMs)+3000);
