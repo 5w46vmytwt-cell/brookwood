@@ -1,3 +1,4 @@
+import {revealTiming,POLISHED_FINALE_MS} from './chapter5-reveal-timing.js';
 import {CHAPTER5_READY_MS,roleVotingOffset} from './chapter5-audio-timing.js';
 export const chapter5Phases=['chapter5-intro','chapter5-waiting','chapter5-rules','chapter5-casting','chapter5-finale','chapter5-complete'];
 export const CHAPTER5_INTRO_MS=CHAPTER5_READY_MS;
@@ -12,5 +13,6 @@ export const castingRoles=[
   {id:'killer',title:'THE KILLER',setup:"They've been laughing, drinking and partying with everyone.",question:"WHO'S SECRETLY WAITING FOR THE RIGHT MOMENT?",src:'/assets/chapter5/06-the-killer.png'}
 ];
 export const castingVotingOffset=(role,audioVersion=1)=>audioVersion===1?roleVotingOffset(role):role==='killer'?2500:1200;
-export const castingRevealOffset=role=>role==='killer'?6300:2200;
-export const castingCompletionMs=role=>role==='killer'?11300:role==='sacrifice'?9400:6900;
+export const castingRevealOffset=(role,revealVersion=0)=>revealVersion===1?revealTiming(role).winnerAt:role==='killer'?6300:2200;
+export const castingCompletionMs=(role,revealVersion=0)=>revealVersion===1?revealTiming(role).end:role==='killer'?11300:role==='sacrifice'?9400:6900;
+export const castingFinaleMs=(revealVersion=0)=>revealVersion===1?POLISHED_FINALE_MS:CHAPTER5_FINALE_MS;

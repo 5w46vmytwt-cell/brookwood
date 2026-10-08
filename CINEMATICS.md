@@ -442,14 +442,15 @@ uniform random selection among tied leaders, cached across CAS retries.
 One player may win several roles. Counts are derived from ballots, never stored
 separately. Public state never includes ballots or winners before their reveal.
 
-Result timelines are declarative in `chapter5.js`. Ordinary rounds hold 1000ms,
+Result timelines are declarative in `chapter5.js`. For legacy runs without
+`revealVersion`, ordinary rounds hold 1000ms,
 show the reveal intro 1200ms, winner 3500ms, fade 700ms, then black 500ms. That
 black tail is shared with the next card's initial black, avoiding a double pause.
 Sacrifice holds its winner 4000ms, fades 700ms, then stays black 2500ms. Killer
 uses 2000ms hold, 800ms fade, 1500ms black, 2000ms reveal intro, 3000ms winner,
 and 2000ms THE CAST IS COMPLETE. Killer is explicitly a fictional casting role.
 
-All six winners appear for 7000ms then fade 1500ms. The final mystery text uses
+In those legacy runs, all six winners appear for 7000ms then fade 1500ms. The final mystery text uses
 the specified silent pauses, paired reveals, holds and fades; its total duration
 including cast summary is 30100ms. After that the TV remains black. There is no
 Chapter 6. `/api/progress` advances only server-time-eligible persisted stages;
@@ -465,3 +466,26 @@ prerequisites even when preparation takes several milliseconds. Phone polling
 accepts the final selected-player result before stale personal vote flags and
 derives the package button from that result plus the authenticated identity;
 server-side selected-player authorization remains the final authority.
+
+
+### Narrated cast reveals and presentation
+
+Fresh runs persist `revealVersion: 1`; existing in-flight runs keep their original result clocks. Voting, immutable ballots, random winner persistence, host authentication and generation fencing are unchanged. `chapter5-reveal-timing.js` is the source of truth for the measured original MP3 frames and result gates. All seven new recordings are mono MPEG Layer III, 44,100 Hz, 128 kbps, and remain unprocessed.
+
+| Recording | Exact duration ms | Winner offset from 12th vote ms | Next stage offset ms |
+|---|---:|---:|---:|
+| 12-reveal-screamer.mp3 | 7706.122448979592 | 10207 | 16407 |
+| 13-reveal-decision-maker.mp3 | 8672.65306122449 | 11173 | 17373 |
+| 14-reveal-tripper.mp3 | 7235.918367346939 | 9736 | 15936 |
+| 15-reveal-denier.mp3 | 6269.3877551020405 | 8770 | 14970 |
+| 16-reveal-sacrifice.mp3 | 6765.714285714286 | 9266 | 15466 |
+| 17-reveal-killer.mp3 | 8515.91836734694 | 12016 | 18216 |
+| 18-complete-cast.mp3 | 31164.081632653062 | ? | 35665 |
+
+Each result holds the completed card for 1,000 ms, then plays the reveal voice at volume 1.0. The last 2,000 ms of the measured clip shows AND THE [ROLE] IS...; after the clip's conservatively rounded-up end, suspense is 1,500 ms (Killer 2,500 ms). Winners remain for 5,000 ms, fade over 700 ms, then black holds 500 ms. Only then may the next card entrance begin. Unrevealed winners remain absent from public projections until the winner boundary.
+
+All six approved, unchanged PNGs accompany their persisted winners during the complete-cast narration. The grid remains fully visible through 34165 ms (full clip plus 3,000 ms), then fades over 1,500 ms. The existing mystery sequence keeps its exact relative pauses/copy; total finale is 57265 ms. The looping score ducks from its .14 bed to .056 during narration, shifts to a quieter .08 bed during Killer, restores the playful .14 cast palette/bed, and fades to silence with the summary before the mystery. Refresh seeks current reveal/summary voice from the same authoritative scheduler clock; expired recordings never replay. Existing ENABLE AUDIO recovery remains available for browser autoplay policy.
+
+The view rejects stale lower-round or uncompleted snapshots. Completed result timelines explicitly keep the card invisible after the 1,000 ms hold, including their final black buffer; next-round timestamps no longer borrow that buffer. The reused card image is hidden while its new source decodes: browsers can otherwise paint the outgoing bitmap after `src` changes. A guarded decode promise reveals only the current round's asset; late old decode completions cannot unhide it. Same-round polling never reassigns/decodes the image. There are no page-load timers or delayed CSS visibility tricks.
+
+Visual rules stay scoped to `#chapter5TV` and `#castingBox`: midnight blue, warm cream, muted gold, bold retro serif headings, clean secondary typography, a responsive six-card grid, and large phone targets/focus rings. Browser canvas sampling confirmed the PNG corners are near black (RGB channels 0?3), so the immediate card stage/frames match black, with non-destructive shadows and a very low-opacity static scanline texture. Printed borders and text remain untouched. Reduced-motion preferences disable decorative animations/transitions; the canonical scene fades remain restrained.

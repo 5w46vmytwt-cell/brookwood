@@ -3,3 +3,37 @@
 #chapter5TV.playful{background:radial-gradient(ellipse at center,#251731 0,#0b0811 68%,#000 100%)}#chapter5-gameIntro h1,#chapter5-ready h1{color:#ffca73;text-shadow:0 0 35px #af5c6c44}#chapter5-gameIntro p{max-width:950px}#chapter5-item{font-family:monospace;text-shadow:3px 3px #321515}#chapter5-item .item-banner{font-family:monospace;letter-spacing:.25em;color:#d4bf78}#chapter5-item h1{color:#c99370}#chapter5-roundProgress{font:14px Arial,sans-serif;letter-spacing:.2em;margin-top:12px}#chapter5-timeToVote{color:#ffca73;font-weight:bold;font-size:18px}#chapter5EnableAudio{position:absolute;left:18px;bottom:18px;background:#17101e;color:#eee;border:1px solid #735c85;padding:12px;cursor:pointer}#chapter5EnableAudio[hidden]{display:none}
 
 #chapter5TV .chapter5-layer{pointer-events:none}#chapter5Host,#chapter5EnableAudio{z-index:2}
+
+/* The cards' untouched PNG edges are black: keep their immediate stage black. */
+#chapter5TV{--cream:#f3e6c8;--gold:#bba36a;color:var(--cream);font-family:Georgia,'Times New Roman',serif}
+#chapter5TV.playful{background:radial-gradient(ellipse at center,#151c30,#070b15 72%,#000)}
+#chapter5TV.killer{background:#020307}
+#chapter5-revealIntro::after,#chapter5-revealRole::after,#chapter5-winner::after,#chapter5-cast::after,#chapter5-gameIntro::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.025;background:repeating-linear-gradient(0deg,transparent 0 2px,#e8d8b8 2px 3px);mix-blend-mode:screen}
+#chapter5TV .chapter5-layer{padding:4vh 5vw;overflow:hidden}
+#chapter5TV .chapter5-layer h1{font-weight:900;line-height:1.05;text-wrap:balance;text-shadow:2px 3px 0 #000,0 0 22px #bba36a22}
+#chapter5-card{background:radial-gradient(ellipse,#090c15,#000 70%)}
+#chapter5-cardImage{height:68vh;max-width:82vw;filter:drop-shadow(0 8px 24px #000);border-radius:2px}
+#chapter5-roundProgress{color:var(--gold);font-size:clamp(12px,1.1vw,18px)}
+#chapter5-voteCount{color:var(--cream);font-size:clamp(16px,1.7vw,25px);font-variant-numeric:tabular-nums}
+#chapter5-timeToVote{color:var(--gold);letter-spacing:.18em;font-size:clamp(15px,1.3vw,22px)}
+#chapter5-revealIntro,#chapter5-revealRole{background:#070b15;font-weight:900;font-size:clamp(34px,6vw,100px);line-height:1.15;letter-spacing:.055em;text-wrap:balance;text-shadow:0 0 32px #bba36a22}
+#chapter5-winner{background:radial-gradient(ellipse,#151c30,#050811 75%)}
+#chapter5-winnerRole{font:clamp(18px,2.2vw,34px)/1.3 Arial,sans-serif!important;letter-spacing:.16em;color:var(--gold)}
+#chapter5-winnerName{font-size:clamp(54px,9vw,160px)!important;max-width:90vw;overflow-wrap:anywhere}
+#chapter5-goodLuck,#chapter5-killerNote{color:var(--cream)}
+#chapter5TV.killer #chapter5-revealIntro,#chapter5TV.killer #chapter5-revealRole,#chapter5TV.killer #chapter5-winner{background:#020307}
+#chapter5-cast{background:radial-gradient(ellipse,#182039,#060a13)}
+#chapter5-cast h1{font-size:clamp(28px,3vw,52px);margin:0 0 2vh}
+.cast-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1vh 1.5vw;width:86vw}
+.cast-grid figure{margin:0;min-width:0;background:#000;border:1px solid #bba36a33;box-shadow:0 8px 28px #0008;padding:.6vw}
+.cast-grid img{width:100%;height:27vh;object-fit:contain}
+.cast-grid figcaption{font-size:clamp(16px,1.8vw,30px);font-weight:bold;line-height:1.2;padding:1.5vh .4vw;overflow-wrap:anywhere}
+#castingBox{background:linear-gradient(145deg,#111a2c,#070b15);border:1px solid #bba36a55;padding:24px 18px;color:#f3e6c8;box-shadow:0 12px 40px #0007}
+#castingBox h1{font:900 clamp(26px,7vw,36px)/1.15 Georgia,serif;letter-spacing:.035em;text-wrap:balance}
+#castingBox p{line-height:1.65;color:#e1d4ba}
+#castingBox select,#castingBox button{min-height:58px;border:1px solid #bba36a;background:#0b1220;color:#f3e6c8;border-radius:4px}
+#castingBox button.primary{background:#bba36a;color:#080d19;font-weight:bold;letter-spacing:.06em}
+#castingBox :focus-visible{outline:3px solid #f3e6c8;outline-offset:3px}
+#castingBox #castingCount{font-size:13px;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+@media(max-aspect-ratio:4/3){.cast-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:1vh 2vw}.cast-grid img{height:18vh}.cast-grid figcaption{padding:.5vh}#chapter5-winnerName{font-size:clamp(44px,10vw,110px)!important}}
+@media(prefers-reduced-motion:reduce){#chapter5TV *,#castingBox *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
