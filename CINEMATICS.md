@@ -368,16 +368,74 @@ the new `chapter5.startedAt`. Repeated confirmations are no-ops. These package
 fields remain throughout casting and later checkpoints; reset, return to lobby,
 and an explicit host Chapter Select clear them for a fresh game.
 
-Chapter 5 uses the existing serverNow/AbsoluteCueScheduler and visual renderer.
-It has a silent 10-second explanatory intro, then six persisted rounds in order:
-screamer, terribleDecisionMaker, tripper, denier, sacrifice, killer. The approved
-cards are mapped in `chapter5-timing.js`; their original filenames, including
-`02-the-terrible-decision-make.png`, are used unchanged. No new audio is added.
-Earlier chapter audio stops without replaying historical cues.
+Chapter 5 uses the existing serverNow/AbsoluteCueScheduler, visual renderer and
+audio Player. `chapter5-audio-timing.js` contains the measured recording lengths
+and derived gates. New runs have `audioVersion: 1`; previously persisted runs
+retain their old silent intro/voting gates and do not replay new recordings.
+The six rounds remain screamer, terribleDecisionMaker, tripper, denier,
+sacrifice, killer. Approved cards and their original filenames (including
+`02-the-terrible-decision-make.png`) are unchanged. The TV renders their images,
+round progress, TIME TO VOTE and aggregate counts without duplicating card copy.
+Earlier chapter narration and scores stop before the new soundtrack takes over.
+
+Opening: item acquired starts at 0ms, husband signoff at 15250ms, wife intro at
+35325ms, and wife-ready at 56606ms. The item display resolves the persisted
+machete holder's name. At 63154ms, `chapter5-waiting` holds READY FOR A LITTLE
+FUN? / WAITING FOR THE HOST indefinitely. No player is assumed to be host.
+Only the existing PIN-authenticated `casting-ready` host action persists
+`rulesStartedAt` once and enters `chapter5-rules`. Rules end plus tail is
+41108ms later; only then can `/api/progress` begin Round 1. All scene clocks
+derive from persisted Chapter 5, rules and round timestamps; clients never
+provide authoritative elapsed time. Immediate safe state readback avoids
+waiting for another polling tick after Chapter 5 transitions. Stale polling
+responses cannot undo the host confirmation, round completion or final result.
+
+Exact source durations (ms): WAV data/byte rate; MP3 frame samples/44100.
+Both WAVs are original 24kHz mono 32-bit IEEE float. Narration MP3s are
+44.1kHz mono MPEG Layer III 128kbps; the score is 44.1kHz stereo 256kbps.
+All files were successfully decoded in the local browser; none was processed.
+
+| File | Duration ms |
+| --- | ---: |
+| 01-item-acquired.wav | 15050 |
+| 02-husband-signoff.wav | 19875 |
+| 03-wife-intro.mp3 | 21080.816327 |
+| 04-wife-ready.mp3 | 6347.755102 |
+| 05-wife-rules.mp3 | 40907.755102 |
+| 06-screamer.mp3 | 12434.285714 |
+| 07-decision-maker.mp3 | 15151.020408 |
+| 08-tripper.mp3 | 18285.714286 |
+| 09-denier.mp3 | 18755.918367 |
+| 10-sacrifice.mp3 | 19487.346939 |
+| 11-killer.mp3 | 24267.755102 |
+| cast-background.mp3 | 91846.530612 |
+
+Each transition gate rounds the precise length up to an integer millisecond
+and adds 200ms of safe tail. Normal role narration starts after the existing
+500ms black + 700ms entrance; killer narration follows its 1500ms fade +
+1000ms hold. Voting offsets from round start are 13835, 16552, 19686, 20156,
+20888 and 26968ms. Server authentication and elapsed checks reject every
+early ballot, including Test Mode helper requests.
+
+`chapter5-audio.js` adapts the existing Player with declarative cues and one
+looping cast score. The score starts with the wife intro, fades in over 1000ms,
+holds a .14 gap/wait bed and ducks to .056 beneath narration (150ms pre-roll,
+100ms hold, 250ms release). It survives the host pause, rules, all roles and
+winner reveals without restart. During the final cast summary it fades from
+5500–8500ms to zero, preserving all subsequent mystery silence. Refresh seeks
+from server-clock elapsed modulo measured/browser duration, and active lines
+seek to their remaining portion while expired lines remain consumed.
+
+Start, Chapter Select and host-ready interactions prime the preloaded Chapter 5
+elements synchronously before API awaits. The additive paused-only audio unlock
+option uses zero-gain audible priming and leaves playing elements untouched;
+existing Chapters 1–4 keep their original unlock behavior. If a fresh/reloaded
+TV is blocked by browser policy, ENABLE AUDIO recovers only the currently active
+line and score from their canonical offsets. Failures never change game state.
 
 Each round has a server timestamp, private voter-to-target ballots, and immutable
-winner/completion fields. Voting opens after the ordinary 500ms black + 700ms
-card entrance, or the killer's 1500ms fade + 1000ms hold. Player tokens identify
+winner/completion fields. Voting opens only after each role narration and its
+safe tail (or the original gates for legacy persisted runs). Player tokens identify
 the voter; self-votes, stale runs, stale roles and foreign targets are rejected.
 The twelfth vote atomically chooses the highest candidate using cryptographically
 uniform random selection among tied leaders, cached across CAS retries.
@@ -402,3 +460,8 @@ Host Chapter Select adds `package` (completed door vote, package unopened) and
 construct valid prerequisites and rotate the existing generation fence. The
 host-only `test-cast-simulated` action votes only for simulated players in the
 current activated role; two real phones finish the usual 10/12 test setup.
+Chapter Select captures one server timestamp for coherent package/Chapter 5
+prerequisites even when preparation takes several milliseconds. Phone polling
+accepts the final selected-player result before stale personal vote flags and
+derives the package button from that result plus the authenticated identity;
+server-side selected-player authorization remains the final authority.

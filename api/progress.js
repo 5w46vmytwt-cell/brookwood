@@ -1,4 +1,4 @@
-import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail,isChapter4,withinChapter4Run,activateDoorVoting,makeChapter4Starter} from './_state.js';
+import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail,isChapter4,withinChapter4Run,activateDoorVoting,makeChapter4Starter,publicState} from './_state.js';
 import {PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
 import {isChapter5,withinCastingRun,advanceCasting} from './_chapter5.js';
 
@@ -9,7 +9,7 @@ export default async function handler(req,res){
   try{
     let outcome;
     const startChapter4=makeChapter4Starter();
-    const castingChange=withinCastingRun(s=>{const result=advanceCasting(s);outcome={ok:true,phase:s.phase};return result;});
+    const castingChange=withinCastingRun(s=>{const result=advanceCasting(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const doorChange=withinChapter4Run(s=>{const result=activateDoorVoting(s);outcome={ok:true,eligible:s.phase!=='chapter4-opening',phase:s.phase};return result;});
     const chapter3Change=withinChapter3Run(s=>{
       const result=activatePrivateMessages(s);
@@ -36,6 +36,7 @@ export default async function handler(req,res){
       s.photo={promptedAt:now,confirmedPlayerIds:[],confirmedAt:null};
       s.phase='photo';outcome={ok:true,eligible:true,phase:'photo'};
     }));
+    if(outcome.state)outcome.state.serverNow=Date.now();
     return send(res,200,outcome);
   }catch(error){return fail(res,error);}
 }

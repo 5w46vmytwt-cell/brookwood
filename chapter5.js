@@ -1,6 +1,14 @@
-import {castingRoles,CHAPTER5_INTRO_MS,CHAPTER5_FINALE_MS,castingCompletionMs} from './chapter5-timing.js';
+import {castingRoles,CHAPTER5_INTRO_MS,CHAPTER5_LEGACY_INTRO_MS,CHAPTER5_FINALE_MS,castingCompletionMs} from './chapter5-timing.js';
+import {chapter5Opening,CHAPTER5_RULES_MS} from './chapter5-audio-timing.js';
 const text=(id,at,end,target,copy,extra={})=>({id,type:'text',at,end,visual:{target,...(copy?{text:copy}:{}),...extra}});
-export const chapter5IntroTimeline={id:'chapter5-intro',end:CHAPTER5_INTRO_MS,cues:[text('intro',0,CHAPTER5_INTRO_MS,'chapter5-intro',null,{fadeOut:[9300,10000]})]};
+const legacyIntroTimeline={id:'chapter5-legacy-intro',end:CHAPTER5_LEGACY_INTRO_MS,cues:[text('intro',0,10000,'chapter5-intro',null,{fadeOut:[9300,10000]})]};
+export const chapter5IntroTimeline={id:'chapter5-opening',end:CHAPTER5_INTRO_MS,cues:[
+  text('item',0,chapter5Opening[0].end,'chapter5-item',null,{fadeOut:[chapter5Opening[0].end-500,chapter5Opening[0].end]}),
+  text('wife',chapter5Opening[2].at,chapter5Opening[2].end,'chapter5-gameIntro',null,{fadeIn:[chapter5Opening[2].at,chapter5Opening[2].at+1000]}),
+  text('ready',chapter5Opening[3].at,Infinity,'chapter5-ready')
+]};
+const waitingTimeline={id:'chapter5-waiting',end:Infinity,cues:[text('waiting',0,Infinity,'chapter5-ready')]};
+export const chapter5RulesTimeline={id:'chapter5-rules',end:CHAPTER5_RULES_MS,cues:[text('rules',0,CHAPTER5_RULES_MS,'chapter5-gameIntro',null,{fadeOut:[CHAPTER5_RULES_MS-700,CHAPTER5_RULES_MS]})]};
 export function castingCardTimeline(role){
   const killer=role.id==='killer',at=killer?0:500,fadeEnd=killer?1500:1200;
   return {id:'casting-'+role.id,end:Infinity,cues:[text('card',at,Infinity,'chapter5-card',null,{fadeIn:[at,fadeEnd]})]};
@@ -31,21 +39,24 @@ export class Chapter5View{
   constructor(document,Renderer,clock){this.document=document;this.Renderer=Renderer;this.clock=clock;this.renderer=null;this.key=null;this.state=null;}
   update(state){
     this.state=state;const c=state.chapter5,r=c.round,role=castingRoles[c.roundIndex],intro=state.phase==='chapter5-intro',finale=['chapter5-finale','chapter5-complete'].includes(state.phase);
-    const key=[c.startedAt,intro?'intro':finale?'finale':r.id,r.completedAt,c.completedAt].join(':');
+    this.document.getElementById('chapter5TV').classList?.toggle('playful',c.audioVersion===1&&!finale&&this.clock.elapsedNow()>=chapter5Opening[2].at);
+    const waiting=state.phase==='chapter5-waiting',rules=state.phase==='chapter5-rules';
+    const key=[c.startedAt,intro?'intro':waiting?'waiting':rules?'rules':finale?'finale':r.id,r.completedAt,c.completedAt].join(':');
     if(key!==this.key){
       this.stop();this.key=key;
       if(state.phase==='chapter5-complete')return;
-      const timeline=intro?chapter5IntroTimeline:finale?chapter5FinaleTimeline:r.completedAt!==null?castingResultTimeline(role):castingCardTimeline(role);
+      const timeline=intro?(c.audioVersion===1?chapter5IntroTimeline:legacyIntroTimeline):waiting?waitingTimeline:rules?chapter5RulesTimeline:finale?chapter5FinaleTimeline:r.completedAt!==null?castingResultTimeline(role):castingCardTimeline(role);
       this.renderer=new this.Renderer(this.document,timeline,{...this.clock,elapsedNow:()=>{
-        const current=this.state.chapter5,base=this.state.phase==='chapter5-intro'?current.startedAt:['chapter5-finale','chapter5-complete'].includes(this.state.phase)?current.castStartedAt:current.round.completedAt??current.round.startedAt;
+        const current=this.state.chapter5,base=['chapter5-intro','chapter5-waiting'].includes(this.state.phase)?current.startedAt:this.state.phase==='chapter5-rules'?current.rulesStartedAt:['chapter5-finale','chapter5-complete'].includes(this.state.phase)?current.castStartedAt:current.round.completedAt??current.round.startedAt;
         return Math.max(0,this.clock.elapsedNow()-(base-current.startedAt));
       }});
       const image=this.document.getElementById('chapter5-cardImage');image.src=role.src;image.hidden=false;
       image.onerror=()=>{image.hidden=true;};
     }
-    this.document.getElementById('chapter5-roleTitle').textContent=role.title;
-    this.document.getElementById('chapter5-setup').textContent=role.setup;
-    this.document.getElementById('chapter5-question').textContent=role.question;
+    this.document.getElementById('chapter5-itemHolder').textContent=state.package?.holderPlayer?.name||'';
+    this.document.getElementById('chapter5-waitingCopy').textContent=waiting||(intro&&c.audioVersion===1&&this.clock.elapsedNow()>=CHAPTER5_INTRO_MS)?'WAITING FOR THE HOST':'';
+    this.document.getElementById('chapter5-roundProgress').textContent='ROUND '+(c.roundIndex+1)+' / 6';
+    this.document.getElementById('chapter5-timeToVote').hidden=!r.votingActive;
     this.document.getElementById('chapter5-voteCount').textContent='CASTING IN PROGRESS... '+r.voteCount+' / 12 HAVE VOTED';
     this.document.getElementById('chapter5-winnerRole').textContent=role.title;
     this.document.getElementById('chapter5-winnerName').textContent=r.winner?.name||'';
@@ -56,7 +67,8 @@ export class Chapter5View{
   }
   progressDue(elapsed,state){
     const c=state.chapter5;
-    if(state.phase==='chapter5-intro')return elapsed>=CHAPTER5_INTRO_MS;
+    if(state.phase==='chapter5-intro')return elapsed>=(c.audioVersion===1?CHAPTER5_INTRO_MS:CHAPTER5_LEGACY_INTRO_MS);
+    if(state.phase==='chapter5-rules')return elapsed>=c.rulesStartedAt-c.startedAt+CHAPTER5_RULES_MS;
     if(state.phase==='chapter5-finale')return elapsed>=c.castStartedAt-c.startedAt+CHAPTER5_FINALE_MS;
     if(state.phase==='chapter5-casting'&&c.round.completedAt!==null)return elapsed>=c.round.completedAt-c.startedAt+castingCompletionMs(c.round.id);
     return false;

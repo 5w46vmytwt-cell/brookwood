@@ -40,13 +40,17 @@
 <link rel="stylesheet" href="/chapter5.css">
 <section id="chapter5TV" hidden>
 <div id="chapter5-intro" class="chapter5-layer"><h1>THE CAST</h1><p>Before entering haunted houses, the original Brookwood group used to cast their own horror movie.</p><p>Six roles. Vote for the friend who fits each role.</p><p>No self-voting. One vote per role. The same person can win more than one role.</p></div>
-<div id="chapter5-card" class="chapter5-layer"><img id="chapter5-cardImage" alt="Horror movie casting role card"><h2 id="chapter5-roleTitle"></h2><p id="chapter5-setup"></p><p id="chapter5-question"></p><div id="chapter5-voteCount"></div></div>
+<div id="chapter5-item" class="chapter5-layer"><p class="item-banner">NEW ITEM ACQUIRED</p><h1>BLOODY MACHETE</h1><h2 id="chapter5-itemHolder"></h2></div>
+<div id="chapter5-gameIntro" class="chapter5-layer"><h1>THE CAST</h1><p>Before entering haunted houses, the original Brookwood group used to cast their own horror movie.</p><p>Six roles. Vote for the friend who fits each role.</p><p>No self-voting. One vote per role. The same person can win more than one role.</p></div>
+<div id="chapter5-ready" class="chapter5-layer"><h1>READY FOR A LITTLE FUN?</h1><p id="chapter5-waitingCopy"></p></div>
+<div id="chapter5-card" class="chapter5-layer"><img id="chapter5-cardImage" alt="Horror movie casting role card"><div id="chapter5-roundProgress"></div><p id="chapter5-timeToVote" hidden>TIME TO VOTE</p><div id="chapter5-voteCount"></div></div>
 <div id="chapter5-revealIntro" class="chapter5-layer"></div>
 <div id="chapter5-winner" class="chapter5-layer"><h2 id="chapter5-winnerRole"></h2><h1 id="chapter5-winnerName"></h1><p id="chapter5-goodLuck" hidden>GOOD LUCK</p><p id="chapter5-killerNote" hidden>A ROLE IN TONIGHT'S CAST</p></div>
 <div id="chapter5-castComplete" class="chapter5-layer"></div>
 <div id="chapter5-cast" class="chapter5-layer"><h1>TONIGHT'S CAST</h1><dl><dt>THE SCREAMER</dt><dd id="chapter5-cast-screamer"></dd><dt>THE TERRIBLE DECISION MAKER</dt><dd id="chapter5-cast-terribleDecisionMaker"></dd><dt>THE TRIPPER</dt><dd id="chapter5-cast-tripper"></dd><dt>THE DENIER</dt><dd id="chapter5-cast-denier"></dd><dt>THE SACRIFICE</dt><dd id="chapter5-cast-sacrifice"></dd><dt>THE KILLER</dt><dd id="chapter5-cast-killer"></dd></dl></div>
 <div id="chapter5-ofCourse" class="chapter5-layer"></div><div id="chapter5-onlyGame" class="chapter5-layer"></div><div id="chapter5-tonight" class="chapter5-layer"></div><div id="chapter5-someoneElse" class="chapter5-layer"></div><div id="chapter5-unlikeYours" class="chapter5-layer"></div><div id="chapter5-rules" class="chapter5-layer"></div>
-<div id="chapter5Host" hidden><input id="chapter5HostCode" type="password" placeholder="Host code" aria-label="Chapter 5 host code"><button onclick="castSimulatedPlayers()">TEST: CAST SIMULATED PLAYERS</button><div id="chapter5HostError" role="alert"></div></div>
+<div id="chapter5Host" hidden><input id="chapter5HostCode" type="password" placeholder="Host code" aria-label="Chapter 5 host code"><button id="chapter5ReadyButton" hidden onclick="castingEveryoneReady()">EVERYONE IS READY</button><button id="chapter5SimulatedButton" hidden onclick="castSimulatedPlayers()">TEST: CAST SIMULATED PLAYERS</button><div id="chapter5HostError" role="alert"></div></div>
+<button id="chapter5EnableAudio" hidden onclick="enableCastingAudio()">ENABLE AUDIO</button>
 </section><section id="chapter4TV" hidden><div id="chapter4-cinematic">
 <img id="chapter4-scene-01" class="chapter4-layer chapter4-image" alt="" src="/assets/chapter4/01-newspaper-1996.png"><img id="chapter4-scene-02" class="chapter4-layer chapter4-image" alt="" src="/assets/chapter4/02-witness-statements.png"><img id="chapter4-scene-03" class="chapter4-layer chapter4-image" alt="" src="/assets/chapter4/03-machete-investigation.png"><img id="chapter4-scene-04" class="chapter4-layer chapter4-image" alt="" src="/assets/chapter4/04-daniel-reeve.png"><img id="chapter4-scene-05" class="chapter4-layer chapter4-image" alt="" src="/assets/chapter4/05-breaking-news-2026.png"><img id="chapter4-scene-06" class="chapter4-layer chapter4-image" alt="" src="/assets/chapter4/06-unsolved-case.png">
 <div id="chapter4-vote" class="chapter4-layer"><img class="chapter4-door-image" src="/assets/chapter4/doorbell-package.png" alt="Night-vision doorbell camera view of a sealed package on the porch"><h2>SOMEONE LEFT SOMETHING AT THE DOOR.</h2><p class="chapter4-door-question">Who is brave enough to go check?</p><div id="chapter4-count"></div><p class="chapter4-vote-hint">Vote on your phone.</p></div></div>
@@ -65,7 +69,7 @@ const tvRuntime=new BrookwoodTV.Runtime({document,timeline:BrookwoodChapter1.cha
 tvRuntime.onElapsed=requestPhotoProgress;
 const cinematic=tvRuntime.visuals,narration=tvRuntime.audio;
 document.addEventListener('visibilitychange',()=>{if(document.hidden)tvRuntime.suspend()});
-document.addEventListener('pointerdown',()=>{tvRuntime.unlockBackground();tvRuntime.unlockChapter3();tvRuntime.unlockChapter4()});
+document.addEventListener('pointerdown',()=>{tvRuntime.unlockBackground();tvRuntime.unlockChapter3();tvRuntime.unlockChapter4();tvRuntime.unlockChapter5()});
 let last=null,pollError=null,progressPending=false;
 let returnKeys=[],returnRun=null,returnPending=false;
 function completedOpening(){const start=Number(last?.startedAt);return (last?.phase==='opening'||!!last?.chapter3)&&Number.isFinite(start)&&start>0&&tvRuntime.originalElapsedNow()>=BrookwoodChapter1.chapter1Timeline.end}
@@ -90,7 +94,7 @@ async function returnLobby(){
   catch(failure){error.textContent=failure.message}
   finally{returnPending=false;button.disabled=false}
 }
-function render(s,timing){document.getElementById('chapterSelectToggle').hidden=!validTestCast(s)||!['lobby','photo','photo-complete'].includes(s.phase);if(!validTestCast(s))closeChapterSelect();tvRuntime.acceptState(s,timing);last=s;document.getElementById('chapter5TV').hidden=!s.chapter5;if(s.chapter5){document.getElementById('chapter4TV').hidden=true;document.getElementById('chapter3TV').hidden=true;document.getElementById('photoCheckpoint').hidden=true;document.getElementById('opening').classList.remove('show');document.getElementById('chapter5Host').hidden=!s.chapter5.round.votingActive;return;}document.getElementById('chapter4TV').hidden=!s.chapter4;if(s.chapter4){document.getElementById('opening').classList.remove('show');document.getElementById('photoCheckpoint').hidden=true;document.getElementById('chapter3TV').hidden=true;document.getElementById('chapter4Host').hidden=!s.chapter4.active||s.chapter4.complete;return;}if(!completedOpening())closeReturnControl();document.getElementById('chapter3TV').hidden=!s.chapter3;if(s.chapter3){document.getElementById('opening').classList.remove('show');document.getElementById('photoCheckpoint').hidden=true;return}if(s.phase==='photo-complete')startChapter3Automatically(s);const photo=['photo','photo-complete'].includes(s.phase);document.getElementById('photoCheckpoint').hidden=!photo;if(photo){document.getElementById('opening').classList.remove('show');document.getElementById('photoCounter').textContent=s.photo.confirmedCount+' / 12 READY FOR THE PHOTO';return}if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
+function render(s,timing){const previous=last?.chapter5,next=s.chapter5;if(previous&&next?.startedAt===previous.startedAt&&(previous.roundIndex>next.roundIndex||(previous.rulesStartedAt&&!next.rulesStartedAt)||(previous.readyAt&&!next.readyAt)||(previous.completedAt&&!next.completedAt)||(previous.roundIndex===next.roundIndex&&previous.round.completedAt&&!next.round.completedAt)))return;document.getElementById('chapterSelectToggle').hidden=!validTestCast(s)||!['lobby','photo','photo-complete'].includes(s.phase);if(!validTestCast(s))closeChapterSelect();tvRuntime.acceptState(s,timing);last=s;document.getElementById('chapter5TV').hidden=!s.chapter5;if(s.chapter5){document.getElementById('chapter4TV').hidden=true;document.getElementById('chapter3TV').hidden=true;document.getElementById('photoCheckpoint').hidden=true;document.getElementById('opening').classList.remove('show');document.getElementById('chapter5Host').hidden=!(s.phase==='chapter5-waiting'||s.chapter5.round.votingActive);document.getElementById('chapter5ReadyButton').hidden=s.phase!=='chapter5-waiting';document.getElementById('chapter5SimulatedButton').hidden=!s.chapter5.round.votingActive;return;}document.getElementById('chapter4TV').hidden=!s.chapter4;if(s.chapter4){document.getElementById('opening').classList.remove('show');document.getElementById('photoCheckpoint').hidden=true;document.getElementById('chapter3TV').hidden=true;document.getElementById('chapter4Host').hidden=!s.chapter4.active||s.chapter4.complete;return;}if(!completedOpening())closeReturnControl();document.getElementById('chapter3TV').hidden=!s.chapter3;if(s.chapter3){document.getElementById('opening').classList.remove('show');document.getElementById('photoCheckpoint').hidden=true;return}if(s.phase==='photo-complete')startChapter3Automatically(s);const photo=['photo','photo-complete'].includes(s.phase);document.getElementById('photoCheckpoint').hidden=!photo;if(photo){document.getElementById('opening').classList.remove('show');document.getElementById('photoCounter').textContent=s.photo.confirmedCount+' / 12 READY FOR THE PHOTO';return}if(s.phase==='opening'){document.getElementById('opening').classList.add('show');return}document.getElementById('opening').classList.remove('show');document.getElementById('count').textContent=s.players.length;const byId=Object.fromEntries(s.players.map(p=>[p.id,p]));const g=document.getElementById('grid');g.innerHTML='';for(let i=0;i<12;i++){const p=s.players[i],d=document.createElement('div');d.className='card';if(p){const partner=byId[p.partnerId];d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="ready ${p.ready?'y':''}">${p.ready?'READY':'WAITING'}</div><div class="name"></div><div class="partner">${partner?'PARTNER · '+esc(partner.name):'PARTNER · —'}</div>`;d.querySelector('.name').textContent=p.name}else d.innerHTML=`<div class="num">CAST ${String(i+1).padStart(2,'0')}</div><div class="name empty">Awaiting player…</div>`;g.appendChild(d)}}
 function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function requestPhotoProgress(elapsed,state){
   if(state.chapter5){if(!tvRuntime.chapter5Visuals.progressDue(elapsed,state)||progressPending)return;}else if(state.chapter4){if(state.phase!=='chapter4-opening'||elapsed<tvRuntime.chapter4VoteAt||progressPending)return;}else if(state.phase==='private-messages-complete'){if(elapsed-(state.chapter3.completedAt-state.chapter3.startedAt)<tvRuntime.chapter3Visuals.completion.timeline.end||progressPending)return;}else{const chapter3=!!state.chapter3;const run=chapter3?state.chapter3.startedAt:state.startedAt;if((chapter3?(state.phase!=='chapter3-opening'||elapsed<12600):(state.phase!=='opening'||elapsed<88000))||progressPending)return;
@@ -99,7 +103,7 @@ async function requestPhotoProgress(elapsed,state){
   // Retry via the existing poll cycle, not every animation frame.
   if(progressRun===run&&elapsed<progressRetryAt)return;
   progressRun=run;progressRetryAt=elapsed+1200;progressPending=true;
-  try{await lobbyRequest('/api/progress',{})}
+  try{const sentAt=performance.now(),result=await lobbyRequest('/api/progress',{});if(state.chapter5&&result.state&&last?.chapter5?.startedAt===run)render(result.state,{sentAt,receivedAt:performance.now()});}
   catch(error){document.getElementById('msg').textContent=error.message}
   finally{progressPending=false}
 }
@@ -115,6 +119,7 @@ async function host(action){
   if(action==='start')narration.unlock();
   if(action==='start')tvRuntime.unlockChapter3();
   if(action==='start')tvRuntime.unlockChapter4();
+  if(action==='start')tvRuntime.unlockChapter5();
   try{await lobbyRequest('/api/host',{action,code:document.getElementById('code').value})}
   catch(error){msg.textContent=error.message}
 }
@@ -161,5 +166,17 @@ async function castSimulatedPlayers(){
   const error=document.getElementById('chapter5HostError');error.textContent='';
   try{await lobbyRequest('/api/host',{action:'test-cast-simulated',code:document.getElementById('chapter5HostCode').value,chapter5StartedAt:c.startedAt,roleId:c.round.id});}
   catch(e){error.textContent=e.message;}
-}Object.assign(globalThis,{castSimulatedPlayers,openChapterSelect,closeChapterSelect,selectTestChapter,voteSimulatedPlayers});
+}
+let castingReadyPending=false;
+async function castingEveryoneReady(){
+  if(castingReadyPending||last?.phase!=='chapter5-waiting')return;
+  tvRuntime.unlockChapter5();castingReadyPending=true;
+  const button=document.getElementById('chapter5ReadyButton'),error=document.getElementById('chapter5HostError');button.disabled=true;error.textContent='';
+  const run=last.chapter5.startedAt;
+  try{const sentAt=performance.now(),result=await lobbyRequest('/api/host',{action:'casting-ready',code:document.getElementById('chapter5HostCode').value,chapter5StartedAt:run});if(result.state&&last?.chapter5?.startedAt===run)render(result.state,{sentAt,receivedAt:performance.now()});}
+  catch(failure){error.textContent=failure.message;}
+  finally{castingReadyPending=false;button.disabled=false;}
+}
+function enableCastingAudio(){tvRuntime.unlockChapter5();}
+Object.assign(globalThis,{castingEveryoneReady,enableCastingAudio,castSimulatedPlayers,openChapterSelect,closeChapterSelect,selectTestChapter,voteSimulatedPlayers});
 </script></body></html>

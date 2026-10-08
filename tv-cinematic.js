@@ -10,6 +10,7 @@ import {Chapter4View,chapter4AudioTimeline} from './chapter4.js';
 import {chapter4Audio,chapter4Score} from './chapter4-audio.js';
 import {chapter5Phases} from './chapter5-timing.js';
 import {Chapter5View} from './chapter5.js';
+import {Chapter5Audio} from './chapter5-audio.js';
 
 // One scheduler clock, fed by the TV's existing /api/state poller.
 export class TVCinematicRuntime {
@@ -18,12 +19,14 @@ export class TVCinematicRuntime {
     onElapsed=()=>{},now=()=>globalThis.performance.now(),requestFrame=cb=>globalThis.requestAnimationFrame(cb),
     cancelFrame=id=>globalThis.cancelAnimationFrame(id)}={}) {
     if(timeline.end!==CHAPTER1_END_MS)throw Error('Unexpected Chapter 1 end');
-    this.state=null;this.now=now;this.onElapsed=onElapsed;
+    this.state=null;this.now=now;this.onElapsed=onElapsed;this.document=document;
     this.chapter4VoteAt=CHAPTER4_VOTING_MS;
     this.scheduler=new AbsoluteCueScheduler({autoSync:false,now,requestFrame,cancelFrame,
       onElapsed:(elapsed,meta)=>{
         if(chapter5Phases.includes(this.state?.phase)){
-          this.chapter5Visuals.update(this.state);this.onElapsed(elapsed,this.state);return;
+          this.chapter5Visuals.update(this.state);this.chapter5Audio.update(this.state,meta);
+          this.document.getElementById('chapter5EnableAudio').hidden=!this.chapter5Audio.needsUnlock();
+          this.onElapsed(elapsed,this.state);return;
         }
         if(chapter4Phases.includes(this.state?.phase)){
           this.chapter4Visuals.update(this.state);
@@ -54,6 +57,7 @@ export class TVCinematicRuntime {
     this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,audioExtension:chapter4Audio,
       trackMedia:new Map([[chapter4Score.id,this.audio.soundtrack?.audio]]),canSync:()=>!this.scheduler.recovering});
     this.chapter5Visuals=new Chapter5View(document,Renderer,clock);
+    this.chapter5Audio=new Chapter5Audio(Player,{...clock,canSync:()=>!this.scheduler.recovering});
     this.scheduler.start();
   }
   acceptState(state,timing={}) {
@@ -62,8 +66,12 @@ export class TVCinematicRuntime {
     const chapter4=chapter4Phases.includes(state.phase);
     const chapter5=chapter5Phases.includes(state.phase);
     if(chapter4||chapter5){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
+    if(chapter5&&!chapter5Phases.includes(previous?.phase)){
+      const score=this.audio.soundtrack;
+      if(score?.audio){score.audio.pause();score.attempted=false;}
+    }
     if(!this.scheduler.acceptState(chapter5?{...state,startedAt:state.chapter5.startedAt}:chapter4?{...state,startedAt:state.chapter4.startedAt}:chapter3?{...state,startedAt:state.chapter3.startedAt}:state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
-    if(!chapter5)this.chapter5Visuals.stop();
+    if(!chapter5){this.chapter5Visuals.stop();this.chapter5Audio.stop();}
     if(!chapter4){this.chapter4Audio.stop();this.chapter4Visuals.stop();}
     if(!chapter3){this.chapter3Audio.stop();this.chapter3Visuals.stop();this.audio.setTrackGain(1);}
     if(state.phase!=='opening'){
@@ -75,8 +83,9 @@ export class TVCinematicRuntime {
   originalElapsedNow(){return this.elapsedNow()+(chapter5Phases.includes(this.state?.phase)?this.state.chapter5.startedAt-this.state.startedAt:chapter4Phases.includes(this.state?.phase)?this.state.chapter4.startedAt-this.state.startedAt:chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
   unlockChapter3(){if(this.chapter3Audio.startedAt===null)this.chapter3Audio.unlock();}
   unlockChapter4(){if(this.chapter4Audio.startedAt===null)this.chapter4Audio.unlock();}
+  unlockChapter5(){this.chapter5Audio.unlock();}
   unlockBackground(){if(chapter5Phases.includes(this.state?.phase))return;if(chapter4Phases.includes(this.state?.phase))this.chapter4Audio.unlockBackground();else this.audio.unlockBackground();}
-  unlockForTestJump(){this.audio.unlock({background:!chapter4Phases.includes(this.state?.phase)&&!chapter5Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();}
+  unlockForTestJump(){this.audio.unlock({background:!chapter4Phases.includes(this.state?.phase)&&!chapter5Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();this.unlockChapter5();}
 }
 // Classic Chapter 1 assets load first; the TV's following module uses this bridge.
 globalThis.BrookwoodTV={Runtime:TVCinematicRuntime};

@@ -116,20 +116,24 @@
         }
       }
     }
-    unlock({background=true}={}) {
+    unlock({background=true,onlyPaused=false}={}) {
       // Called synchronously by the host's Start click, before its API await.
       if(background)this.unlockBackground();
       for (const [id, audio] of [...this.media,...this.tracks.filter(t=>t.audio&&t.audio.paused).map(t=>[t.config.id,t.audio])]) {
+        if(onlyPaused&&!audio.paused)continue;
         if (this.unavailable.has(id)) continue;
+        const volume=audio.volume;
         try {
-          audio.muted = true;
+          // Optional active-safe priming requests audible permission while at
+          // zero gain. Existing callers keep their original muted priming.
+          audio.muted = !onlyPaused;if(onlyPaused)audio.volume=0;
           const promise = audio.play();
-          audio.pause(); audio.muted = false;
+          audio.pause(); audio.muted = false;if(onlyPaused)audio.volume=volume;
           Promise.resolve(promise).catch(error => {
             // Pausing a priming attempt normally rejects with AbortError.
             if (error?.name !== 'AbortError') console.warn(`Narration priming blocked: ${id}`, error);
           });
-        } catch (error) { audio.muted = false; console.warn(`Narration priming failed: ${id}`, error); }
+        } catch (error) { audio.muted = false;if(onlyPaused)audio.volume=volume;console.warn(`Narration priming failed: ${id}`, error); }
       }
     }
     setTrackGain(gain){for(const track of this.tracks)track.gain=gain;}
@@ -173,16 +177,16 @@
         try {
           if (this.active) this.active.audio.pause();
           audio.currentTime = (elapsed - cue.at) / 1000;
-          this.active = { cue, audio };
+          const entry=this.active = { cue, audio };
           Promise.resolve(audio.play()).then(() => {
             // A delayed load/play must not move subsequent cues later.
-            if (run !== this.run || this.active?.cue.id !== cue.id) return;
+            if (run !== this.run || this.active !== entry) return;
             const offset = (this.elapsedNow() - cue.at) / 1000;
             if (offset >= cue.durationMs / 1000) { audio.pause(); this.active = null; }
             else if (Math.abs(audio.currentTime - offset) > .1) audio.currentTime = offset;
           }).catch(error => {
             console.warn(`Narration playback blocked or failed: ${cue.id}`, error);
-            if (run === this.run && this.active?.cue.id === cue.id) { audio.pause(); this.active = null; }
+            if (run === this.run && this.active === entry) { audio.pause(); this.active = null; }
           });
         } catch (error) { console.warn(`Narration seek/play failed: ${cue.id}`, error); audio.pause(); this.active = null; }
       }

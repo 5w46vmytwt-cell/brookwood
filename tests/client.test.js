@@ -34,6 +34,62 @@ test('selected package phone alone shows authenticated confirmation and double c
   const other=await privateEnvironment(doorResponse(true,true,true));assert(other.document.getElementById('packageOpen').classList.contains('hidden'));
 });
 
+test('untouched selected and other phones update from recorded vote to package result on the next poll, without reload',async()=>{
+  for(const selected of ['real','other']){
+    let state=doorResponse(true,true),e=await privateEnvironment(state);e.context.lobbyRequest=async()=>state;
+    assert.equal(e.document.getElementById('voteTitle').textContent,'VOTE RECORDED');const previous=state;
+    state=doorResponse(true,true,true);state.chapter4.selectedPlayer={id:selected,name:selected==='real'?'Player':'Other Player'};state.chapter4.canOpenPackage=selected==='real';
+    [...e.timers.values()][0]();await flush();assert.equal(e.timers.size,1);
+    assert.equal(e.document.getElementById('voteTitle').textContent,state.chapter4.selectedPlayer.name);
+    assert.equal(e.document.getElementById('packageOpen').classList.contains('hidden'),selected!=='real');
+    e.context.oldState=previous;vm.runInContext('render(oldState);privateRuntime.onState(oldState,true)',e.context);
+    assert.equal(e.document.getElementById('packageOpen').classList.contains('hidden'),selected!=='real');
+    assert.equal(e.document.getElementById('voteTitle').textContent,state.chapter4.selectedPlayer.name);
+  }
+});
+
+test('final selection cannot be discarded by a racing stale per-player vote flag or depend on a cached package capability',async()=>{
+  const e=await privateEnvironment(doorResponse(true,true));
+  const final=doorResponse(true,false,true);final.chapter4.selectedPlayer={id:'real',name:'Player'};
+  // The completed authoritative result takes precedence over stale local vote metadata.
+  e.context.next=final;vm.runInContext('render(next)',e.context);
+  assert.equal(e.document.getElementById('voteTitle').textContent,'Player');assert(!e.document.getElementById('packageOpen').classList.contains('hidden'));
+});
+
+test('casting phones wait through host pause/rules and activate only on authoritative narration-finished poll',async()=>{
+  let state=castingResponse(0,false,'chapter5-intro');state.chapter5.audioVersion=1;state.chapter5.readyAt=null;state.chapter5.rulesStartedAt=null;
+  const e=await privateEnvironment(state);e.context.lobbyRequest=async()=>state;
+  const poll=async()=>{[...e.timers.values()][0]();await flush();assert.equal(e.timers.size,1);};
+  state={...state,phase:'chapter5-waiting',chapter5:{...state.chapter5,readyAt:5063154}};await poll();assert.equal(e.document.getElementById('castingCopy').textContent,'WAITING FOR THE HOST');
+  assert(e.document.getElementById('castingSubmit').classList.contains('hidden'));
+  const waiting=state;state={...state,phase:'chapter5-rules',chapter5:{...state.chapter5,rulesStartedAt:5100000}};await poll();
+  e.context.oldState=waiting;vm.runInContext('render(oldState)',e.context);assert.equal(vm.runInContext('me.phase',e.context),'chapter5-rules');
+  state={...state,phase:'chapter5-casting',chapter5:{...state.chapter5,round:{...state.chapter5.round,startedAt:5141108,votingActive:false}}};await poll();
+  assert(e.document.getElementById('castingSubmit').classList.contains('hidden'));
+  state={...state,chapter5:{...state.chapter5,round:{...state.chapter5.round,votingActive:true}}};await poll();assert(!e.document.getElementById('castingSubmit').classList.contains('hidden'));
+});
+
+test('TV host-ready control sends entered authorization and current run once, never assumes a player is host',async()=>{
+  const e=returnEnvironment();await flush();const calls=[];
+  e.context.state={phase:'chapter5-waiting',startedAt:1,serverNow:5063154,players:[],chapter5:{audioVersion:1,startedAt:5000000,readyAt:5063154,rulesStartedAt:null,roundIndex:0,castStartedAt:null,completedAt:null,winners:[],round:{id:'screamer',startedAt:null,completedAt:null,voteCount:0,votingActive:false,winner:null}}};
+  vm.runInContext('render(state)',e.context);assert.equal(e.document.getElementById('chapter5ReadyButton').hidden,false);
+  e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true};};e.document.getElementById('chapter5HostCode').value='entered-host';
+  vm.runInContext('castingEveryoneReady();castingEveryoneReady()',e.context);await flush();assert.equal(calls.length,1);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),{url:'/api/host',body:{action:'casting-ready',code:'entered-host',chapter5StartedAt:5000000}});
+  assert(!fs.readFileSync('tv.html','utf8').includes('HOST_KEY'));
+});
+
+test('TV host-ready readback renders rules immediately and a late waiting poll cannot undo it; host controls are not covered by invisible layers',async()=>{
+  const e=returnEnvironment();await flush();
+  const waiting={phase:'chapter5-waiting',startedAt:1,serverNow:5063154,players:[],chapter5:{audioVersion:1,startedAt:5000000,readyAt:5063154,rulesStartedAt:null,roundIndex:0,castStartedAt:null,completedAt:null,winners:[],round:{id:'screamer',startedAt:null,completedAt:null,voteCount:0,votingActive:false,winner:null}}};
+  e.context.state=waiting;vm.runInContext('render(state)',e.context);
+  const rules={...waiting,phase:'chapter5-rules',chapter5:{...waiting.chapter5,rulesStartedAt:5063154}};
+  e.context.lobbyRequest=async()=>({ok:true,state:rules});await vm.runInContext('castingEveryoneReady()',e.context);
+  assert.equal(vm.runInContext('last.phase',e.context),'chapter5-rules');vm.runInContext('render(state)',e.context);assert.equal(vm.runInContext('last.phase',e.context),'chapter5-rules');
+  assert.equal(e.document.getElementById('chapter5ReadyButton').hidden,true);
+  assert(fs.readFileSync('chapter5.css','utf8').includes('pointer-events:none'));
+});
+
 test('untouched casting phone polls through intro, immutable vote, next round and finale without reload or reveal animation',async()=>{
   let state=castingResponse(0,false,'chapter5-intro');const e=await privateEnvironment(state);
   e.context.lobbyRequest=async()=>state;

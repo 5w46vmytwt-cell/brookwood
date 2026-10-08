@@ -1,12 +1,17 @@
 import crypto from "node:crypto";
-import {isChapter5,makeCastingTestSelector,makeCastingVoter,withinCastingRun} from './_chapter5.js';
+import {isChapter5,makeCastingTestSelector,makeCastingVoter,withinCastingRun,confirmCastingReady} from './_chapter5.js';
 import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
-import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector} from "./_state.js";
+import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
   if(String(req.body?.code||"")!==String(process.env.HOST_KEY||"1031"))return send(res,403,{error:"Wrong host code."});
   try{
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
+    if(req.body.action==='casting-ready'){
+      let state;
+      await updateState(withinCastingRun(s=>{const result=confirmCastingReady(s,req.body.chapter5StartedAt);state=publicState(s);return result;}));
+      return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});
+    }
     if(req.body.action==='test-cast-simulated'){
       const vote=makeCastingVoter(),targets=new Map();
       await updateState(withinCastingRun(s=>{

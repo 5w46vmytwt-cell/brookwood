@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {castingRoles,castingVotingOffset,castingCompletionMs,CHAPTER5_FINALE_MS} from '../chapter5-timing.js';
 import {Chapter5View,chapter5IntroTimeline,castingCardTimeline,castingResultTimeline,chapter5FinaleTimeline} from '../chapter5.js';
 import {TVCinematicRuntime} from '../tv-cinematic.js';
+import {chapter5Opening,narrationGate,CHAPTER5_READY_MS} from '../chapter5-audio-timing.js';
 function fixture(){
   const nodes=new Map();const document={getElementById(id){if(!nodes.has(id))nodes.set(id,{style:{},hidden:false,addEventListener(){}});return nodes.get(id);}};
   const context=vm.createContext({document});vm.runInContext(fs.readFileSync('cinematic-engine.js','utf8'),context);
@@ -15,12 +16,12 @@ test('Chapter 5 roles, exact copy and all six existing approved PNG assets are p
   const copy=[['A door slams. A light flickers.','WHO HAS ALREADY SCREAMED SIX TIMES TONIGHT?'],['You finally escaped.',"WHO SAYS, 'GUYS... WE SHOULD GO BACK'?"],['The killer is right behind you.','WHO TRIPS OVER ABSOLUTELY NOTHING?'],["Blood on the wall. Someone's missing.","WHO STILL SAYS, 'GUYS, IT'S PROBABLY NOTHING'?"],["You don't have to outrun the killer.",'YOU JUST HAVE TO OUTRUN... WHO?'],["They've been laughing, drinking and partying with everyone.","WHO'S SECRETLY WAITING FOR THE RIGHT MOMENT?"]];
   castingRoles.forEach((r,i)=>{assert.deepEqual([r.setup,r.question],copy[i]);assert.equal(fs.readFileSync('.'+r.src).subarray(1,4).toString(),'PNG');});
 });
-test('casting card entry is black for 500ms then animates 700ms; killer fades 1500ms and voting waits 1000ms more',()=>{
+test('casting card entry stays frozen and voting waits for the full measured narration and tail',()=>{
   const e=fixture();for(const role of castingRoles.slice(0,5)){
     const timeline=castingCardTimeline(role),opacity=t=>e.resolve(timeline,t).card.opacity;
-    assert.equal(opacity(499),0);assert.equal(opacity(500),0);assert.equal(opacity(850),.5);assert.equal(opacity(1200),1);assert.equal(castingVotingOffset(role.id),1200);
+    assert.equal(opacity(499),0);assert.equal(opacity(500),0);assert.equal(opacity(850),.5);assert.equal(opacity(1200),1);assert.equal(castingVotingOffset(role.id),1200+narrationGate(role.id));
   }
-  const killer=castingCardTimeline(castingRoles[5]);assert.equal(e.resolve(killer,0).card.opacity,0);assert.equal(e.resolve(killer,750).card.opacity,.5);assert.equal(e.resolve(killer,1500).card.opacity,1);assert.equal(castingVotingOffset('killer'),2500);
+  const killer=castingCardTimeline(castingRoles[5]);assert.equal(e.resolve(killer,0).card.opacity,0);assert.equal(e.resolve(killer,750).card.opacity,.5);assert.equal(e.resolve(killer,1500).card.opacity,1);assert.equal(castingVotingOffset('killer'),2500+narrationGate('killer'));
 });
 test('normal casting results preserve hold, intro, winner, fade and black boundaries for rounds 1–4',()=>{
   const e=fixture();for(const role of castingRoles.slice(0,4)){
@@ -87,9 +88,14 @@ test('Chapter 5 progress requests are due only at authoritative intro, round com
   state.phase='chapter5-finale';state.chapter5.castStartedAt=200000;assert.equal(view.progressDue(130099,state),false);assert.equal(view.progressDue(130100,state),true);
   state.phase='chapter5-complete';assert.equal(view.progressDue(999999,state),false);
 });
-test('Chapter 5 intro explains all voting rules without new audio, illustrations, or client timers',()=>{
+test('Chapter 5 opening uses measured narration boundaries and retains rules without client timers or replacement art',()=>{
   const html=fs.readFileSync('tv.html','utf8');assert(html.includes('original Brookwood group used to cast their own horror movie'));assert(html.includes('No self-voting. One vote per role. The same person can win more than one role.'));
-  assert.equal(chapter5IntroTimeline.end,10000);const source=fs.readFileSync('chapter5.js','utf8');assert(!source.includes('setTimeout'));assert(!source.includes('Date.now'));assert(!source.includes('new Audio'));
+  assert.equal(chapter5IntroTimeline.end,CHAPTER5_READY_MS);const source=fs.readFileSync('chapter5.js','utf8');assert(!source.includes('setTimeout'));assert(!source.includes('Date.now'));assert(!source.includes('new Audio'));
+  const e=fixture();assert.equal(e.resolve(chapter5IntroTimeline,0).item.opacity,1);
+  assert(Object.values(e.resolve(chapter5IntroTimeline,chapter5Opening[1].at)).every(v=>v.opacity===0));
+  assert.equal(e.resolve(chapter5IntroTimeline,chapter5Opening[2].at+1000).wife.opacity,1);
+  assert.equal(e.resolve(chapter5IntroTimeline,chapter5Opening[3].at).ready.opacity,1);
+  for(const id of ['chapter5-roleTitle','chapter5-setup','chapter5-question'])assert(!html.includes('id="'+id+'"'));
 });
 
 test('TV scheduler changes to Chapter 5 clock, silences obsolete audio and reconstructs fresh test runs without a reload',()=>{
@@ -103,9 +109,11 @@ test('TV scheduler changes to Chapter 5 clock, silences obsolete audio and recon
   const oldPlayCount=[...runtime.chapter4Audio.media.values()].reduce((n,a)=>n+a.plays,0);
   const state={phase:'chapter5-casting',startedAt:100000,serverNow:511200,chapter3:{startedAt:200000,completedAt:220000,readCount:12},chapter4:{startedAt:300000,complete:true,voteCount:12},chapter5:{startedAt:500000,roundIndex:0,castStartedAt:null,completedAt:null,winners:[],round:{id:'screamer',startedAt:510000,completedAt:null,voteCount:3,winner:null}}};
   runtime.acceptState(state,{hard:true});assert.equal(runtime.elapsedNow(),11200);assert.equal(Number(e.nodes.get('chapter5-card').style.opacity),1);
-  assert([...runtime.chapter4Audio.media.values()].every(a=>a.paused));assert.equal(runtime.audio.soundtrack.audio.volume,0);
+  assert([...runtime.chapter4Audio.media.values()].every(a=>a.paused));assert.equal(runtime.audio.soundtrack.audio.volume,0);assert(runtime.audio.soundtrack.audio.paused);
   runtime.unlockBackground();assert.equal(runtime.audio.soundtrack.audio.volume,0);
   perf+=100;runtime.scheduler.frame();assert.equal([...runtime.chapter4Audio.media.values()].reduce((n,a)=>n+a.plays,0),oldPlayCount);
   const fresh={...state,phase:'chapter5-intro',serverNow:600000,chapter5:{...state.chapter5,startedAt:600000,round:{...state.chapter5.round,startedAt:null,voteCount:0}}};
   runtime.acceptState(fresh,{hard:true});assert.equal(runtime.elapsedNow(),0);assert.equal(Number(e.nodes.get('chapter5-card').style.opacity),0);assert.equal(Number(e.nodes.get('chapter5-intro').style.opacity),1);
+  runtime.acceptState({phase:'lobby',startedAt:null,serverNow:700000},{hard:true});
+  assert.equal(runtime.audio.soundtrack.audio.paused,false);assert(runtime.chapter5Audio.player.tracks[0].audio.paused);
 });

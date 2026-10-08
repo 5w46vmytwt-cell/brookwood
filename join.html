@@ -11,6 +11,7 @@ async function joinGame(){
 }
 function renderPhoto(j){show('photo');const complete=j.phase==='photo-complete',confirmed=j.photo.confirmed;document.getElementById('photoTitle').textContent=complete?'PHOTO COMPLETE':'ONE PHOTO BEFORE THE NIGHT BEGINS';document.getElementById('photoCopy').innerHTML=complete?'Everyone is in.':"Get together with everyone.<br>Once you're in the group photo, confirm below.";const button=document.getElementById('photoConfirm');button.classList.toggle('hidden',complete||confirmed);button.disabled=photoPending||confirmed||complete;document.getElementById('photoStatus').textContent=complete?'':confirmed?"✓ YOU'RE IN — Waiting for everyone else...":'';document.getElementById('photoProgress').textContent=j.photo.confirmedCount+' / 12 CONFIRMED';}
 let votePending=false,voteRun=null;
+function canOpenPackage(j){return j?.phase==='door-vote-complete'&&j.chapter4?.complete&&j.chapter4.selectedPlayer?.id===auth?.id&&!j.package?.openedAt;}
 function renderDoor(j){
   if(j.chapter5){renderCast(j);return;}
   if(!auth||j.player.id!==auth.id)return;
@@ -20,11 +21,11 @@ function renderDoor(j){
   const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose another player';selector.appendChild(placeholder);
   for(const p of j.others){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;selector.appendChild(option);}
   selector.value=old;voteRun=c.startedAt;
-  const done=c.complete||c.voted;document.getElementById('packageOpen').classList.toggle('hidden',!c.canOpenPackage);document.getElementById('packageOpen').disabled=packagePending;
+  const done=c.complete||c.voted;document.getElementById('packageOpen').classList.toggle('hidden',!canOpenPackage(j));document.getElementById('packageOpen').disabled=packagePending;
   selector.classList.toggle('hidden',done);document.getElementById('voteSubmit').classList.toggle('hidden',done);document.getElementById('voteSubmit').disabled=votePending;
   document.getElementById('voteTitle').textContent=c.complete?c.selectedPlayer.name:c.voted?'VOTE RECORDED':'CHOOSE WHO GOES';
   document.getElementById('voteCopy').textContent=c.complete?'Retrieve the sealed package and wait for further instructions.':c.voted?'Waiting for everyone else...':'Choose another player.';
-  if(c.canOpenPackage)document.getElementById('voteCopy').textContent='Retrieve the physical package. Open it, then confirm below.';document.getElementById('voteProgress').textContent=c.voteCount+' / 12 VOTES RECORDED';
+  if(canOpenPackage(j))document.getElementById('voteCopy').textContent='Retrieve the physical package. Open it, then confirm below.';document.getElementById('voteProgress').textContent=c.voteCount+' / 12 VOTES RECORDED';
 }
 async function castDoorVote(){
   if(votePending||!auth||!me?.chapter4||me.chapter4.voted||me.chapter4.complete||(!me.chapter4.active&&!me.chapter4.votingActivatedAt))return;
@@ -38,8 +39,8 @@ const privateRuntime=new BrookwoodPrivatePhone.Runtime({onState:renderPrivate});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)privateRuntime.suspend()});
 function render(j,timing){
   if(me?.chapter5&&!j.chapter5&&((j.chapter4&&j.chapter4.startedAt===me.chapter4?.startedAt)||(j.chapter3&&j.chapter3.startedAt===me.chapter3?.startedAt)))return;
-  if(j.chapter5){const old=me?.chapter5,next=j.chapter5;if(old?.startedAt===next.startedAt&&(old.roundIndex>next.roundIndex||(old.roundIndex===next.roundIndex&&((old.round.voted&&!next.round.voted)||(old.round.completedAt&&!next.round.completedAt)))||(old.completedAt&&!next.completedAt)))return;privateRuntime.acceptState({phase:'lobby'});me=j;renderCast(j);return;}
-  if(j.chapter4){if(me?.chapter4?.startedAt===j.chapter4.startedAt&&((me.chapter4.voted&&!j.chapter4.voted)||(me.chapter4.complete&&!j.chapter4.complete)))return;privateRuntime.acceptState({phase:'lobby'});me=j;renderDoor(j);return;}
+  if(j.chapter5){const old=me?.chapter5,next=j.chapter5;if(old?.startedAt===next.startedAt&&(old.roundIndex>next.roundIndex||(old.roundIndex===next.roundIndex&&((old.round.voted&&!next.round.voted)||(old.round.completedAt&&!next.round.completedAt)))||(old.completedAt&&!next.completedAt)||(old.rulesStartedAt&&!next.rulesStartedAt)||(old.readyAt&&!next.readyAt)))return;privateRuntime.acceptState({phase:'lobby'});me=j;renderCast(j);return;}
+  if(j.chapter4){const old=me?.chapter4;if(old?.startedAt===j.chapter4.startedAt){if(old.complete&&!j.chapter4.complete)return;if(!j.chapter4.complete&&old.voted&&!j.chapter4.voted)return;}privateRuntime.acceptState({phase:'lobby'});me=j;renderDoor(j);return;}
   if(j.chapter3){
     if(me?.chapter3?.startedAt===j.chapter3.startedAt&&((me.chapter3.readAt!==null&&j.chapter3.readAt===null)||(me.chapter3.openedAt!==null&&j.chapter3.openedAt===null)))return;
     me=j;privateRuntime.acceptState(j,timing);return;
@@ -115,20 +116,22 @@ async function privateAction(action){
 let packagePending=false,castingPending=false,castingSelectionRun=null;
 function renderCast(j){
   if(!auth||j.player.id!==auth.id)return;show('casting');document.getElementById('opening').classList.remove('show');
-  const c=j.chapter5,r=c.round,intro=j.phase==='chapter5-intro',finale=['chapter5-finale','chapter5-complete'].includes(j.phase);
+  const c=j.chapter5,r=c.round,intro=['chapter5-intro','chapter5-waiting','chapter5-rules'].includes(j.phase),waiting=j.phase==='chapter5-waiting',finale=['chapter5-finale','chapter5-complete'].includes(j.phase);
   const key=c.startedAt+':'+r.id,selector=document.getElementById('castingTarget'),previous=castingSelectionRun===key?selector.value:'';
   selector.innerHTML='';const prompt=document.createElement('option');prompt.value='';prompt.textContent='Choose another player';selector.appendChild(prompt);
   for(const p of j.others){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;selector.appendChild(option);}selector.value=previous;castingSelectionRun=key;
   const canVote=!intro&&!finale&&r.votingActive&&!r.voted;
   selector.classList.toggle('hidden',!canVote);const button=document.getElementById('castingSubmit');button.classList.toggle('hidden',!canVote);button.disabled=castingPending;
-  document.getElementById('castingTitle').textContent=intro?'THE CAST':finale?'THE CAST IS COMPLETE':r.winner?r.title:r.voted?'VOTE RECORDED':r.title;
+  document.getElementById('castingTitle').textContent=waiting?'READY FOR A LITTLE FUN?':intro?'THE CAST':finale?'THE CAST IS COMPLETE':r.winner?r.title:r.voted?'VOTE RECORDED':r.title;
   document.getElementById('castingCopy').textContent=intro?'The original Brookwood group cast their own horror movie before entering haunted houses. Six roles. No self-voting. One vote per role. The same person may win multiple roles.':finale?c.winners.map(w=>w.title+': '+w.player.name).join('\n'):r.winner?r.winner.name:r.voted?'Waiting for everyone else...':r.setup;
   document.getElementById('castingCopy').style.whiteSpace='pre-line';
+  if(waiting)document.getElementById('castingCopy').textContent='WAITING FOR THE HOST';
+  else if(!intro&&!finale&&!r.votingActive&&!r.voted&&!r.winner)document.getElementById('castingCopy').textContent='Listen to the narrator. Voting opens when this role is introduced.';
   document.getElementById('castingQuestion').textContent=!intro&&!finale&&!r.voted?r.question:'';
   document.getElementById('castingCount').textContent=intro||finale?'':'CASTING IN PROGRESS... '+r.voteCount+' / 12 HAVE VOTED';
 }
 async function openPhysicalPackage(){
-  if(packagePending||!auth||!me?.chapter4?.canOpenPackage)return;packagePending=true;
+  if(packagePending||!auth||!canOpenPackage(me))return;packagePending=true;
   const session=auth,run=me.chapter4.startedAt,error=document.getElementById('voteErr');error.textContent='';document.getElementById('packageOpen').disabled=true;
   try{await lobbyRequest('/api/player',{...session,action:'package-open',chapter4StartedAt:run});const current=await lobbyRequest('/api/me',session);if(auth===session&&current.chapter4?.startedAt===run)render(current);}
   catch(e){if(auth===session){if(e.status===401)clearSession();else error.textContent=e.message;}}
