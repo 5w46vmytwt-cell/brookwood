@@ -37,3 +37,31 @@
 #castingBox #castingCount{font-size:13px;letter-spacing:.06em;font-variant-numeric:tabular-nums}
 @media(max-aspect-ratio:4/3){.cast-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:1vh 2vw}.cast-grid img{height:18vh}.cast-grid figcaption{padding:.5vh}#chapter5-winnerName{font-size:clamp(44px,10vw,110px)!important}}
 @media(prefers-reduced-motion:reduce){#chapter5TV *,#castingBox *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Narrator handoff: every decorative animation is paused and sampled by the
+   scheduler's negative delay, never by time since this page loaded. */
+#chapter5-radio{background:radial-gradient(ellipse at 22% 45%,#3a171b,#110b10 50%,#000 90%)}
+#chapter5-radio::after{content:'';position:absolute;inset:0;opacity:.04;pointer-events:none;background:repeating-linear-gradient(0deg,#d6b49b 0 1px,transparent 1px 4px)}
+.broadcast-label{position:absolute;top:6vh;left:6vw;font:700 clamp(15px,2vw,28px)/1.4 Arial,sans-serif;letter-spacing:.16em;color:#c79782}
+.broadcast-mic{position:absolute;left:9vw;top:22vh;height:50vh;width:25vw;filter:drop-shadow(0 0 28px #b433332b)}
+.broadcast-frequency{position:absolute;bottom:6vh;left:6vw;font:clamp(10px,1.1vw,16px) monospace;color:#957b76;letter-spacing:.15em}
+.broadcast-wave{position:absolute;left:10vw;bottom:16vh;display:flex;gap:5px;align-items:center;height:28px}
+.broadcast-wave i{display:block;width:4px;height:24px;background:#ad6059;transform:scaleY(.3);animation:broadcast-wave 1300ms ease-in-out infinite;animation-play-state:paused;animation-delay:calc(var(--handoff-delay,0ms) - var(--bar-offset,0ms))}
+@keyframes broadcast-wave{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(.9)}}
+#chapter5TV .broadcast-status{padding-left:38vw;align-items:center}
+#chapter5TV .broadcast-status h1{font-size:clamp(28px,4.4vw,74px);color:#e0cbb1;line-height:1.16}
+.broadcast-stamp{border:4px double #b45e56;padding:.3em .7em;color:#c56e62;font:900 clamp(22px,3vw,48px)/1.1 Georgia,serif;letter-spacing:.1em;transform:rotate(-8deg);animation:broadcast-stamp 350ms ease-out both;animation-play-state:paused;animation-delay:var(--stamp-delay,0ms)}
+@keyframes broadcast-stamp{from{transform:rotate(-8deg) scale(1.12);opacity:.3}to{transform:rotate(-8deg) scale(1);opacity:1}}
+#chapter5-approved{animation:broadcast-switch 300ms linear both;animation-play-state:paused;animation-delay:var(--glitch-delay,0ms)}
+#chapter5-approved h1{color:#b8c7b1!important}
+@keyframes broadcast-switch{0%,100%{transform:translateX(0)}25%{transform:translateX(2px)}60%{transform:translateX(-2px)}}
+#chapter5-disconnected h1{color:#b7aaa2!important}#chapter5-disconnected p{color:#b7aaa2;font-size:clamp(18px,2vw,30px)}
+#chapter5-party{background:radial-gradient(ellipse at 15% 80%,#075e67aa,transparent 60%),radial-gradient(ellipse at 80% 20%,#5e2a8999,transparent 65%),#17102e}
+.party-orbit{position:absolute;inset:8vh 5vw;animation:party-drift 6000ms ease-in-out infinite;animation-play-state:paused;animation-delay:var(--party-delay,0ms)}
+.party-orbit span{position:absolute;font-size:clamp(28px,4vw,65px);color:#c8ac6d;opacity:.5}.party-orbit span:nth-child(1){left:5%;top:10%}.party-orbit span:nth-child(2){right:12%;top:5%;color:#71c8c0}.party-orbit span:nth-child(3){left:13%;bottom:10%;color:#71c8c0}.party-orbit span:nth-child(4){right:5%;bottom:14%}.party-orbit span:nth-child(5){left:43%;top:0;font-size:28px}.party-orbit span:nth-child(6){right:35%;bottom:0;font-size:30px}
+@keyframes party-drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.party-confetti{position:absolute;inset:0;opacity:.12;background-image:radial-gradient(ellipse,#e4c97d 0 2px,transparent 3px),radial-gradient(ellipse,#6cd1c7 0 2px,transparent 3px);background-size:173px 139px,227px 191px;background-position:13px 30px,80px 110px}
+#chapter5-wife h1{max-width:1050px;color:#efcf80;font-size:clamp(38px,6.6vw,108px);text-shadow:3px 4px #312151,0 0 28px #c7946822}
+#chapter5-wife p{color:#b9e0d8;font-size:clamp(19px,2.2vw,34px)}#chapter5-wife .party-kicker{font-size:clamp(12px,1.2vw,20px);letter-spacing:.2em;color:#c6b5df}
+@media(max-aspect-ratio:4/3){.broadcast-mic{left:6vw;width:20vw;height:40vh;top:26vh}#chapter5TV .broadcast-status{padding-left:30vw}.broadcast-label{font-size:clamp(12px,3vw,23px)}.broadcast-wave{left:8vw}.party-orbit{inset:5vh 3vw}}
+@media(prefers-reduced-motion:reduce){#chapter5TV .broadcast-wave i,#chapter5TV .broadcast-stamp,#chapter5-approved,#chapter5TV .party-orbit{animation:none!important;transition:none!important}}

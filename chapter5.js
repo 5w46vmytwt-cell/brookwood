@@ -3,12 +3,20 @@ import {castingRoles,CHAPTER5_INTRO_MS,CHAPTER5_LEGACY_INTRO_MS,CHAPTER5_FINALE_
 import {chapter5Opening,CHAPTER5_RULES_MS} from './chapter5-audio-timing.js';
 const text=(id,at,end,target,copy,extra={})=>({id,type:'text',at,end,visual:{target,...(copy?{text:copy}:{}),...extra}});
 const legacyIntroTimeline={id:'chapter5-legacy-intro',end:CHAPTER5_LEGACY_INTRO_MS,cues:[text('intro',0,10000,'chapter5-intro',null,{fadeOut:[9300,10000]})]};
+const signoffAt=chapter5Opening[1].at,signoffEnd=chapter5Opening[1].end,wifeAt=chapter5Opening[2].at;
 export const chapter5IntroTimeline={id:'chapter5-opening',end:CHAPTER5_INTRO_MS,cues:[
   text('item',0,chapter5Opening[0].end,'chapter5-item',null,{fadeOut:[chapter5Opening[0].end-500,chapter5Opening[0].end]}),
-  text('wife',chapter5Opening[2].at,chapter5Opening[2].end,'chapter5-gameIntro',null,{fadeIn:[chapter5Opening[2].at,chapter5Opening[2].at+1000]}),
+  text('radio',signoffAt,signoffEnd,'chapter5-radio',null,{darken:{range:[signoffAt+16000,signoffEnd],amount:.82}}),
+  text('complaint',signoffAt,signoffAt+5000,'chapter5-complaint'),
+  text('overruled',signoffAt+5000,signoffAt+10000,'chapter5-overruled'),
+  text('unauthorized',signoffAt+10000,signoffAt+13000,'chapter5-unauthorized'),
+  text('approved',signoffAt+13000,signoffAt+16000,'chapter5-approved'),
+  text('disconnected',signoffAt+16000,signoffEnd,'chapter5-disconnected'),
+  text('party',wifeAt,Infinity,'chapter5-party'),
+  text('wife',wifeAt,chapter5Opening[2].end,'chapter5-wife',null,{fadeIn:[wifeAt,wifeAt+1000]}),
   text('ready',chapter5Opening[3].at,Infinity,'chapter5-ready')
 ]};
-const waitingTimeline={id:'chapter5-waiting',end:Infinity,cues:[text('waiting',0,Infinity,'chapter5-ready')]};
+const waitingTimeline={id:'chapter5-waiting',end:Infinity,cues:[text('party',0,Infinity,'chapter5-party'),text('waiting',0,Infinity,'chapter5-ready')]};
 export const chapter5RulesTimeline={id:'chapter5-rules',end:CHAPTER5_RULES_MS,cues:[text('rules',0,CHAPTER5_RULES_MS,'chapter5-gameIntro',null,{fadeOut:[CHAPTER5_RULES_MS-700,CHAPTER5_RULES_MS]})]};
 export function castingCardTimeline(role){
   const killer=role.id==='killer',at=killer?0:500,fadeEnd=killer?1500:1200;
@@ -60,6 +68,14 @@ export class Chapter5View{
       state={...state,chapter5:{...next,round:{...next.round,winner:previous.round.winner}}};
     }
     this.state=state;const c=state.chapter5,r=c.round,role=castingRoles[c.roundIndex],intro=state.phase==='chapter5-intro',finale=['chapter5-finale','chapter5-complete'].includes(state.phase);
+    // Paused CSS animation sampling follows the same authoritative elapsed
+    // clock as scene cues, including arbitrary refresh and reconstruction.
+    const surface=this.document.getElementById('chapter5TV');
+    const elapsed=this.clock.elapsedNow();
+    surface.style.setProperty?.('--handoff-delay',`${-Math.max(0,elapsed-signoffAt)}ms`);
+    surface.style.setProperty?.('--stamp-delay',`${-Math.max(0,elapsed-signoffAt-5000)}ms`);
+    surface.style.setProperty?.('--glitch-delay',`${-Math.max(0,elapsed-signoffAt-13000)}ms`);
+    surface.style.setProperty?.('--party-delay',`${-Math.max(0,elapsed-wifeAt)}ms`);
     this.document.getElementById('chapter5TV').classList?.toggle('playful',c.audioVersion===1&&!finale&&this.clock.elapsedNow()>=chapter5Opening[2].at);
     this.document.getElementById('chapter5TV').classList?.toggle('killer',!finale&&role.id==='killer');
     const waiting=state.phase==='chapter5-waiting',rules=state.phase==='chapter5-rules';

@@ -92,7 +92,8 @@ test('Chapter 5 opening uses measured narration boundaries and retains rules wit
   const html=fs.readFileSync('tv.html','utf8');assert(html.includes('original Brookwood group used to cast their own horror movie'));assert(html.includes('No self-voting. One vote per role. The same person can win more than one role.'));
   assert.equal(chapter5IntroTimeline.end,CHAPTER5_READY_MS);const source=fs.readFileSync('chapter5.js','utf8');assert(!source.includes('setTimeout'));assert(!source.includes('Date.now'));assert(!source.includes('new Audio'));
   const e=fixture();assert.equal(e.resolve(chapter5IntroTimeline,0).item.opacity,1);
-  assert(Object.values(e.resolve(chapter5IntroTimeline,chapter5Opening[1].at)).every(v=>v.opacity===0));
+  assert.equal(e.resolve(chapter5IntroTimeline,chapter5Opening[1].at).radio.opacity,1);
+  assert.equal(e.resolve(chapter5IntroTimeline,chapter5Opening[1].at).complaint.opacity,1);
   assert.equal(e.resolve(chapter5IntroTimeline,chapter5Opening[2].at+1000).wife.opacity,1);
   assert.equal(e.resolve(chapter5IntroTimeline,chapter5Opening[3].at).ready.opacity,1);
   for(const id of ['chapter5-roleTitle','chapter5-setup','chapter5-question'])assert(!html.includes('id="'+id+'"'));
