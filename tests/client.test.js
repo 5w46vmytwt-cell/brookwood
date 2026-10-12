@@ -250,6 +250,38 @@ function returnEnvironment(elapsed=44000) {
   return env;
 }
 
+test('Chapter 6 shortcut reuses the existing selector, and authorized jumps stop maze cues immediately',async()=>{
+ const e=returnEnvironment();await flush();
+ e.context.BrookwoodMazeControls={install:()=>({update(){},close(){}})};e.document.getElementById('chapter6Choices').replaceChildren=function(){this.children=[];};
+ const players=Array.from({length:12},(_,i)=>({id:'p'+i,name:'P'+i,partnerId:'p'+(i^1),ready:true}));
+ e.context.maze={phase:'chapter6',generation:'maze-run',startedAt:100000,serverNow:144000,players,chapter6:{startedAt:140000,previousChapter5StartedAt:130000,sequence:4,step:'answer',game:0,results:[],lives:3,phaseAt:140000,deadline:260000}};
+ vm.runInContext('render(maze)',e.context);
+ e.document.events.keydown({key:'C',ctrlKey:true,shiftKey:true,preventDefault(){}});
+ assert(!e.document.getElementById('chapterSelectPanel').hidden);
+ assert(e.document.getElementById('chapterSelectPanel').classList.contains('maze-navigation'));
+ assert(fs.readFileSync('chapter6.css','utf8').includes('#chapterSelectPanel.maze-navigation{z-index:90}'));
+ assert(fs.readFileSync('tv.html','utf8').includes('option value="chapter6"'));
+ e.context.earlier={phase:'opening',startedAt:144000,serverNow:144000,players};
+ e.context.lobbyRequest=async()=>({ok:true,state:e.context.earlier});
+ e.document.getElementById('chapterSelectCheckpoint').value='chapter1';e.document.getElementById('chapterSelectCode').value='host-pin';
+ vm.runInContext('selectTestChapter()',e.context);await flush();
+ assert(e.document.getElementById('chapter6TV').hidden);assert(!e.document.getElementById('chapterSelectPanel').classList.contains('maze-navigation'));
+ assert.equal(vm.runInContext('tvRuntime.state.phase',e.context),'opening');
+ assert.equal(vm.runInContext('tvRuntime.chapter6Visuals.state',e.context),null);
+ assert.equal(vm.runInContext('tvRuntime.chapter6Visuals.player.startedAt',e.context),null);
+});
+test('a pre-jump TV poll cannot restore Chapter 6 after navigation, and same-ms new maze generations are accepted',async()=>{
+ const e=returnEnvironment();await flush();e.context.BrookwoodMazeControls={install:()=>({update(){},close(){}})};e.document.getElementById('chapter6Choices').replaceChildren=function(){this.children=[];};
+ const players=Array.from({length:12},(_,i)=>({id:'p'+i,name:'P'+i,partnerId:'p'+(i^1),ready:true}));
+ const maze={phase:'chapter6',generation:'old',startedAt:100000,serverNow:144000,players,chapter6:{startedAt:140000,previousChapter5StartedAt:130000,sequence:4,step:'answer',game:0,results:[],lives:3,phaseAt:140000,deadline:260000}};
+ e.context.maze=maze;vm.runInContext('render(maze)',e.context);
+ let finishPoll;e.context.lobbyRequest=async url=>url==='/api/state'?new Promise(resolve=>{finishPoll=resolve;}):{ok:true,state:{phase:'opening',startedAt:144000,serverNow:144000,players}};
+ vm.runInContext('poll();openChapterSelect();selectTestChapter()',e.context);await flush();
+ finishPoll(maze);await flush();assert.equal(vm.runInContext('tvRuntime.state.phase',e.context),'opening');assert(e.document.getElementById('chapter6TV').hidden);
+ e.context.next={...maze,generation:'fresh',chapter6:{...maze.chapter6,sequence:0,step:'intro'}};vm.runInContext('render(maze);render(next)',e.context);
+ assert.equal(vm.runInContext('last.generation',e.context),'fresh');assert.equal(vm.runInContext('last.chapter6.sequence',e.context),0);
+});
+
 test('hidden return control requires completed valid opening and five separate R presses within two seconds', () => {
   const env=returnEnvironment(43999), control=env.document.getElementById('returnControl');
   for(let i=0;i<5;i++)env.key('r');assert(control.hidden);

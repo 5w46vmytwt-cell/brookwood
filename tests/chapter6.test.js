@@ -196,3 +196,29 @@ test('corrupt life count, votes, retriever and phase are rejected without repair
   const s=fixture();corrupt(s);raw=JSON.stringify(s);const saved=raw;assert.equal((await call(progress)).status,503);assert.equal(raw,saved);
  }
 });
+test('host navigation leaves the maze cleanly and reinitializes Chapter 6 prerequisites, cast and clocks',async()=>{
+ const s=fixture(2);advance(s);answer(s,'red');raw=JSON.stringify(s);const oldGeneration=s.generation,players=structuredClone(s.players);
+ const leave=await call(host,{action:'chapter-select',checkpoint:'chapter1',code:'maze-host'});
+ assert.equal(leave.status,200);assert.equal(leave.data.state.phase,'opening');
+ const earlier=JSON.parse(raw);assert(!earlier.chapter6);assert.notEqual(earlier.generation,oldGeneration);assert.deepEqual(earlier.players,players);
+ const enter=await call(host,{action:'chapter-select',checkpoint:'chapter6',code:'maze-host'});assert.equal(enter.status,200);
+ const maze=JSON.parse(raw);validateChapter6(maze);assert.equal(maze.chapter6.lives,3);assert.equal(maze.chapter6.step,'intro');assert.equal(maze.chapter6.results.length,0);
+ assert.equal(maze.chapter6.deadline,maze.chapter6.startedAt+introDuration(0));assert.equal(maze.chapter6.screamerId,maze.chapter5.rounds[0].winnerPlayerId);assert.equal(maze.chapter6.macheteId,maze.chapter4.selectedPlayerId);
+ assert.deepEqual(maze.players,players);assert.notEqual(maze.generation,earlier.generation);assert.equal(enter.data.state.chapter6.startedAt,maze.chapter6.startedAt);
+ const refreshed=await call(me,{id:'p1',token:'t1'});assert.equal(refreshed.data.chapter6.startedAt,maze.chapter6.startedAt);assert.equal(refreshed.data.chapter6.lives,3);
+});
+test('chapter navigation requires the existing host PIN and twelve-player test cast; maze session cannot grant access',async()=>{
+ const s=fixture();raw=JSON.stringify(s);const saved=raw;
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter1',id:'p0',token:'t0'})).status,403);
+ const login=await call(host,{action:'maze-login',code:'maze-host'}),cookie=login.headers['Set-Cookie'].split(';')[0];
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter6'},'POST',{cookie})).status,403);assert.equal(raw,saved);
+ const lobby=fresh();lobby.players=s.players.slice(0,2);raw=JSON.stringify(lobby);const prior=raw;
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter6',code:'maze-host'})).status,409);assert.equal(raw,prior);
+});
+test('chapter navigation fences an in-flight maze answer CAS and old generation requests cannot affect the fresh run',async()=>{
+ const s=fixture();advance(s);raw=JSON.stringify(s);const h=held={entered:deferred(),release:deferred()};
+ const body={...request(s,'maze-answer',{answer:'red'}),code:'maze-host'},pending=call(host,body);await h.entered.promise;
+ const jump=await call(host,{action:'chapter-select',checkpoint:'chapter6',code:'maze-host'});assert.equal(jump.status,200);
+ const after=raw;h.release.resolve();assert.equal((await pending).status,409);assert.equal(raw,after);
+ assert.equal((await call(host,body)).status,409);assert.equal(raw,after);assert.equal(JSON.parse(raw).chapter6.lives,3);
+});

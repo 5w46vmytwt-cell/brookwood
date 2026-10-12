@@ -43,9 +43,10 @@ export default async function handler(req,res){
       }));return send(res,200,{ok:true});
     }
     if(req.body.action==='chapter-select'){
-      if(req.body.checkpoint==='chapter6'){await updateState(makeMazeTestSelector());return send(res,200,{ok:true});}
-      await updateState(['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint));
-      return send(res,200,{ok:true});
+      const select=req.body.checkpoint==='chapter6'?makeMazeTestSelector():['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
+      let state;
+      await updateState(s=>{const mazeNavigation=isChapter6(s)||req.body.checkpoint==='chapter6';const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
+      return send(res,200,{ok:true,...(state?{state:{...state,serverNow:Date.now()}}:{})});
     }
     if(req.body.action==='test-read-simulated'){
       await updateState(withinChapter3Run(s=>{

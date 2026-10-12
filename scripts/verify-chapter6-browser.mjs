@@ -23,7 +23,7 @@ try{
  async function waitStep(step){for(let i=0;i<50;i++){const s=await state();if(s.chapter6.step===step)return s;await pause(100);}throw Error('Expected '+step);}
  mkdirSync('logs',{recursive:true});
  await post('/api/host',{action:'reset',code:'1031'});const a=(await post('/api/join',{name:'Rehearsal Alex'})).player,b=(await post('/api/join',{name:'Rehearsal Emma'})).player;
- await post('/api/player',{...a,action:'partner',partnerId:b.id});await post('/api/host',{action:'test-fill',code:'1031'});await post('/api/host',{action:'chapter-select',checkpoint:'chapter6',code:'1031'});
+ await post('/api/player',{...a,action:'partner',partnerId:b.id});for(const auth of [a,b])await post('/api/player',{...auth,action:'ready',ready:true});await post('/api/host',{action:'test-fill',code:'1031'});await post('/api/host',{action:'chapter-select',checkpoint:'chapter6',code:'1031'});
  const tv=await page('/tv'),phone=await page('/join'),phoneB=await page('/join');
  await send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false},tv);
  for(const [tab,auth] of [[phone,a],[phoneB,b]]){await evaluate(tab,`localStorage.setItem('brookwood-player-v3',${JSON.stringify(JSON.stringify(auth))});location.reload()`);}
@@ -70,5 +70,23 @@ try{
  await waitStep('selected');await advance();await waitStep('waiting');await hostChoice('Player Returned With Token');await advance();await waitStep('complete');
  assert(await evaluate(tv,"document.getElementById('chapter6Content').hidden && document.getElementById('chapter6HUD').hidden && document.getElementById('chapter6Image').hidden && document.getElementById('chapter6Audio').hidden"));
  await send('Page.reload',{},tv);await pause(1700);assert(await evaluate(tv,"document.getElementById('chapter6Content').hidden"));
+ async function navigateChapter(checkpoint,code='1031'){
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'C',code:'KeyC',windowsVirtualKeyCode:67,modifiers:10},tv);
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'C',code:'KeyC',windowsVirtualKeyCode:67,modifiers:0},tv);await pause(150);
+  assert(await evaluate(tv,"!document.getElementById('chapterSelectPanel').hidden && document.elementFromPoint(innerWidth/2,innerHeight/2).closest('#chapterSelectPanel')!==null"),'Existing navigation must be visible above Chapter 6');
+  assert(await evaluate(tv,"[...document.getElementById('chapterSelectCheckpoint').options].some(option=>option.value==='chapter6')"));
+  await evaluate(tv,`document.getElementById('chapterSelectCheckpoint').value=${JSON.stringify(checkpoint)};document.getElementById('chapterSelectCode').value=${JSON.stringify(code)};document.getElementById('chapterSelectSubmit').click()`);await pause(1500);
+  if(code==='1031')assert(await evaluate(tv,"document.getElementById('chapterSelectPanel').hidden"),await evaluate(tv,"document.getElementById('chapterSelectError').textContent"));
+ }
+ const completed=await state();await navigateChapter('chapter1','wrong-pin');
+ assert.equal((await state()).chapter6.startedAt,completed.chapter6.startedAt);assert(await evaluate(tv,"!document.getElementById('chapterSelectPanel').hidden && document.getElementById('chapterSelectError').textContent.length>0"));
+ await evaluate(tv,"closeChapterSelect()");await navigateChapter('chapter1');
+ assert.equal((await state()).phase,'opening');assert(!(await state()).chapter6);assert(await evaluate(tv,"document.getElementById('chapter6TV').hidden"));
+ await send('Page.reload',{},tv);await pause(1600);assert(await evaluate(tv,"document.getElementById('chapter6TV').hidden"));
+ await navigateChapter('chapter6');const fresh=await state();assert.equal(fresh.chapter6.lives,3);assert.equal(fresh.chapter6.step,'intro');assert.equal(fresh.chapter6.results.length,0);assert.notEqual(fresh.generation,completed.generation);
+ assert.equal(fresh.chapter6.screamer.id,fresh.players[0].id);assert.equal(fresh.chapter6.macheteId,fresh.players[0].id);
+ await send('Page.reload',{},tv);await pause(1600);assert(await evaluate(tv,"!document.getElementById('chapter6TV').hidden"));assert.equal((await state()).chapter6.startedAt,fresh.chapter6.startedAt);
+ const denied=await fetch(base+'/api/host',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'chapter-select',checkpoint:'chapter1',...a})});assert.equal(denied.status,403);assert.equal((await state()).generation,fresh.generation);
  assert.deepEqual(errors,[]);console.log('Browser PASS: built TV + two phones → five host answers/verdict → private token votes → return → black completion + refresh. Screenshots in logs/.');
+ console.log('Navigation PASS: real Ctrl+Shift+C above maze → wrong PIN rejected → Chapter 1 → refresh → Chapter 6 fresh state → refresh; ordinary player denied.');
 }finally{ws?.close();browser.kill();}

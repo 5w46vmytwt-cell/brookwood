@@ -7,6 +7,7 @@
 #chapter6Question{font-size:clamp(22px,2.7vw,50px);margin:0;max-width:1200px}
 #chapter6Detail{font-size:clamp(18px,1.8vw,33px);white-space:pre-line;line-height:1.45;max-width:1200px;margin:0}
 #chapter6Curtain{position:absolute;inset:0;z-index:70;background:#000;pointer-events:none}
+#chapterSelectPanel.maze-navigation{z-index:90}
 #chapter6Choices{list-style:none;padding:0;margin:0;display:flex;gap:1.5vh;flex-wrap:wrap;justify-content:center;font-size:clamp(20px,2vw,36px)}
 #chapter6Choices li{padding:1.5vh 2vw;border:1px solid #443232;background:#080606}
 #chapter6Doors{display:grid;grid-template-columns:repeat(4,1fr);gap:2vw;width:100%;max-width:1400px}

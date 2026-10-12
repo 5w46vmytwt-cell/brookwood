@@ -23,7 +23,7 @@ export function installMazeControls({document,runtime,acceptState,request}){
   if(pending||!authenticated||!state?.chapter6)return;runtime.unlockChapter6();pending=true;update(state);
   const snapshot=state,c=snapshot.chapter6;node('chapter6HostError').textContent='';
   try{const sentAt=performance.now();const result=await request('/api/host',{action,answer,generation:snapshot.generation,chapter6StartedAt:c.startedAt,sequence:c.sequence});
-   if(state?.generation===snapshot.generation&&state.chapter6.startedAt===c.startedAt&&result.state){acceptState(result.state,{sentAt,receivedAt:performance.now()});close();}
+   if(state?.generation===snapshot.generation&&state.chapter6?.startedAt===c.startedAt&&result.state){acceptState(result.state,{sentAt,receivedAt:performance.now()});close();}
   }catch(error){if(error.status===403)authenticated=false;node('chapter6HostError').textContent=error.message;}finally{pending=false;update(state);}
  }
  function update(next){

@@ -34,3 +34,9 @@ test('phones render the persisted transition phase with no vote or active silenc
  assert.equal(node('mazePhoneCopy').textContent,'Watch the TV. The next scene is about to begin.');
  assert(node('mazePhoneVote').hidden);assert(node('mazePhoneTarget').hidden);
 });
+test('a pending maze answer response is discarded after chapter navigation',async()=>{
+ const {document,node}=harness();let resolveAnswer,accepted=0;
+ const current=state(),controls=installMazeControls({document,runtime:{unlockChapter6(){}},acceptState(){accepted++;},request:async(_path,body)=>body.action==='maze-session'?{authenticated:true}:new Promise(resolve=>{resolveAnswer=resolve;})});
+ controls.update(current);await node('chapter6HostToggle').onclick();const pending=node('chapter6HostAnswers').children[0].onclick();
+ controls.update({phase:'opening'});resolveAnswer({state:current});await pending;assert.equal(accepted,0);assert(node('chapter6Host').hidden);
+});
