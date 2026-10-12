@@ -2,6 +2,8 @@
 
 ## Current release authorization (2026-10-11)
 
+Verified production baseline: Chapter 6 deployed from `main` at `eab51fb` on 2026-10-11, with 412 passing tests, successful build, production READY status, and read-only TV/join/API checks. Older local-only notes below are historical. The user also authorized Chapter 6-only four-second transitions (including finale entry), reusable server-authorized host sessions, removal of the Game 5 SCREAMER display, tests, commit/push/integration and production deployment. Never reset Redis or modify environment variables for this work. See `CHAPTER6.md` for current conventions.
+
 The user explicitly authorized committing Chapter 6 on the existing feature branch, pushing it to the existing GitHub repository, integrating it into `main`, and allowing the existing Vercel Git integration to deploy production. Use the existing Vercel project and Redis configuration; do not create additional databases, projects, or environment configurations. Do not reset or manually modify the existing Redis session. Chapters 1–5 remain frozen. This authorization supersedes the older no-push/no-merge/no-deployment status notes below for this Chapter 6 release only. Deployment completion must be verified before being reported as implemented in production.
 
 ## Read before changing anything

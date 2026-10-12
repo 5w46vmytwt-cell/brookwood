@@ -1,12 +1,17 @@
 import crypto from "node:crypto";
+import {issueHostSession,validHostSession} from './_host-session.js';
 import {isChapter6,withinMazeRun,mazeHostAction,makeMazeTestSelector} from './_chapter6.js';
 import {isChapter5,makeCastingTestSelector,makeCastingVoter,withinCastingRun,confirmCastingReady} from './_chapter5.js';
 import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
 import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
-  if(String(req.body?.code||"")!==String(process.env.HOST_KEY||"1031"))return send(res,403,{error:"Wrong host code."});
+  const sessionAction=['maze-login','maze-session','maze-answer','maze-verdict','maze-token-return','maze-test-vote'].includes(req.body?.action);
+  const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
+  if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
+  if(pinValid)issueHostSession(req,res);
   try{
+    if(['maze-login','maze-session'].includes(req.body.action))return send(res,200,{ok:true,authenticated:true});
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
     if(['maze-answer','maze-verdict','maze-token-return','maze-test-vote'].includes(req.body.action)){
       let state;await updateState(withinMazeRun(s=>{const result=mazeHostAction(s,req.body);state=publicState(s);return result;}));

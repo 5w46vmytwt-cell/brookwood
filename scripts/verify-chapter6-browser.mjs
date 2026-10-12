@@ -29,7 +29,25 @@ try{
  for(const [tab,auth] of [[phone,a],[phoneB,b]]){await evaluate(tab,`localStorage.setItem('brookwood-player-v3',${JSON.stringify(JSON.stringify(auth))});location.reload()`);}
  await pause(1600);
  async function screenshot(name){const r=await send('Page.captureScreenshot',{format:'png'},tv);writeFileSync('logs/chapter6-'+name+'.png',Buffer.from(r.data,'base64'));}
- async function hostChoice(text){await evaluate(tv,`document.getElementById('chapter6HostToggle').click();document.getElementById('chapter6HostCode').value='1031';(()=>{const b=[...document.querySelectorAll('#chapter6HostAnswers button')].find(x=>x.textContent===${JSON.stringify(text)});if(!b)throw Error('Missing host choice');b.click();})()`);await waitStep(text==='Player Returned With Token'?'return':text.startsWith('TEST:')?'vote':'result');await pause(1500);}
+ let loginCount=0;
+ async function hostChoice(text){
+  await evaluate(tv,"document.getElementById('chapter6HostToggle').click()");await pause(300);
+  if(await evaluate(tv,"!document.getElementById('chapter6HostCode').hidden")){
+   assert.equal(loginCount++,0,'Host must authenticate only once, including after TV reload');
+   await evaluate(tv,"document.getElementById('chapter6HostCode').value='1031';document.getElementById('chapter6HostLogin').click()");await pause(300);
+  }
+  assert(await evaluate(tv,"document.getElementById('chapter6HostCode').hidden && document.getElementById('chapter6HostCode').value===''"));
+  await evaluate(tv,`(()=>{const b=[...document.querySelectorAll('#chapter6HostAnswers button')].find(x=>x.textContent===${JSON.stringify(text)});if(!b)throw Error('Missing host choice');b.click();})()`);
+  await waitStep(text==='Player Returned With Token'?'return':text.startsWith('TEST:')?'vote':'result');await pause(1500);
+ }
+ async function transition(game){
+  await waitStep('transition');
+  if(game===0){await send('Page.reload',{},tv);await pause(500);}
+  assert.equal(await evaluate(tv,"getComputedStyle(document.getElementById('chapter6Curtain')).opacity"),'1');
+  assert(await evaluate(tv,"document.getElementById('chapter6Content').hidden && document.getElementById('chapter6HUD').hidden"));
+  assert(await evaluate(phone,"document.getElementById('mazePhoneCopy').textContent.includes('next scene')"));
+  await screenshot('transition-'+game);await advance();await waitStep(game===4?'finale':'intro');
+ }
  assert(await evaluate(tv,"!document.getElementById('chapter6TV').hidden"));
  assert(await evaluate(phone,"!document.getElementById('mazePhoneBox').classList.contains('hidden')"));
  await screenshot('doors');
@@ -39,10 +57,11 @@ try{
   await advance();await waitStep('answer');
   if(game===2)assert(await evaluate(tv,"document.getElementById('chapter6Image').hidden"));
   if(game===3)await screenshot('bridge');
-  await hostChoice(labels[game]);const s=await state();assert.equal(s.chapter6.results[game].correct,true);assert.equal(s.chapter6.lives,3);await advance();
+  await hostChoice(labels[game]);const s=await state();assert.equal(s.chapter6.results[game].correct,true);assert.equal(s.chapter6.lives,3);await advance();await transition(game);
  }
  await advance();assert.equal((await state()).chapter6.step,'silence');await screenshot('silence');await advance();await waitStep('verdict');
- assert.equal(await evaluate(tv,"document.getElementById('chapter6Question').textContent"),'SILENCE COMPLETE — AWAITING VERDICT');await hostChoice('PASS');await advance();await waitStep('finale');
+ assert.equal(await evaluate(tv,"document.getElementById('chapter6Question').textContent"),'SILENCE COMPLETE — AWAITING VERDICT');
+ assert.equal(await evaluate(tv,"document.getElementById('chapter6Screamer')"),null);await hostChoice('PASS');await advance();await transition(4);
  // Keep both real phones connected as finale transitions into the vote.
  await post('/api/me',a);await post('/api/me',b);await advance();await waitStep('vote');
  await hostChoice('TEST: VOTE SIMULATED PLAYERS (BEFORE REAL BALLOTS)');

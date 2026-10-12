@@ -73,13 +73,13 @@
 <section id="chapter6TV" hidden aria-label="The Killer's Maze">
  <div id="chapter6HUD"><span id="chapter6Lives"></span><span id="chapter6Timer" aria-label="Seconds remaining"></span></div>
  <img id="chapter6Image" hidden alt="">
- <div id="chapter6Content"><h1 id="chapter6Title"></h1><p id="chapter6Screamer"></p>
+ <div id="chapter6Content"><h1 id="chapter6Title"></h1>
  <div id="chapter6Doors"><figure><img src="/assets/chapter6/red_door.png" alt="Red door"><figcaption>RED · XIII</figcaption></figure><figure><img src="/assets/chapter6/blue_door.png" alt="Blue door"><figcaption>BLUE · VI</figcaption></figure><figure><img src="/assets/chapter6/green_door.png" alt="Green door"><figcaption>GREEN · VII</figcaption></figure><figure><img src="/assets/chapter6/black_door.png" alt="Black door"><figcaption>BLACK · IX</figcaption></figure></div>
  <h2 id="chapter6Question"></h2><ol id="chapter6Choices"></ol><p id="chapter6Detail"></p>
  <div id="chapter6Waveform" hidden aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div id="chapter6Chicken" hidden aria-label="Rubber chicken">🐔</div></div>
- <button id="chapter6Audio">ENABLE AUDIO</button><button id="chapter6HostToggle">HOST CONTROLS</button>
+ <button id="chapter6Audio">ENABLE AUDIO</button><button id="chapter6HostToggle">HOST CONTROLS</button><div id="chapter6Curtain" hidden aria-hidden="true"></div>
 </section>
-<section id="chapter6Host" hidden role="dialog" aria-modal="true" aria-label="Chapter 6 host controls"><div class="maze-host-panel"><h2>HOST CONTROL</h2><p id="chapter6HostStatus"></p><input id="chapter6HostCode" type="password" autocomplete="off" aria-label="Host PIN" placeholder="Host PIN"><div id="chapter6HostAnswers"></div><p id="chapter6HostError" role="alert"></p><button id="chapter6HostClose">CLOSE</button></div></section>
+<section id="chapter6Host" hidden role="dialog" aria-modal="true" aria-label="Chapter 6 host controls"><div class="maze-host-panel"><h2>HOST CONTROL</h2><p id="chapter6HostStatus"></p><input id="chapter6HostCode" type="password" autocomplete="off" aria-label="Host PIN" placeholder="Host PIN"><button id="chapter6HostLogin">AUTHENTICATE HOST</button><div id="chapter6HostAnswers"></div><p id="chapter6HostError" role="alert"></p><button id="chapter6HostClose">CLOSE</button></div></section>
 <script src="/cinematic-engine.js"></script><script src="/cinematic-audio.js"></script><script src="/chapter1.js"></script><script src="/client.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script type="module" src="/tv-cinematic.js"></script><script type="module">
 const join=location.origin+'/join';document.getElementById('joinUrl').textContent=join;
 try{if(typeof QRCode!=='function')throw new Error('QR library unavailable');new QRCode(document.getElementById('qr'),{text:join,width:170,height:170,correctLevel:QRCode.CorrectLevel.M})}catch{document.getElementById('qr').hidden=true}

@@ -2,6 +2,12 @@
 
 Branch: `feat/chapter6-killers-maze`. Pre-implementation checkpoint: `76463e32cfd79837913b77d79ce36d2e7b13e0c9`.
 
+The original Chapter 6 release deployed to the existing production project from `main` at `eab51fb` on 2026-10-11. The user subsequently authorized the Chapter 6 transition/host-session/presentation improvements and their production release. Use the existing GitHub → Vercel workflow and Redis configuration; never reset the live session during verification.
+
+Between games, and before the finale, the persisted `transition` phase lasts exactly 4000 ms: 1000 ms fading the completed scene out, 2000 ms fully black, then 1000 ms fading the next introduction in. A black curtain follows the existing scheduler's absolute server clock. No audio cues or countdown run during this phase. Result narration and any once-only zero-life narration finish before transition entry. The next introduction/finale narration begins at the transition deadline. Phones render the persisted transition without answers or voting. Refresh reconstructs the current point rather than restarting the fade. Existing runs without transition data remain readable.
+
+Valid PIN requests through the existing host controls now issue a signed 12-hour HttpOnly, SameSite=Strict cookie (Secure on Vercel). Chapter 6 accepts that session for answers, verdicts and finale controls, with existing generation/run/scene fences intact. The PIN is never saved in client storage or game state. Chapter 6 recovers authentication on panel opening and after refresh; only missing/expired authorization requires login. Chapters 1–5 continue requiring their existing PIN-based requests. Signing uses the existing host key, with no new environment configuration. Game 5 no longer renders the SCREAMER identity; casting results and recordings remain unchanged.
+
 Chapter 6 starts through the existing TV progression loop when Chapter 5 reports `chapter5-complete`. The fixed-purpose `/api/chapter6` start retains all earlier state and is atomic/idempotent. `api/_chapter6.js` stores phase clocks, outcomes, shared lives, zero-life narration consumption, casting/retrieval references, connected-phone presence, private ballots, and token confirmation in the existing Redis room. Answers, silence verdict, simulated voting helper, and token confirmation require existing host authorization plus current generation/run/scene.
 
 Narration timing uses measured MPEG frame duration with the established 200 ms chapter narration tail. Answer windows remain a full 120/120/90/180 seconds; silence lasts 30 seconds. Memory exposure is exactly 15 seconds. Early answers cancel warning cues. The last Box Office recording starts 6.192 seconds before the deadline and ends at zero; spoken-number waveform alignment has not been independently annotated. Silence overlaps duck the older voice to 18% rather than moving the timer. The optional jump-scare sting is omitted; the supplied image flashes for 500 ms.
@@ -21,7 +27,7 @@ npm run build
 npm run dev -- --built
 ```
 
-Open `http://127.0.0.1:3000/tv`. Open `/join` on two separate browsers/profiles (each needs its own localStorage). Join both players, pair them, then use the TV's host controls with local rehearsal PIN `1031` to TEST: FILL and TEST: CHAPTER SELECT → Chapter 6. During Chapter 6, HOST CONTROLS requires the PIN for each submission; ordinary phones only watch until the token vote. ENABLE AUDIO retries the current active clip after a user gesture. After the finale narration, use TEST: VOTE SIMULATED PLAYERS before either real phone votes, then vote on both phones. After selected-retriever narration, confirm Player Returned With Token and wait for the final recording.
+Open `http://127.0.0.1:3000/tv`. Open `/join` on two separate browsers/profiles (each needs its own localStorage). Join both players, pair them, then use the TV's host controls with local rehearsal PIN `1031` to TEST: FILL and TEST: CHAPTER SELECT → Chapter 6. During Chapter 6, HOST CONTROLS reuses that authentication; if opened on a new browser, authenticate once. Ordinary phones only watch until the token vote. ENABLE AUDIO retries the current active clip after a user gesture. After the finale narration, use TEST: VOTE SIMULATED PLAYERS before either real phone votes, then vote on both phones. After selected-retriever narration, confirm Player Returned With Token and wait for the final recording.
 
 The local server uses the real API handlers with an isolated in-memory Redis CAS transport, never the live database. It intentionally sets its own local credentials. Ctrl+C stops it; restarting loses rehearsal state. Do not expose this rehearsal server publicly.
 
@@ -39,7 +45,7 @@ node scripts/verify-chapter6-browser.mjs
 
 This requires Node 22+ and Chrome at `C:/Program Files/Google/Chrome/Application/chrome.exe`, or `BROOKWOOD_CHROME` set to the local Chrome executable. It isolates phone browser storage, drives the actual DOM controls, advances the local server clock, checks API results, and writes TV screenshots under ignored `logs/`. It enables autoplay for automation; manually rehearse TV audio unlocking and speech clarity on the actual party screen.
 
-The production build copies public browser files and approved media to ignored `dist/`, checks syntax/imports/routes/media URLs, and leaves native Vercel API handlers in source. This verifies local build output, not a deployed Vercel/Redis integration. No push, merge, or deployment is part of this work.
+The production build copies public browser files and approved media to ignored `dist/`, checks syntax/imports/routes/media URLs, and leaves native Vercel API handlers in source. This verifies local build output, not a deployed Vercel/Redis integration. Release actions require the user's explicit authorization, recorded above for this release.
 
 ## Measured audio
 

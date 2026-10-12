@@ -28,7 +28,7 @@ const server=http.createServer(async(req,res)=>{
    const name=url.pathname.slice(5);if(!/^[a-z][a-z0-9-]*$/.test(name)){res.writeHead(404);res.end();return;}
    const path=resolve('api',name+'.js');if(!existsSync(path)){res.writeHead(404);res.end();return;}
    const handler=(await import(pathToFileURL(path))).default;
-   await handler({method:req.method,body},{status(n){res.statusCode=n;return this;},setHeader:(...a)=>res.setHeader(...a),json(data){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(data));}});return;
+   await handler({method:req.method,body,headers:req.headers},{status(n){res.statusCode=n;return this;},setHeader:(...a)=>res.setHeader(...a),json(data){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(data));}});return;
   }
   const rewrite={'/':'/tv.html','/tv':'/tv.html','/join':'/join.html'};
   const path=resolve(root,'.'+(rewrite[url.pathname]??decodeURIComponent(url.pathname)));

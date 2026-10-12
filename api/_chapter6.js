@@ -1,12 +1,12 @@
 import {randomInt} from 'node:crypto';
 import {LobbyError,UNCHANGED} from './_state.js';
 import {validateChapter5,makeCastingTestSelector} from './_chapter5.js';
-import {gate,introDuration,answerWindows,games,resultRecording} from '../chapter6-timing.js';
+import {gate,introDuration,answerWindows,games,resultRecording,TRANSITION_MS} from '../chapter6-timing.js';
 import {castingVotingOffset,castingCompletionMs,castingFinaleMs,CHAPTER5_INTRO_MS} from '../chapter5-timing.js';
 import {CHAPTER5_RULES_MS} from '../chapter5-audio-timing.js';
 export const isChapter6=s=>s.phase==='chapter6';
-const steps=['intro','answer','silence','verdict','result','zero','finale','vote','selected','waiting','return','complete'];
-const timed=['intro','answer','silence','result','zero','finale','selected','return'];
+const steps=['intro','answer','silence','verdict','result','zero','transition','finale','vote','selected','waiting','return','complete'];
+const timed=['intro','answer','silence','result','zero','transition','finale','selected','return'];
 export const PRESENCE_MS=30000;
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
 const candidatePlayers=s=>s.chapter6.testMode?s.players:realPlayers(s);
@@ -22,9 +22,10 @@ export function validateChapter6(s){
  const c=s.chapter6,cast=new Set(s.players.map(p=>p.id));
  if(!c||!Number.isFinite(c.startedAt)||c.startedAt<s.chapter5.completedAt||!steps.includes(c.step)||!Number.isInteger(c.game)||c.game<0||c.game>4||!Number.isInteger(c.sequence)||c.sequence<0||!Number.isFinite(c.phaseAt)||c.phaseAt<c.startedAt||!Number.isInteger(c.lives)||c.lives<0||c.lives>3||typeof c.zeroConsumed!=='boolean'||typeof c.testMode!=='boolean'||c.screamerId!==s.chapter5.rounds.find(r=>r.id==='screamer').winnerPlayerId||c.macheteId!==s.macheteHolderPlayerId)throw Error('Invalid Chapter 6 state.');
  if(timed.includes(c.step)?!Number.isFinite(c.deadline)||c.deadline<=c.phaseAt:c.deadline!==null)throw Error('Invalid maze deadline.');
+ if(c.step==='transition'&&(!['result','zero'].includes(c.transitionFrom?.step)||!Number.isFinite(c.transitionFrom.phaseAt)||c.transitionFrom.phaseAt<c.startedAt||c.transitionFrom.phaseAt>c.phaseAt||c.deadline!==c.phaseAt+TRANSITION_MS))throw Error('Invalid maze transition.');
  if(!Array.isArray(c.results)||c.results.length>5||c.results.some((r,i)=>r.game!==i||!Number.isFinite(r.resolvedAt)||r.resolvedAt<c.startedAt||typeof r.correct!=='boolean'||r.recording!==resultRecording(i,r.answer,r.correct)))throw Error('Invalid maze results.');
  const losses=c.results.filter(r=>!r.correct).length;
- if(c.lives!==Math.max(0,3-losses)||c.results.length<c.game||c.results.length>c.game+1||(['result','zero','finale','vote','selected','waiting','return','complete'].includes(c.step)&&c.results.length!==c.game+1)||(['intro','answer','silence','verdict'].includes(c.step)&&c.results.length!==c.game))throw Error('Invalid maze progression.');
+ if(c.lives!==Math.max(0,3-losses)||c.results.length<c.game||c.results.length>c.game+1||(['result','zero','transition','finale','vote','selected','waiting','return','complete'].includes(c.step)&&c.results.length!==c.game+1)||(['intro','answer','silence','verdict'].includes(c.step)&&c.results.length!==c.game))throw Error('Invalid maze progression.');
  if(c.results.some(r=>r.answer!==null&&(r.game<4?!games[r.game].options.some(([id])=>id===r.answer):!['pass','fail'].includes(r.answer)))||c.results.some(r=>r.correct!==(r.game===4?r.answer==='pass':r.answer===games[r.game].correct)))throw Error('Invalid maze answer.');
  if(c.zeroConsumed?(c.lives!==0||!Number.isFinite(c.zeroAt)):c.zeroAt!==null)throw Error('Invalid zero-lives narration.');
  if(['finale','vote','selected','waiting','return','complete'].includes(c.step)&&c.results.length!==5)throw Error('Premature finale.');
@@ -48,7 +49,11 @@ function resolve(s,answer,now){
  if(!correct)c.lives=Math.max(0,c.lives-1);
  enter(c,'result',now,n?gate(n):1500);
 }
+function transition(c,now){
+ c.transitionFrom={step:c.step,phaseAt:c.phaseAt};enter(c,'transition',now,TRANSITION_MS);
+}
 function nextGame(c,now){
+ delete c.transitionFrom;
  if(c.game===4)enter(c,'finale',now,gate(c.lives>0?28:29));
  else{c.game++;enter(c,'intro',now,introDuration(c.game));}
 }
@@ -61,8 +66,9 @@ export function advanceChapter6(s,now=Date.now()){
  else if(c.step==='silence')enter(c,'verdict',end);
  else if(c.step==='result'){
   if(c.lives===0&&!c.zeroConsumed){c.zeroConsumed=true;c.zeroAt=now;enter(c,'zero',now,gate(32));}
-  else nextGame(c,now);
- }else if(c.step==='zero')nextGame(c,now);
+  else transition(c,now);
+ }else if(c.step==='zero')transition(c,now);
+ else if(c.step==='transition')nextGame(c,end);
  else if(c.step==='finale'){enter(c,'vote',now);c.voterIds=realPlayers(s).filter(p=>now-(c.presence[p.id]??0)<=PRESENCE_MS).map(p=>p.id);}
  else if(c.step==='selected')enter(c,'waiting',now);
  else if(c.step==='return'){enter(c,'complete',end);c.completedAt=end;}
@@ -118,7 +124,7 @@ export function makeTokenVoter(choose=randomInt){let decision;return (s,id,targe
 };}
 export function chapter6Progress(s,playerId){
  if(!isChapter6(s))return null;const c=s.chapter6,name=id=>s.players.find(p=>p.id===id)?.name??'';
- return {startedAt:c.startedAt,previousChapter5StartedAt:s.chapter5.startedAt,phaseAt:c.phaseAt,deadline:c.deadline,step:c.step,game:c.game,lives:c.lives,sequence:c.sequence,zeroConsumed:c.zeroConsumed,results:c.results.map(r=>({...r})),screamer:{id:c.screamerId,name:name(c.screamerId)},macheteId:c.macheteId,selectedPlayer:c.selectedPlayerId?{id:c.selectedPlayerId,name:name(c.selectedPlayerId)}:null,completedAt:c.completedAt,voteCount:Object.keys(c.votes).length,voterCount:c.voterIds.length,electorateLocked:c.electorateLocked,testMode:c.testMode,
+ return {startedAt:c.startedAt,previousChapter5StartedAt:s.chapter5.startedAt,phaseAt:c.phaseAt,deadline:c.deadline,step:c.step,...(c.step==='transition'?{transitionFrom:{...c.transitionFrom}}:{}),game:c.game,lives:c.lives,sequence:c.sequence,zeroConsumed:c.zeroConsumed,results:c.results.map(r=>({...r})),screamer:{id:c.screamerId,name:name(c.screamerId)},macheteId:c.macheteId,selectedPlayer:c.selectedPlayerId?{id:c.selectedPlayerId,name:name(c.selectedPlayerId)}:null,completedAt:c.completedAt,voteCount:Object.keys(c.votes).length,voterCount:c.voterIds.length,electorateLocked:c.electorateLocked,testMode:c.testMode,
  ...(playerId?{voted:Object.hasOwn(c.votes,playerId),canVote:c.step==='vote'&&s.players.find(p=>p.id===playerId)?.simulated!==true&&(!c.electorateLocked||c.voterIds.includes(playerId)),candidates:candidatePlayers(s).filter(p=>p.id!==c.macheteId&&p.id!==playerId).map(p=>({id:p.id,name:p.name}))}:{})};
 }
 function simulatedTokenVotes(s,now){

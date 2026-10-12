@@ -30,11 +30,62 @@ function fixture(real=12){
 function request(s,action,extra={}){return {action,generation:s.generation,chapter6StartedAt:s.chapter6.startedAt,sequence:s.chapter6.sequence,...extra};}
 function advance(s){now=s.chapter6.deadline;advanceChapter6(s);validateChapter6(s);}
 function answer(s,value){mazeHostAction(s,request(s,'maze-answer',{answer:value}));validateChapter6(s);}
-function finish(s){advance(s);if(s.chapter6.step==='zero')advance(s);}
+function finish(s){advance(s);if(s.chapter6.step==='zero')advance(s);assert.equal(s.chapter6.step,'transition');advance(s);}
 function play(s,values=['black','C','C','B','pass']){
  for(let i=0;i<5;i++){advance(s);if(i===4){advance(s);mazeHostAction(s,request(s,'maze-verdict',{answer:values[i]}));}else answer(s,values[i]);finish(s);}
 }
-async function call(handler,body={},method='POST'){let status,data;await handler({method,body},{status(v){status=v;return this;},setHeader(){},json(v){data=v;}});return {status,data};}
+async function call(handler,body={},method='POST',headers={}){let status,data;const responseHeaders={};await handler({method,body,headers},{status(v){status=v;return this;},setHeader(key,value){responseHeaders[key]=value;},json(v){data=v;}});return {status,data,headers:responseHeaders};}
+
+test('all five cinematic transitions wait for full narration, persist once and recover at the exact deadline',()=>{
+ const s=fixture();
+ for(let game=0;game<5;game++){
+  advance(s);if(game===4){advance(s);mazeHostAction(s,request(s,'maze-verdict',{answer:'pass'}));}else answer(s,games[game].correct);
+  const resultEnd=s.chapter6.deadline,recording=s.chapter6.results[game].recording;
+  assert.equal(resultEnd,s.chapter6.results[game].resolvedAt+gate(recording));
+  now=resultEnd-1;advanceChapter6(s);assert.equal(s.chapter6.step,'result');
+  now=resultEnd;advanceChapter6(s);validateChapter6(s);assert.equal(s.chapter6.step,'transition');
+  assert.equal(s.chapter6.deadline,resultEnd+4000);assert.deepEqual(phaseCues(s.chapter6),[]);
+  assert.equal(chapter6Progress(s,'p1').step,'transition');assert.equal(chapter6Progress(s).transitionFrom.step,'result');
+  assert.throws(()=>mazeHostAction(s,request(s,'maze-answer',{answer:'A'})));
+  const resumed=structuredClone(s),snapshot=JSON.stringify(resumed);
+  now=resultEnd+3999;advanceChapter6(resumed);assert.equal(JSON.stringify(resumed),snapshot);
+  now=resultEnd+4000;advanceChapter6(resumed);validateChapter6(resumed);
+  assert.equal(resumed.chapter6.phaseAt,now);assert.equal(resumed.chapter6.game,Math.min(game+1,4));
+  assert.equal(resumed.chapter6.step,game===4?'finale':'intro');
+  assert.equal(phaseCues(resumed.chapter6)[0].at,now-resumed.chapter6.startedAt);
+  const next=JSON.stringify(resumed);advanceChapter6(resumed);assert.equal(JSON.stringify(resumed),next);
+  Object.assign(s,resumed);
+ }
+});
+test('zero-life narration completes before the silent transition and never replays after reconnect',()=>{
+ const s=fixture();for(const value of ['red','A']){advance(s);answer(s,value);finish(s);}
+ advance(s);answer(s,'A');advance(s);assert.equal(s.chapter6.step,'zero');
+ const zeroEnd=s.chapter6.deadline;now=zeroEnd-1;advanceChapter6(s);assert.equal(s.chapter6.step,'zero');
+ now=zeroEnd;advanceChapter6(s);assert.equal(s.chapter6.step,'transition');assert.equal(s.chapter6.transitionFrom.step,'zero');
+ assert.deepEqual(phaseCues(s.chapter6),[]);const resumed=structuredClone(s);advance(resumed);
+ assert.equal(resumed.chapter6.game,3);assert(resumed.chapter6.zeroConsumed);assert(!phaseCues(resumed.chapter6).some(x=>x.number===32));
+});
+test('host login sets a private cookie without Redis writes; cookie authorizes only Chapter 6 and survives refresh',async()=>{
+ const s=fixture();advance(s);raw=JSON.stringify(s);const before=raw;
+ const login=await call(host,{action:'maze-login',code:'maze-host'},'POST',{'x-forwarded-proto':'https'});
+ assert.equal(login.status,200);assert.equal(raw,before);
+ const setCookie=login.headers['Set-Cookie'];assert(setCookie.includes('HttpOnly'));assert(setCookie.includes('SameSite=Strict'));assert(setCookie.includes('Secure'));assert(!setCookie.includes('maze-host.'));
+ assert(!JSON.stringify(login.data).includes('maze-host'));const cookie=setCookie.split(';')[0],headers={cookie,host:'brookwood.vercel.app',origin:'https://brookwood.vercel.app'};
+ assert.equal((await call(host,{action:'maze-session'},'POST',headers)).status,200);assert.equal(raw,before);
+ assert.equal((await call(host,{action:'reset'},'POST',headers)).status,403);assert.equal(raw,before);
+ assert.equal((await call(host,{action:'casting-ready'},'POST',headers)).status,403);
+ const result=await call(host,request(s,'maze-answer',{answer:'black'}),'POST',headers);assert.equal(result.status,200);
+ assert.equal(JSON.parse(raw).chapter6.results.length,1);
+ assert.equal((await call(host,{action:'maze-session'},'POST',{...headers,origin:'https://attacker.invalid'})).status,403);
+ assert.equal((await call(host,{action:'maze-session'},'POST',{...headers,cookie:cookie+'x'})).status,403);
+ now+=12*60*60*1000;assert.equal((await call(host,{action:'maze-session'},'POST',headers)).status,403);
+});
+test('normal PIN authentication establishes the maze session while old chapter actions still require their PIN',async()=>{
+ const login=await call(host,{action:'test-fill',code:'maze-host'});assert.equal(login.status,409);
+ const cookie=login.headers['Set-Cookie'].split(';')[0];assert.equal((await call(host,{action:'maze-session'},'POST',{cookie})).status,200);
+ assert.equal((await call(host,{action:'start'},'POST',{cookie})).status,403);
+ process.env.HOST_KEY='rotated';assert.equal((await call(host,{action:'maze-session'},'POST',{cookie})).status,403);
+});
 test('all 43 assets and exact MPEG durations match runtime cues',()=>{
  for(const r of recordings){const b=fs.readFileSync('.'+r.src);assert.equal(mp3Metadata(b).durationMs,r.durationMs);}
  const images=['red_door','blue_door','green_door','black_door','red_reveal','blue_reveal','green_reveal','black_reveal','morgue_memory','bridge_background','silence_jumpscare'];
@@ -83,6 +134,7 @@ test('zero lives plays 32 once after current failure; all five games continue an
  for(let i=0;i<5;i++){advance(s);if(i===4){advance(s);mazeHostAction(s,request(s,'maze-verdict',{answer:'fail'}));}else answer(s,i===0?'red':'A');
   assert.equal(s.chapter6.step,'result');assert(!phaseCues(s.chapter6).some(x=>x.number===32));advance(s);
   if(s.chapter6.step==='zero'){zero++;assert.equal(i,2);assert.equal(phaseCues(s.chapter6)[0].number,32);assert(s.chapter6.zeroConsumed);const reload=structuredClone(s);advance(reload);Object.assign(s,reload);}
+  assert.equal(s.chapter6.step,'transition');advance(s);
   assert(s.chapter6.lives>=0);
  }
  assert.equal(zero,1);assert.equal(s.chapter6.results.length,5);assert.equal(s.chapter6.lives,0);assert.equal(phaseCues(s.chapter6)[0].number,29);validateChapter6(s);

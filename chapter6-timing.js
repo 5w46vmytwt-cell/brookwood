@@ -8,6 +8,15 @@ export const sequence=nums=>{let at=0;return nums.map(n=>{const cue={...recordin
 export const introNumbers=game=>game===0?[1,2,3]:game===1?[8]:game===2?[14,15]:game===3?[18]:[21,22];
 export function introDuration(game){return introNumbers(game).reduce((sum,n)=>sum+gate(n),0)+(game===2?15000:0);}
 export const answerWindows=[120000,120000,90000,180000,30000];
+export const TRANSITION_MS=4000;
+// Reconstruct from the persisted phase clock; no client transition timer.
+export function transitionVisual(c,now){
+ if(c.step!=='transition')return {scene:c,black:0};
+ const t=Math.max(0,now-c.phaseAt);
+ if(t<1000)return {scene:{...c,...c.transitionFrom},black:t/1000};
+ if(t<3000)return {scene:null,black:1};
+ return {scene:{...c,game:c.game===4?4:c.game+1,step:c.game===4?'finale':'intro',phaseAt:c.deadline},black:Math.max(0,1-(t-3000)/1000)};
+}
 export const games=[
  {title:'THE FOUR DOORS',question:'Which door will you choose?',options:[['red','Red — XIII'],['blue','Blue — VI'],['green','Green — VII'],['black','Black — IX']],correct:'black'},
  {title:'HORROR BOX OFFICE',question:'Which of these horror movies earned the most money at the worldwide box office?',options:[['A','The Exorcist (1973)'],['B','A Nightmare on Elm Street (1984)'],['C','The Sixth Sense (1999)'],['D','Halloween (1978)'],['E','Paranormal Activity (2007)']],correct:'C'},
