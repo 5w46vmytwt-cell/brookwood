@@ -1,0 +1,26 @@
+#chapter6TV{position:fixed;inset:0;z-index:30;background:#020202;color:#eee;overflow:hidden;font-family:Georgia,serif}
+#chapter6TV[hidden],#chapter6TV [hidden],#chapter6Host[hidden]{display:none!important}
+#chapter6HUD{position:absolute;inset:3vh 4vw auto;display:flex;justify-content:space-between;align-items:center;z-index:4;font:clamp(16px,1.5vw,28px) Arial,sans-serif;letter-spacing:.12em;color:#c5b9b9}
+#chapter6Timer{font-size:clamp(40px,5vw,90px);color:#eee;font-variant-numeric:tabular-nums}
+#chapter6Content{position:absolute;inset:15vh 4vw 6vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2vh;z-index:2}
+#chapter6Title{font-size:clamp(25px,3.2vw,60px);letter-spacing:.14em;margin:0;text-shadow:0 0 24px #421111}
+#chapter6Question{font-size:clamp(22px,2.7vw,50px);margin:0;max-width:1200px}
+#chapter6Detail{font-size:clamp(18px,1.8vw,33px);white-space:pre-line;line-height:1.45;max-width:1200px;margin:0}
+#chapter6Screamer{font-size:clamp(24px,3vw,54px);color:#caa5a5}
+#chapter6Choices{list-style:none;padding:0;margin:0;display:flex;gap:1.5vh;flex-wrap:wrap;justify-content:center;font-size:clamp(20px,2vw,36px)}
+#chapter6Choices li{padding:1.5vh 2vw;border:1px solid #443232;background:#080606}
+#chapter6Doors{display:grid;grid-template-columns:repeat(4,1fr);gap:2vw;width:100%;max-width:1400px}
+#chapter6Doors figure{margin:0}#chapter6Doors img{width:100%;height:38vh;object-fit:contain}#chapter6Doors figcaption{font-size:clamp(18px,2vw,36px)}
+#chapter6Image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:1;background:#020202}
+#chapter6Image.bridge{opacity:.35}#chapter6Image.memory,#chapter6Image.jump{z-index:8}
+#chapter6Waveform{display:flex;gap:8px;align-items:center;height:80px}#chapter6Waveform i{display:block;width:7px;height:8px;background:#976767;border-radius:5px;transition:height .2s}
+#chapter6Waveform.speaking i{animation:mazeVoice .7s ease-in-out infinite alternate}#chapter6Waveform i:nth-child(2n){animation-delay:-.3s}#chapter6Waveform i:nth-child(3n){animation-delay:-.5s}
+@keyframes mazeVoice{to{height:65px;background:#ddbaba}}
+#chapter6Chicken{font-size:clamp(55px,7vw,120px);transform:rotate(-12deg)}
+#chapter6TV.intrusion{animation:mazeIntrusion .12s steps(2) 5}@keyframes mazeIntrusion{50%{filter:contrast(3);transform:translateX(3px)}}
+#chapter6HostToggle,#chapter6Audio{position:absolute;bottom:1vh;z-index:10;border:1px solid #493838;background:#100909;color:#bbb;padding:8px 14px;cursor:pointer}#chapter6HostToggle{right:2vw}#chapter6Audio{left:2vw}
+#chapter6Host{position:fixed;inset:0;z-index:80;background:#000e;display:grid;place-items:center;font-family:Arial,sans-serif}
+#chapter6Host .maze-host-panel{background:#100c0c;border:1px solid #493838;padding:28px;width:min(600px,92vw);max-height:90vh;overflow:auto}
+#chapter6Host input,#chapter6Host button,#chapter6Host select{padding:12px;margin:6px 0;width:100%;background:#070505;border:1px solid #513535;color:#eee;font-size:18px}
+#chapter6HostError{color:#e89b9b}#mazePhoneCopy{white-space:pre-line}
+@media(prefers-reduced-motion:reduce){#chapter6TV.intrusion,#chapter6Waveform.speaking i{animation:none}}

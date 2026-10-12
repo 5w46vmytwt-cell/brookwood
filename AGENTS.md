@@ -1,5 +1,9 @@
 # Brookwood project memory and instructions
 
+## Current release authorization (2026-10-11)
+
+The user explicitly authorized committing Chapter 6 on the existing feature branch, pushing it to the existing GitHub repository, integrating it into `main`, and allowing the existing Vercel Git integration to deploy production. Use the existing Vercel project and Redis configuration; do not create additional databases, projects, or environment configurations. Do not reset or manually modify the existing Redis session. Chapters 1–5 remain frozen. This authorization supersedes the older no-push/no-merge/no-deployment status notes below for this Chapter 6 release only. Deployment completion must be verified before being reported as implemented in production.
+
 ## Read before changing anything
 
 Every future Codex session must read this root `AGENTS.md` and inspect the relevant existing code, tests, and assets before making changes. Use the existing architecture as the source of truth when this summary lacks technical details. Preserve these safeguards when updating this file. Distinguish repository evidence from user-approved decisions and future plans; do not report planned features as implemented.
@@ -60,9 +64,9 @@ This is a plain HTML/CSS/browser JavaScript application with Node ESM Vercel API
 - Chapter 5 waits for authenticated `casting-ready` before rules. Server gates use measured narration durations and tails. `audioVersion` and `revealVersion` preserve deployed legacy-run compatibility. Winner names stay hidden until the server reveal gate; the TV retains suspense if the name projection has not arrived. Current progression stops at `chapter5-complete`.
 - Reuse the established black transitions, restrained image motion, chapter-scoped CSS, horror typography, narration layering, and cue-driven reveals. Assets are under `assets/chapter1/` through `assets/chapter5/`; retain exact names, including `02-the-terrible-decision-make.png`.
 
-## Planned Chapter 6: THE KILLER'S MAZE
+## Approved Chapter 6: THE KILLER'S MAZE
 
-The following is approved direction, not implemented functionality. Do not begin implementation unless requested. A mysterious, electronically disguised killer interrupts the Chapter 5 hosts and takes over the TV. Integration must preserve the frozen Chapter 5 sequence and its results through minimal backward-compatible shared changes.
+The following is approved direction. Chapter 6 is now implemented locally on `feat/chapter6-killers-maze`, using checkpoint `76463e32cfd79837913b77d79ce36d2e7b13e0c9`; it has not been pushed or deployed. A mysterious, electronically disguised killer interrupts the Chapter 5 hosts and takes over the TV. Integration must preserve the frozen Chapter 5 sequence and its results through minimal backward-compatible shared changes. See `CHAPTER6.md` for implementation conventions, measured audio, and local rehearsal instructions.
 
 Five challenges share three lives:
 
@@ -80,7 +84,7 @@ The finale branches on remaining lives, then players vote for a physical-token r
 
 Persist progression, challenge timing/results, deductions, zero-life narration state, voting results, and return confirmation in the existing shared state so refresh/reconnect cannot replay gameplay effects. Server-authoritative timers and atomic idempotency must prevent duplicate submissions, votes, and life deductions. Use stored cast membership rather than assuming exactly twelve connected phones. Do not change the approved twelve-player Chapters 1–5 rules as part of this instruction.
 
-Unspecified implementation details (answer submission ownership, timeout outcomes, exact interruption boundary, voting/tie policy, and jump-scare cue timing) must be resolved from relevant existing code/assets and further task instructions; do not invent already-approved behavior.
+The complete implementation specification resolved answer ownership (host-only), timeouts (incorrect), takeover (`chapter5-complete` without an added wait), and jump scare (five seconds remaining, 500 ms). Voting reuses existing no-self-vote and random tied-maximum conventions. Do not invent additional story or gameplay rules.
 
 ### Verified Chapter 6 asset inventory (2026-10-11)
 
@@ -152,10 +156,10 @@ Future Chapter 6 regressions must cover authorization, concurrent/duplicate subm
 Inspection date: 2026-10-11. No pre-existing repository `AGENTS.md` was found. README and `CINEMATICS.md` supplied existing documentation; this file preserves their applicable safeguards while recording current implementation.
 
 - Implemented: existing lobby, session/authentication, atomic Redis state, synchronized Chapters 1–5, private messages, photo checkpoint, physical-package selection/confirmation, six casting rounds, host test tools, and refresh/reconnect reconstruction. Chapters 1–5 remain approved and frozen per user direction.
-- Validation: existing `npm test` passed **378/378 tests**, zero failures/skips, during this documentation-only inspection. This is local verification, not a new live production verification.
-- Planned: all Chapter 6 runtime/state, challenge interfaces/timers, shared lives, killer takeover, finale branching, token vote, and host return confirmation. No Chapter 6 JS/CSS/API phases or tests exist in this inspected checkout; asset presence is not implementation.
-- Assets verified: all 11 expected Chapter 6 PNG images and all 32 numbered MP3 recordings are present and nonempty. The corrected `blue_reveal.png` and added `silence_jumpscare.png` resolve the previous inventory discrepancies. Media contents/durations and cue timing still need verification before implementation.
+- Validation: pre-implementation baseline was **378/378** tests. Chapter 6 now passes **412/412** tests with zero failures/skips; production static build and accelerated built-TV/two-phone browser verification pass. This is local verification, not live production verification.
+- Implemented locally: Chapter 6 runtime/state, all five games, shared lives, one-time zero-life narration, killer takeover, finale branches, private token vote, and host return confirmation. New modules: `api/_chapter6.js`, `api/chapter6.js`, `chapter6-timing.js`, `chapter6.js`, `chapter6.css`, `chapter6-interface.js`, `chapter6-phone.js`, and `chapter6-media.json`; regression coverage is in `tests/chapter6.test.js` and `tests/chapter6-view.test.js`. Shared API/TV/phone integration is extended backward-compatibly. Production deployment remains unverified and unauthorized.
+- Assets verified: all 11 expected Chapter 6 PNG images and all 32 numbered MP3 recordings are valid and nonempty. The corrected `blue_reveal.png` and added `silence_jumpscare.png` resolve the previous inventory discrepancies. All MP3 durations were measured using contiguous MPEG frame samples and are recorded in `chapter6-media.json` and `CHAPTER6.md`. Actual-party audio clarity/autoplay and deployed Vercel/Redis integration remain to be rehearsed.
 - Existing cast constraint: lobby join cap, start, validators, checkpoint counts, and Chapter 4/5 ballot completion currently explicitly require twelve players/six couples. Preserve these frozen rules. New functionality must derive participants from stored player data and must not equate online connections with the eligible cast.
 - Documentation drift: README largely describes the original lobby. Older `CINEMATICS.md` passages say Chapter 2 automatic progression or Chapter 5 is absent, describe Chapter 4 without score, or list an older chapter-selector allowlist; current code and later sections supersede these claims. Consult actual code and timing modules.
 - Final asset-preservation scope authorized by the user: commit root `AGENTS.md` and `assets/chapter6/` only. No tracked Chapter 1–5 files were modified at verification. The pre-existing untracked `assets/chapter1/narration.mp3` remains excluded and untouched; Chapter 1 playback references its approved numbered WAV recordings.
-- Chapter 6 remains planned. Asset preservation does not authorize implementation or deployment; no game code, existing assets, tests, or configuration were changed in these documentation/verification tasks.
+- The complete Chapter 6 specification subsequently authorized implementation, regression tests, and local production build. `package.json` and `vercel.json` now configure `scripts/build.mjs`; `scripts/dev.mjs` supplies local isolated rehearsal and `scripts/verify-chapter6-browser.mjs` exercises built TV/phone flows. Chapters 1–5 content and approved assets remain unchanged. No push, merge, or deployment is authorized.

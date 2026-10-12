@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import {isChapter6,withinMazeRun,mazeHostAction,makeMazeTestSelector} from './_chapter6.js';
 import {isChapter5,makeCastingTestSelector,makeCastingVoter,withinCastingRun,confirmCastingReady} from './_chapter5.js';
 import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
 import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
@@ -7,6 +8,10 @@ export default async function handler(req,res){
   if(String(req.body?.code||"")!==String(process.env.HOST_KEY||"1031"))return send(res,403,{error:"Wrong host code."});
   try{
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
+    if(['maze-answer','maze-verdict','maze-token-return','maze-test-vote'].includes(req.body.action)){
+      let state;await updateState(withinMazeRun(s=>{const result=mazeHostAction(s,req.body);state=publicState(s);return result;}));
+      return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});
+    }
     if(req.body.action==='casting-ready'){
       let state;
       await updateState(withinCastingRun(s=>{const result=confirmCastingReady(s,req.body.chapter5StartedAt);state=publicState(s);return result;}));
@@ -33,6 +38,7 @@ export default async function handler(req,res){
       }));return send(res,200,{ok:true});
     }
     if(req.body.action==='chapter-select'){
+      if(req.body.checkpoint==='chapter6'){await updateState(makeMazeTestSelector());return send(res,200,{ok:true});}
       await updateState(['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint));
       return send(res,200,{ok:true});
     }
@@ -64,9 +70,9 @@ export default async function handler(req,res){
     }
     if(req.body.action==="return-lobby"){
       await updateState(s=>{
-        if(!(["opening","photo","photo-complete"].includes(s.phase)||isChapter3(s)||isChapter4(s)||isChapter5(s))||!Number.isFinite(s.startedAt)||s.startedAt<=0||Date.now()-s.startedAt<44000)
+        if(!(["opening","photo","photo-complete"].includes(s.phase)||isChapter3(s)||isChapter4(s)||isChapter5(s)||isChapter6(s))||!Number.isFinite(s.startedAt)||s.startedAt<=0||Date.now()-s.startedAt<44000)
           throw new LobbyError(409,"Chapter 1 must finish before returning to the lobby.");
-        s.phase="lobby";s.startedAt=null;delete s.chapter3;delete s.chapter4;delete s.chapter5;delete s.packageOpenedAt;delete s.macheteHolderPlayerId;
+        s.phase="lobby";s.startedAt=null;delete s.chapter3;delete s.chapter4;delete s.chapter5;delete s.chapter6;delete s.packageOpenedAt;delete s.macheteHolderPlayerId;
       });
       return send(res,200,{ok:true});
     }

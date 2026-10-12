@@ -1,0 +1,418 @@
+[
+  {
+    "number": 1,
+    "file": "ch6_01_interruption.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 611,
+    "samples": 703872,
+    "durationMs": 15960.816326530612
+  },
+  {
+    "number": 2,
+    "file": "ch6_02_maze_intro.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 531,
+    "samples": 611712,
+    "durationMs": 13871.020408163266
+  },
+  {
+    "number": 3,
+    "file": "ch6_03_doors_intro.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1508,
+    "samples": 1737216,
+    "durationMs": 39392.65306122449
+  },
+  {
+    "number": 4,
+    "file": "ch6_04_doors_red.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 317,
+    "samples": 365184,
+    "durationMs": 8280.816326530612
+  },
+  {
+    "number": 5,
+    "file": "ch6_05_doors_blue.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 433,
+    "samples": 498816,
+    "durationMs": 11311.020408163266
+  },
+  {
+    "number": 6,
+    "file": "ch6_06_doors_green.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 372,
+    "samples": 428544,
+    "durationMs": 9717.551020408162
+  },
+  {
+    "number": 7,
+    "file": "ch6_07_doors_black.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 464,
+    "samples": 534528,
+    "durationMs": 12120.816326530612
+  },
+  {
+    "number": 8,
+    "file": "ch6_08_boxoffice_intro.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 789,
+    "samples": 908928,
+    "durationMs": 20610.61224489796
+  },
+  {
+    "number": 9,
+    "file": "ch6_09_boxoffice_60.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 204,
+    "samples": 235008,
+    "durationMs": 5328.9795918367345
+  },
+  {
+    "number": 10,
+    "file": "ch6_10_boxoffice_30.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 436,
+    "samples": 502272,
+    "durationMs": 11389.387755102041
+  },
+  {
+    "number": 11,
+    "file": "ch6_11_boxoffice_05.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 237,
+    "samples": 273024,
+    "durationMs": 6191.020408163265
+  },
+  {
+    "number": 12,
+    "file": "ch6_12_boxoffice_correct.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 488,
+    "samples": 562176,
+    "durationMs": 12747.755102040817
+  },
+  {
+    "number": 13,
+    "file": "ch6_13_boxoffice_wrong.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 844,
+    "samples": 972288,
+    "durationMs": 22047.34693877551
+  },
+  {
+    "number": 14,
+    "file": "ch6_14_memory_intro.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1009,
+    "samples": 1162368,
+    "durationMs": 26357.551020408162
+  },
+  {
+    "number": 15,
+    "file": "ch6_15_memory_question.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 648,
+    "samples": 746496,
+    "durationMs": 16927.34693877551
+  },
+  {
+    "number": 16,
+    "file": "ch6_16_memory_correct.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 507,
+    "samples": 584064,
+    "durationMs": 13244.081632653062
+  },
+  {
+    "number": 17,
+    "file": "ch6_17_memory_wrong.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 663,
+    "samples": 763776,
+    "durationMs": 17319.18367346939
+  },
+  {
+    "number": 18,
+    "file": "ch6_18_bridge_intro.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1692,
+    "samples": 1949184,
+    "durationMs": 44199.183673469386
+  },
+  {
+    "number": 19,
+    "file": "ch6_19_bridge_correct.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 375,
+    "samples": 432000,
+    "durationMs": 9795.91836734694
+  },
+  {
+    "number": 20,
+    "file": "ch6_20_bridge_wrong.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 687,
+    "samples": 791424,
+    "durationMs": 17946.12244897959
+  },
+  {
+    "number": 21,
+    "file": "ch6_21_silence_intro.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1199,
+    "samples": 1381248,
+    "durationMs": 31320.81632653061
+  },
+  {
+    "number": 22,
+    "file": "ch6_22_silence_rules.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 936,
+    "samples": 1078272,
+    "durationMs": 24450.61224489796
+  },
+  {
+    "number": 23,
+    "file": "ch6_23_silence_whisper.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 292,
+    "samples": 336384,
+    "durationMs": 7627.755102040816
+  },
+  {
+    "number": 24,
+    "file": "ch6_24_silence_chicken_reaction.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 234,
+    "samples": 269568,
+    "durationMs": 6112.65306122449
+  },
+  {
+    "number": 25,
+    "file": "ch6_25_silence_accusation.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 228,
+    "samples": 262656,
+    "durationMs": 5955.918367346939
+  },
+  {
+    "number": 26,
+    "file": "ch6_26_silence_pass.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 574,
+    "samples": 661248,
+    "durationMs": 14994.285714285714
+  },
+  {
+    "number": 27,
+    "file": "ch6_27_silence_fail.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 556,
+    "samples": 640512,
+    "durationMs": 14524.081632653062
+  },
+  {
+    "number": 28,
+    "file": "ch6_28_final_win.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1037,
+    "samples": 1194624,
+    "durationMs": 27088.979591836734
+  },
+  {
+    "number": 29,
+    "file": "ch6_29_final_lose.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 972,
+    "samples": 1119744,
+    "durationMs": 25391.020408163266
+  },
+  {
+    "number": 30,
+    "file": "ch6_30_retriever_selected.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 400,
+    "samples": 460800,
+    "durationMs": 10448.979591836734
+  },
+  {
+    "number": 31,
+    "file": "ch6_31_token_return.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1269,
+    "samples": 1461888,
+    "durationMs": 33149.38775510204
+  },
+  {
+    "number": 32,
+    "file": "ch6_32_all_lives_lost.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 963,
+    "samples": 1109376,
+    "durationMs": 25155.918367346938
+  }
+]
