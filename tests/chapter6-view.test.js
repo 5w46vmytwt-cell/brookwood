@@ -4,7 +4,7 @@ import {Chapter6View} from '../chapter6.js';
 import {gate,phaseCues,transitionVisual} from '../chapter6-timing.js';
 function harness(){
  const nodes=new Map(),created=[];
- const make=()=>({hidden:false,style:{},classList:{toggle(){}},children:[],getAttribute(key){return this[key];},replaceChildren(){this.children=[];},appendChild(child){this.children.push(child);}});
+ const make=()=>({hidden:false,style:{},classList:{values:new Set(),toggle(name,on){on?this.values.add(name):this.values.delete(name);},contains(name){return this.values.has(name);}},children:[],getAttribute(key){return this[key];},replaceChildren(){this.children=[];},appendChild(child){this.children.push(child);}});
  const document={getElementById(id){if(!nodes.has(id))nodes.set(id,make());return nodes.get(id);},createElement(){const node=make();created.push(node);return node;}};
  class Player{constructor(){this.media=new Map();}stop(){}update(){} }
  let elapsed=0;const view=new Chapter6View(document,Player,{elapsedNow:()=>elapsed});
@@ -57,4 +57,33 @@ test('SCREAMER identity never appears in any Game 5 scene and waveform, interrup
  c.step='silence';c.sequence++;paint(26000);assert(!document.getElementById('chapter6Chicken').hidden);
  paint(55000);assert(!document.getElementById('chapter6Image').hidden);assert(document.getElementById('chapter6Image').src.endsWith('silence_jumpscare.png'));
  paint(55500);assert(document.getElementById('chapter6Image').hidden);
+});
+
+test('complete door cards and answer identities use persisted image order after refresh',()=>{
+ const order=['black','green','red','blue'];
+ for(let refresh=0;refresh<2;refresh++){
+  const {document,c,paint}=harness();Object.assign(c,{game:0,step:'answer',doorOrder:[...order],deadline:121000});paint(100);
+  const cards=document.getElementById('chapter6Doors').children;
+  assert.deepEqual(cards.map(n=>n.children[0].src),order.map(id=>'/assets/chapter6/'+id+'_door.png'));
+  assert.deepEqual(cards.map(n=>n.doorId),order);assert.deepEqual(document.getElementById('chapter6Choices').children.map(n=>n.answerId),order);
+  assert.equal(cards[0].children[1].textContent,'Black — IX');assert.equal(cards[0].children[0].alt,'Black — IX');
+  paint(500);assert.deepEqual(document.getElementById('chapter6Doors').children,cards);
+ }
+});
+test('trivia cards show movie years and time choices without early answer or memory image',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{game:1,step:'answer',deadline:121000});paint(100);
+ const choices=document.getElementById('chapter6Choices').children;assert.equal(choices.length,5);for(const card of choices){assert(card.children[0].textContent);assert.match(card.children[1].textContent,/^\d{4}$/);assert(!card.className.includes('selected'));}
+ assert.equal(document.getElementById('chapter6GameTitle').textContent,'HORROR BOX OFFICE');assert(document.getElementById('chapter6Title').hidden);assert(document.getElementById('chapter6TV').classList.contains('maze-question'));
+ c.game=2;c.sequence++;paint(200);assert(document.getElementById('chapter6Image').hidden);assert.equal(document.getElementById('chapter6Choices').children.length,5);assert.equal(document.getElementById('chapter6GameTitle').textContent,"DON'T LOOK AWAY");assert(document.getElementById('chapter6Timer').textContent);
+});
+test('results use green success and red failure; zero-life scene owns the waveform and hides next question',()=>{
+ const {document,c,paint}=harness();c.step='result';c.results[2]={answer:'C',correct:true,recording:16};paint(0);
+ const root=document.getElementById('chapter6TV');assert(root.classList.contains('maze-success'));assert.equal(document.getElementById('chapter6Question').textContent,'CORRECT');
+ c.results[2]={answer:'A',correct:false,recording:17};paint(500);assert(root.classList.contains('maze-failure'));assert(!root.classList.contains('maze-success'));assert.equal(document.getElementById('chapter6Question').textContent,'WRONG');
+ c.step='zero';c.lives=0;paint(500);assert(root.classList.contains('maze-zero'));assert.equal(document.getElementById('chapter6Content').style.opacity,'0.5');assert(!document.getElementById('chapter6Waveform').hidden);assert(document.getElementById('chapter6Waveform').classList.contains('speaking'));assert.equal(document.getElementById('chapter6Title').textContent,'ALL LIVES LOST');assert.equal(document.getElementById('chapter6Choices').children.length,0);assert(document.getElementById('chapter6Image').hidden);
+});
+test('silence failure scare stays through the entire narration result and never appears for a pass',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{game:4,step:'result',deadline:1000+gate(27)});c.results[4]={answer:'fail',correct:false,recording:27};
+ for(const t of [0,500,gate(27)-1,gate(27)+5000]){paint(t);assert(!document.getElementById('chapter6Image').hidden);assert(document.getElementById('chapter6Image').src.endsWith('silence_jumpscare.png'));assert.equal(document.getElementById('chapter6Question').textContent,'');assert(document.getElementById('chapter6TV').classList.contains('maze-impact')===(t<500));}
+ c.results[4]={answer:'pass',correct:true,recording:26};paint(100);assert(document.getElementById('chapter6Image').hidden);assert.equal(document.getElementById('chapter6Question').textContent,'SURVIVED');
 });

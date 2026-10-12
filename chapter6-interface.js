@@ -1,4 +1,4 @@
-import {games} from './chapter6-timing.js';
+import {games,orderedOptions} from './chapter6-timing.js';
 export function installMazeControls({document,runtime,acceptState,request}){
  let state=null,pending=false,authenticated=false,selectedAnswer=null,scene=null;
  const node=id=>document.getElementById(id),panel=node('chapter6Host'),choices=node('chapter6HostAnswers');
@@ -33,8 +33,8 @@ export function installMazeControls({document,runtime,acceptState,request}){
   node('chapter6HostCode').hidden=authenticated;node('chapter6HostLogin').hidden=authenticated;
   node('chapter6HostLogin').disabled=pending;choices.hidden=!authenticated;
   choices.replaceChildren();node('chapter6HostStatus').textContent=games[c.game].title+' — '+c.step.toUpperCase();
-  const options=c.step==='answer'?games[c.game].options:c.step==='verdict'?[['pass','PASS'],['fail','FAIL']]:c.step==='waiting'?[['returned','Player Returned With Token']]:c.step==='vote'&&c.testMode?[['simulated','TEST: VOTE SIMULATED PLAYERS (BEFORE REAL BALLOTS)']]:[];
-  for(const [id,label] of options){const button=document.createElement('button');button.textContent=label;button.disabled=pending;button.className=selectedAnswer===id?'selected':'';button.onclick=()=>{selectedAnswer=id;return submit(c.step==='answer'?'maze-answer':c.step==='verdict'?'maze-verdict':c.step==='vote'?'maze-test-vote':'maze-token-return',id);};choices.appendChild(button);}
+  const options=c.step==='answer'?orderedOptions(c):c.step==='verdict'?[['pass','PASS'],['fail','FAIL']]:c.step==='waiting'?[['returned','Player Returned With Token']]:c.step==='vote'?[...(c.testMode?[['simulated','TEST: VOTE SIMULATED PLAYERS (BEFORE REAL BALLOTS)']]:[]),['close','CLOSE VOTING']]:[];
+  for(const [id,label] of options){const button=document.createElement('button');button.textContent=label;button.disabled=pending||(id==='close'&&!c.voteCount);button.className=selectedAnswer===id?'selected':'';button.onclick=()=>{selectedAnswer=id;return submit(c.step==='answer'?'maze-answer':c.step==='verdict'?'maze-verdict':c.step==='vote'?(id==='close'?'maze-close-voting':'maze-test-vote'):'maze-token-return',id);};choices.appendChild(button);}
  }
  return {update,close};
 }

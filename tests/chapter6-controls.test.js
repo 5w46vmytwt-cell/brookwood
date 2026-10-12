@@ -40,3 +40,9 @@ test('a pending maze answer response is discarded after chapter navigation',asyn
  controls.update(current);await node('chapter6HostToggle').onclick();const pending=node('chapter6HostAnswers').children[0].onclick();
  controls.update({phase:'opening'});resolveAnswer({state:current});await pending;assert.equal(accepted,0);assert(node('chapter6Host').hidden);
 });
+
+test('host answer cards follow door order and close voting uses the authenticated fenced action',async()=>{
+ const {document,node}=harness(),requests=[];const current=state();current.chapter6.doorOrder=['black','green','red','blue'];
+ const controls=installMazeControls({document,runtime:{unlockChapter6(){}},acceptState(){},request:async(_path,body)=>{requests.push(body);return body.action==='maze-session'?{authenticated:true}:{state:current};}});controls.update(current);await node('chapter6HostToggle').onclick();assert.equal(node('chapter6HostAnswers').children[0].textContent,'Black — IX');
+ current.chapter6={...current.chapter6,step:'vote',game:4,voteCount:0,testMode:false};controls.update(current);assert(node('chapter6HostAnswers').children[0].disabled);current.chapter6.voteCount=1;controls.update(current);assert(!node('chapter6HostAnswers').children[0].disabled);await node('chapter6HostAnswers').children[0].onclick();assert.equal(requests.at(-1).action,'maze-close-voting');assert.equal(requests.at(-1).generation,current.generation);assert(!Object.hasOwn(requests.at(-1),'code'));
+});

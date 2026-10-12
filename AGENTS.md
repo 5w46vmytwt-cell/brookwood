@@ -1,3 +1,7 @@
+# Chapter 6 visual/voting release authorization (2026-10-12)
+
+The user approved Chapter 6-only door/card/HUD/result/zero-life/failure-scare polish and token-voting corrections, tests, isolated local rehearsal and the existing feature branch → main → Vercel production workflow. Preserve Chapters 1–5 and all supplied audio bytes. Do not reset production Redis, modify environment variables or create projects/databases. Current implementation and election migration/tie rules are documented in CHAPTER6.md; older first-ballot/30-second-presence/random-token-tie notes are superseded. Production release is not verified until explicitly checked.
+
 # Current coordinated polish authorization (2026-10-12)
 
 The user explicitly approved Chapter 5 unique casting winners and a final-cast host testing checkpoint, plus the coordinated Chapter 6 audio/UX changes and the existing feature branch → main → Vercel production release. Preserve Chapters 1–4 and Chapter 5 narration/art/story. Existing legacy duplicate casting assignments must remain intact; future votes exclude assigned players. Recording 22 was intentionally replaced by the user (17.789388 seconds, spoken 60-second rules); preserve the supplied bytes, use a 60-second silence challenge, and update metadata. This supersedes the previous temporary decision to retain 30 seconds. No Redis reset, environment modification or new project/database is authorized. See CHAPTER6.md for versioned phase recovery and media completion. Release remains unverified until recorded after deployment.

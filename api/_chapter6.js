@@ -1,4 +1,4 @@
-import {randomInt} from 'node:crypto';
+import {randomInt,createHash} from 'node:crypto';
 import {LobbyError,UNCHANGED} from './_state.js';
 import {validateChapter5,makeCastingTestSelector} from './_chapter5.js';
 import {gate,introDuration,answerWindows,games,resultRecording,TRANSITION_MS,introNumbers,phaseCues} from '../chapter6-timing.js';
@@ -8,9 +8,25 @@ export const isChapter6=s=>s.phase==='chapter6';
 const steps=['takeover','exposure','locked','gameover','intro','answer','silence','verdict','result','zero','transition','finale','vote','selected','waiting','return','complete'];
 const timed=['takeover','exposure','locked','gameover','intro','answer','silence','result','zero','transition','finale','selected','return'];
 export const PRESENCE_MS=30000;
-function shuffleDoors(){const order=['red','blue','green','black'];for(let i=3;i>0;i--){const j=randomInt(i+1);[order[i],order[j]]=[order[j],order[i]];}return order;}
+function shuffleDoors(){const original=['red','blue','green','black'];let order;do{order=[...original];for(let i=3;i>0;i--){const j=randomInt(i+1);[order[i],order[j]]=[order[j],order[i]];}}while(order.every((id,i)=>id===original[i]));return order;}
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
 const candidatePlayers=s=>s.chapter6.testMode?s.players:realPlayers(s);
+// REST polling cannot distinguish a backgrounded phone from a disconnect.
+// Once observed during the maze, a phone retains its opportunity to vote.
+// If no phone has been observed, conservatively include the real registered cast.
+function establishElectorate(s){
+ const c=s.chapter6;if(c.voteVersion===2)return;
+ const observed=realPlayers(s).filter(p=>Number.isFinite(c.presence[p.id])).map(p=>p.id);
+ c.voterIds=[...new Set([...c.voterIds,...Object.keys(c.votes),...(observed.length?observed:realPlayers(s).map(p=>p.id))])];
+ c.electorateLocked=true;c.voteVersion=2;c.voteClosedAt=null;
+}
+export function tokenVoteWinner(s){
+ const c=s.chapter6,counts=new Map();for(const id of Object.values(c.votes))counts.set(id,(counts.get(id)||0)+1);
+ const max=Math.max(...counts.values()),leaders=[...counts].filter(([,n])=>n===max).map(([id])=>id);
+ const rank=id=>createHash('sha256').update(JSON.stringify([s.generation,c.startedAt,id])).digest('hex');
+ return leaders.sort((a,b)=>rank(a).localeCompare(rank(b))||a.localeCompare(b))[0];
+}
+function finalizeTokenVote(s,now){s.chapter6.selectedPlayerId=tokenVoteWinner(s);enter(s.chapter6,'selected',now,gate(30));}
 export function startChapter6(s,now=Date.now(),doorOrder=shuffleDoors()){
  if(isChapter6(s))return UNCHANGED;
  if(s.phase!=='chapter5-complete')return UNCHANGED;
@@ -38,8 +54,10 @@ export function validateChapter6(s){
  if(Object.entries(c.votes).some(([v,t])=>!c.voterIds.includes(v)||!candidates.has(t)||v===t)||(!c.electorateLocked&&Object.keys(c.votes).length))throw Error('Invalid token ballot.');
  if(c.selectedPlayerId!==null){
   const counts=new Map();for(const t of Object.values(c.votes))counts.set(t,(counts.get(t)||0)+1);
-  if(!candidates.has(c.selectedPlayerId)||!c.electorateLocked||!c.voterIds.length||Object.keys(c.votes).length!==c.voterIds.length||counts.get(c.selectedPlayerId)!==Math.max(...counts.values()))throw Error('Invalid token retriever.');
+  if(!candidates.has(c.selectedPlayerId)||!c.electorateLocked||!c.voterIds.length||(!c.voteClosedAt&&Object.keys(c.votes).length!==c.voterIds.length)||counts.get(c.selectedPlayerId)!==Math.max(...counts.values()))throw Error('Invalid token retriever.');
  }
+ if(c.voteClosedAt!==undefined&&c.voteClosedAt!==null&&(!Number.isFinite(c.voteClosedAt)||c.voteClosedAt<c.startedAt||!Object.keys(c.votes).length||c.selectedPlayerId===null))throw Error('Invalid early vote closure.');
+ if(c.voteVersion!==undefined&&c.voteVersion!==2)throw Error('Invalid token voting version.');
  if(['selected','waiting','return','complete'].includes(c.step)&&c.selectedPlayerId===null)throw Error('Missing token retriever.');
  if(['return','complete'].includes(c.step)?!Number.isFinite(c.tokenReturnedAt)||c.tokenReturnedAt<c.phaseAt&&c.step==='return':c.tokenReturnedAt!==null)throw Error('Invalid token confirmation.');
  if(c.step==='complete'?!Number.isFinite(c.completedAt):c.completedAt!==null)throw Error('Invalid maze completion.');
@@ -51,7 +69,7 @@ function resolve(s,answer,now){
  const n=resultRecording(c.game,answer,correct);
  c.results.push({game:c.game,answer,correct,recording:n,resolvedAt:now});
  if(!correct)c.lives=Math.max(0,c.lives-1);
- enter(c,c.audioVersion===2?'locked':'result',now,c.audioVersion===2?1800:n?gate(n):1500);
+ enter(c,c.audioVersion===2?'locked':'result',now,c.audioVersion===2?(c.game<4?3000:1800):n?gate(n):1500);
 }
 function transition(c,now){
  c.transitionFrom={step:c.step,phaseAt:c.phaseAt};enter(c,'transition',now,c.audioVersion===2&&c.game===4?5000:TRANSITION_MS);
@@ -82,7 +100,7 @@ export function advanceChapter6(s,now=Date.now(),audioEnded=false){
   else transition(c,now);
  }else if(c.step==='zero')transition(c,now);
  else if(c.step==='transition')nextGame(c,end);
- else if(c.step==='finale'){enter(c,'vote',now);c.voterIds=realPlayers(s).filter(p=>now-(c.presence[p.id]??0)<=PRESENCE_MS).map(p=>p.id);}
+ else if(c.step==='finale'){enter(c,'vote',now);establishElectorate(s);}
  else if(c.step==='selected')enter(c,'waiting',now);
  else if(c.step==='return'){enter(c,'complete',end);c.completedAt=end;}
 }
@@ -114,6 +132,11 @@ export function mazeHostAction(s,b,now=Date.now()){
   if(c.step!=='waiting')throw new LobbyError(409,'Wait for the selected retriever narration.');
   c.tokenReturnedAt=now;enter(c,'return',now,gate(31));return;
  }
+ if(b.action==='maze-close-voting'){
+  if(c.step!=='vote')throw new LobbyError(409,'Token voting is not active.');
+  establishElectorate(s);if(!Object.keys(c.votes).length)throw new LobbyError(409,'Receive at least one valid ballot before closing voting.');
+  c.voteClosedAt=now;finalizeTokenVote(s,now);return;
+ }
  if(b.action==='maze-test-vote')return simulatedTokenVotes(s,now);
  throw new LobbyError(400,'Unknown maze action.');
 }
@@ -121,34 +144,30 @@ export function touchMazePresence(s,id,now=Date.now()){
  if(!isChapter6(s)||s.players.find(p=>p.id===id)?.simulated===true)return UNCHANGED;
  const c=s.chapter6;if(now-(c.presence[id]??0)<10000)return UNCHANGED;
  c.presence[id]=now;
- if(c.step==='vote'&&!c.electorateLocked)c.voterIds=realPlayers(s).filter(p=>now-(c.presence[p.id]??0)<=PRESENCE_MS).map(p=>p.id);
+ if(c.step==='vote')establishElectorate(s);
 }
-export function makeTokenVoter(choose=randomInt){let decision;return (s,id,target,b,now=Date.now())=>{
+export function makeTokenVoter(){return (s,id,target,b,now=Date.now())=>{
  const c=checkMazeRequest(s,b);
  if(c.step!=='vote')throw new LobbyError(409,'Token voting is not active.');
  if(s.players.find(p=>p.id===id)?.simulated===true)throw new LobbyError(403,'Only real players vote for the token.');
  if(Object.hasOwn(c.votes,id))throw new LobbyError(409,'Your vote is already recorded.');
  if(!candidatePlayers(s).some(p=>p.id===target)||target===c.macheteId||target===id)throw new LobbyError(400,'Choose another eligible player.');
- if(!c.electorateLocked){c.presence[id]=now;c.voterIds=realPlayers(s).filter(p=>now-(c.presence[p.id]??0)<=PRESENCE_MS).map(p=>p.id);c.electorateLocked=true;}
+ establishElectorate(s);
  if(!c.voterIds.includes(id))throw new LobbyError(403,'You were not connected when voting began.');
  c.votes[id]=target;
- if(Object.keys(c.votes).length===c.voterIds.length){
-  const counts=new Map();for(const t of Object.values(c.votes))counts.set(t,(counts.get(t)||0)+1);
-  const max=Math.max(...counts.values()),leaders=[...counts].filter(([,n])=>n===max).map(([t])=>t).sort(),key=JSON.stringify(leaders);
-  if(decision?.key!==key)decision={key,id:leaders[choose(leaders.length)]};
-  c.selectedPlayerId=decision.id;enter(c,'selected',now,gate(30));
- }
+ if(Object.keys(c.votes).length===c.voterIds.length)finalizeTokenVote(s,now);
 };}
 export function chapter6Progress(s,playerId){
  if(!isChapter6(s))return null;const c=s.chapter6,name=id=>s.players.find(p=>p.id===id)?.name??'';
- return {audioVersion:c.audioVersion??1,audioIndex:c.audioIndex??0,doorOrder:c.doorOrder??['red','blue','green','black'],startedAt:c.startedAt,previousChapter5StartedAt:s.chapter5.startedAt,phaseAt:c.phaseAt,deadline:c.deadline,step:c.step,...(c.step==='transition'?{transitionFrom:{...c.transitionFrom}}:{}),game:c.game,lives:c.lives,sequence:c.sequence,zeroConsumed:c.zeroConsumed,results:c.results.map(r=>({...r})),screamer:{id:c.screamerId,name:name(c.screamerId)},macheteId:c.macheteId,selectedPlayer:c.selectedPlayerId?{id:c.selectedPlayerId,name:name(c.selectedPlayerId)}:null,completedAt:c.completedAt,voteCount:Object.keys(c.votes).length,voterCount:c.voterIds.length,electorateLocked:c.electorateLocked,testMode:c.testMode,
+ return {audioVersion:c.audioVersion??1,audioIndex:c.audioIndex??0,doorOrder:c.doorOrder??['red','blue','green','black'],startedAt:c.startedAt,previousChapter5StartedAt:s.chapter5.startedAt,phaseAt:c.phaseAt,deadline:c.deadline,step:c.step,...(c.step==='transition'?{transitionFrom:{...c.transitionFrom}}:{}),game:c.game,lives:c.lives,sequence:c.sequence,zeroConsumed:c.zeroConsumed,results:c.results.map(r=>({...r})),screamer:{id:c.screamerId,name:name(c.screamerId)},macheteId:c.macheteId,selectedPlayer:c.selectedPlayerId?{id:c.selectedPlayerId,name:name(c.selectedPlayerId)}:null,completedAt:c.completedAt,voteCount:Object.keys(c.votes).length,voterCount:c.voterIds.length,voteClosedAt:c.voteClosedAt??null,electorateLocked:c.electorateLocked,testMode:c.testMode,
  ...(playerId?{voted:Object.hasOwn(c.votes,playerId),canVote:c.step==='vote'&&s.players.find(p=>p.id===playerId)?.simulated!==true&&(!c.electorateLocked||c.voterIds.includes(playerId)),candidates:candidatePlayers(s).filter(p=>p.id!==c.macheteId&&p.id!==playerId).map(p=>({id:p.id,name:p.name}))}:{})};
 }
 function simulatedTokenVotes(s,now){
  const c=s.chapter6,sim=s.players.filter(p=>p.simulated===true);
  if(!c.testMode||c.step!=='vote'||!sim.length)throw new LobbyError(409,'Simulated voting is only available in test mode during token voting.');
- if(c.electorateLocked){if(sim.every(p=>Object.hasOwn(c.votes,p.id)))return UNCHANGED;throw new LobbyError(409,'Run the simulated helper before any real ballots.');}
- const real=realPlayers(s).filter(p=>now-(c.presence[p.id]??0)<=PRESENCE_MS);
+ if(sim.every(p=>Object.hasOwn(c.votes,p.id)))return UNCHANGED;
+ if(Object.keys(c.votes).length)throw new LobbyError(409,'Run the simulated helper before any real ballots.');
+ establishElectorate(s);const real=realPlayers(s).filter(p=>c.voterIds.includes(p.id));
  if(!real.length)throw new LobbyError(409,'Keep at least one real test phone connected.');
  c.voterIds=[...real,...sim].map(p=>p.id);c.electorateLocked=true;
  for(const p of sim)c.votes[p.id]=candidatePlayers(s).find(q=>q.id!==p.id&&q.id!==c.macheteId).id;

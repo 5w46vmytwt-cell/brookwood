@@ -10,7 +10,7 @@ export function renderMazePhone(state,{document,auth,request,onState,onInvalid,i
  for(const p of c.candidates??[]){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;selector.appendChild(option);}selector.value=old;selectionRun=c.startedAt;
  selector.hidden=!canVote;const button=node('mazePhoneVote');button.hidden=!canVote;button.disabled=pending;
  node('mazePhoneCount').textContent=c.step==='vote'?(c.voted?'VOTE RECORDED — ':'')+c.voteCount+' / '+c.voterCount+' VOTES RECORDED':'';
- if(c.step==='vote'&&!c.canVote&&!c.voted)node('mazePhoneCopy').textContent='Voting is in progress. You were not in the connected voting group when the first ballot was cast.';
+ if(c.step==='vote'&&!c.canVote&&!c.voted)node('mazePhoneCopy').textContent='Voting is in progress. You were not in the connected voting group when voting opened.';
  button.onclick=async()=>{
   if(pending||current!==state||!canVote)return;pending=true;button.disabled=true;node('mazePhoneError').textContent='';
   try{await request('/api/player',{...auth,action:'token-vote',targetId:selector.value,generation:state.generation,chapter6StartedAt:c.startedAt});const next=await request('/api/me',auth);if(isCurrent()&&current?.generation===state.generation)onState(next);}

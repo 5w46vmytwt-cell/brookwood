@@ -191,17 +191,19 @@ test('third life lost in Game 5 skips 32 before lose finale; surviving lives cho
  const s=fixture();play(s,['red','A','C','B','fail']);assert.equal(s.chapter6.zeroConsumed,false);assert.equal(s.chapter6.zeroAt,null);assert.equal(phaseCues(s.chapter6)[0].number,29);
  const win=fixture();play(win);assert.equal(win.chapter6.lives,3);assert.equal(phaseCues(win.chapter6)[0].number,28);
 });
-test('real connected electorate is dynamic; holder may vote but cannot be candidate; ballots remain private',()=>{
+test('real observed electorate is fixed; holder may vote but cannot be candidate; ballots remain private',()=>{
  const s=fixture();s.chapter6.testMode=false;play(s);now=s.chapter6.deadline;
  for(const id of ['p0','p1','p2'])touchMazePresence(s,id);advanceChapter6(s);assert.deepEqual(s.chapter6.voterIds,['p0','p1','p2']);
  const vote=makeTokenVoter(()=>0),b=request(s,'token-vote');assert.throws(()=>vote(s,'p1','p0',b));assert.throws(()=>vote(s,'p1','p1',b));vote(s,'p0','p1',b);assert.throws(()=>vote(s,'p0','p2',b));assert.throws(()=>vote(s,'p3','p1',b));
  const pub=JSON.stringify(publicState(s));assert(!pub.includes('"votes"'));assert(!pub.includes('"voterIds"'));assert(!pub.includes('"token"'));assert(!chapter6Progress(s,'p1').candidates.some(p=>p.id==='p0'));
  vote(s,'p1','p2',b);vote(s,'p2','p1',b);assert.equal(s.chapter6.selectedPlayerId,'p1');validateChapter6(s);
 });
-test('tie resolution uses existing random leader rule and keeps retry decision stable',()=>{
+test('token ties are deterministic across CAS retries and ballot arrival order',()=>{
  const s=fixture();play(s);now=s.chapter6.deadline;for(const id of ['p0','p1'])touchMazePresence(s,id);advanceChapter6(s);
- let calls=0;const vote=makeTokenVoter(n=>{calls++;assert.equal(n,2);return 1;}),b=request(s,'token-vote');vote(s,'p0','p1',b);const retry=structuredClone(s);vote(s,'p1','p2',b);vote(retry,'p1','p2',b);assert.equal(calls,1);assert.equal(s.chapter6.selectedPlayerId,'p2');assert.equal(retry.chapter6.selectedPlayerId,'p2');
+ const opposite=structuredClone(s),vote=makeTokenVoter(),b=request(s,'token-vote');vote(s,'p0','p1',b);const retry=structuredClone(s);vote(s,'p1','p2',b);vote(retry,'p1','p2',b);
+ vote(opposite,'p1','p2',b);vote(opposite,'p0','p1',b);assert.equal(s.chapter6.selectedPlayerId,retry.chapter6.selectedPlayerId);assert.equal(s.chapter6.selectedPlayerId,opposite.chapter6.selectedPlayerId);assert(['p1','p2'].includes(s.chapter6.selectedPlayerId));validateChapter6(s);
 });
+
 test('selected narration -> indefinite token wait -> host confirmation -> final measured narration -> black complete',()=>{
  const s=fixture();play(s);now=s.chapter6.deadline;touchMazePresence(s,'p0');advanceChapter6(s);makeTokenVoter()(s,'p0','p1',request(s,'token-vote'));
  assert.equal(phaseCues(s.chapter6)[0].number,30);assert.throws(()=>mazeHostAction(s,request(s,'maze-token-return')));advance(s);assert.equal(s.chapter6.step,'waiting');assert.equal(s.chapter6.deadline,null);
@@ -269,4 +271,32 @@ test('chapter navigation fences an in-flight maze answer CAS and old generation 
  const jump=await call(host,{action:'chapter-select',checkpoint:'chapter6',code:'maze-host'});assert.equal(jump.status,200);
  const after=raw;h.release.resolve();assert.equal((await pending).status,409);assert.equal(raw,after);
  assert.equal((await call(host,body)).status,409);assert.equal(raw,after);assert.equal(JSON.parse(raw).chapter6.lives,3);
+});
+
+test('knowledge answer lock is exactly three authoritative seconds with no narration or duplicate scoring',()=>{
+ const s=fixture(12,true);modernQuestion(s);answer(s,'black');const c=s.chapter6;assert.equal(c.deadline-c.phaseAt,3000);assert.deepEqual(phaseCues(c),[]);
+ const refreshed=structuredClone(s);now=c.phaseAt+2999;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'locked');assert.throws(()=>answer(s,'red'));assert.equal(c.results.length,1);assert.equal(c.lives,3);now=c.deadline;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'result');now+=100000;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'result');
+});
+test('first ballot cannot discard backgrounded voters; refresh and reconnect preserve pending ballots',async()=>{
+ const s=fixture();play(s);now=s.chapter6.deadline;touchMazePresence(s,'p0');touchMazePresence(s,'p1');now+=120000;advanceChapter6(s);assert.deepEqual(s.chapter6.voterIds,['p0','p1']);
+ makeTokenVoter()(s,'p0','p2',request(s,'token-vote'));assert.equal(s.chapter6.step,'vote');assert.equal(s.chapter6.selectedPlayerId,null);assert.equal(chapter6Progress(s).voteCount,1);assert.equal(chapter6Progress(s).voterCount,2);
+ raw=JSON.stringify(s);await call(me,{id:'p0',token:'t0'});await call(me,{id:'p1',token:'t1'});const refreshed=JSON.parse(raw);assert.deepEqual(refreshed.chapter6.votes,{p0:'p2'});assert.deepEqual(refreshed.chapter6.voterIds,['p0','p1']);validateChapter6(refreshed);
+});
+test('vote opens with the complete observed cast and simultaneous private ballots select one winner',async()=>{
+ const s=fixture();play(s);now=s.chapter6.deadline;for(const p of s.players)touchMazePresence(s,p.id);advanceChapter6(s);assert.equal(s.chapter6.voterIds.length,12);raw=JSON.stringify(s);
+ const replies=await Promise.all(s.players.map(p=>call(player,{...request(s,'token-vote'),id:p.id,token:p.token,targetId:p.id==='p1'?'p2':'p1'})));assert(replies.every(r=>r.status===200));const current=JSON.parse(raw);assert.equal(Object.keys(current.chapter6.votes).length,12);assert.equal(current.chapter6.selectedPlayerId,'p1');assert.equal(current.chapter6.step,'selected');validateChapter6(current);assert(!JSON.stringify(publicState(current)).includes('"votes"'));
+});
+test('host close requires a ballot and authorization and preserves partial election through selected narration',async()=>{
+ const s=fixture();play(s);now=s.chapter6.deadline;for(const p of s.players)touchMazePresence(s,p.id);advanceChapter6(s);raw=JSON.stringify(s);
+ assert.equal((await call(host,{...request(s,'maze-close-voting'),code:'maze-host'})).status,409);
+ makeTokenVoter()(s,'p0','p1',request(s,'token-vote'));raw=JSON.stringify(s);assert.equal((await call(host,request(s,'maze-close-voting'))).status,403);
+ assert.equal((await call(host,{...request(s,'maze-close-voting'),code:'maze-host'})).status,200);const current=JSON.parse(raw);assert.equal(current.chapter6.voterIds.length,12);assert.deepEqual(current.chapter6.votes,{p0:'p1'});assert.equal(current.chapter6.selectedPlayerId,'p1');assert.equal(current.chapter6.voteClosedAt,now);assert.equal(phaseCues(current.chapter6)[0].number,30);validateChapter6(current);
+ const snapshot=JSON.stringify(current);now+=100000;advanceChapter6(current);assert.notEqual(JSON.stringify(current),snapshot);assert.equal(current.chapter6.step,'waiting');
+});
+test('legacy pending electorate migration retains ballots and every previously observed phone',()=>{
+ const s=fixture();play(s);now=s.chapter6.deadline;touchMazePresence(s,'p0');touchMazePresence(s,'p1');advanceChapter6(s);delete s.chapter6.voteVersion;s.chapter6.voterIds=['p0'];s.chapter6.votes={p0:'p2'};s.chapter6.electorateLocked=true;
+ touchMazePresence(s,'p1',now+60000);assert.deepEqual(s.chapter6.voterIds,['p0','p1']);assert.deepEqual(s.chapter6.votes,{p0:'p2'});assert.equal(s.chapter6.step,'vote');validateChapter6(s);
+});
+test('new door shuffles never reproduce the fixed narration order and persist on reconstruction',()=>{
+ for(let i=0;i<40;i++){const s=fixture(12,true);assert.notDeepEqual(s.chapter6.doorOrder,['red','blue','green','black']);assert.equal(new Set(s.chapter6.doorOrder).size,4);assert.deepEqual(chapter6Progress(structuredClone(s)).doorOrder,s.chapter6.doorOrder);}
 });

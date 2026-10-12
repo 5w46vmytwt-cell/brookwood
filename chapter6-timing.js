@@ -23,7 +23,7 @@ export const games=[
  {title:'THE FOUR DOORS',question:'Which door will you choose?',options:[['red','Red — XIII'],['blue','Blue — VI'],['green','Green — VII'],['black','Black — IX']],correct:'black'},
  {title:'HORROR BOX OFFICE',question:'Which of these horror movies earned the most money at the worldwide box office?',options:[['A','The Exorcist (1973)'],['B','A Nightmare on Elm Street (1984)'],['C','The Sixth Sense (1999)'],['D','Halloween (1978)'],['E','Paranormal Activity (2007)']],correct:'C'},
  {title:"DON'T LOOK AWAY",question:'What time was shown on the clock?',options:[['A','3:15'],['B','4:45'],['C','3:45'],['D','9:15'],['E','4:15']],correct:'C'},
- {title:'THE BRIDGE OF DEATH',question:'What is the minimum total time required for everyone to cross?',options:[['A','15 minutes'],['B','17 minutes'],['C','19 minutes'],['D','20 minutes'],['E','22 minutes']],correct:'B'},
+ {title:'BRIDGE OF DEATH',question:'What is the minimum total time required for everyone to cross?',options:[['A','15 minutes'],['B','17 minutes'],['C','19 minutes'],['D','20 minutes'],['E','22 minutes']],correct:'B'},
  {title:"DON'T MAKE A SOUND",question:'The entire room must remain silent.',options:[]}
 ];
 export const resultRecording=(game,answer,correct)=>game===0?({red:4,blue:5,green:6,black:7}[answer]??null):game===1?(correct?12:13):game===2?(correct?16:17):game===3?(correct?19:20):(correct?26:27);
@@ -45,3 +45,5 @@ export function phaseCues(c){
 }
 export function memoryVisible(c,serverNow){return c.game===2&&(c.audioVersion===2?c.step==='exposure'&&serverNow<c.deadline:c.step==='intro'&&serverNow>=c.phaseAt+gate(14)&&serverNow<c.phaseAt+gate(14)+15000);}
 export const jumpVisible=(c,now)=>c.step==='silence'&&now>=c.phaseAt+55000&&now<c.phaseAt+55500;
+
+export function orderedOptions(c){const options=games[c.game].options;return c.game===0&&c.doorOrder?c.doorOrder.map(id=>options.find(option=>option[0]===id)):options;}

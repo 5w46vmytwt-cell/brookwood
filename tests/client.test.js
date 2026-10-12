@@ -208,7 +208,7 @@ function environment(stored = null) {
     const classes = new Set();
     return { style: {}, textContent: '', get innerHTML(){return this.markup||'';}, set innerHTML(value){this.markup=value;this.children=[];}, value: '', options: [], children: [], events: {}, hidden: false,
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, yes) { if (yes) classes.add(c); else classes.delete(c); } },
-      focus() { this.focused=true; }, addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
+      replaceChildren(...nodes) { this.children=[...nodes]; }, focus() { this.focused=true; }, addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
   }
   const document = { events: {}, addEventListener(name,cb) { this.events[name]=cb; }, getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }, createElement: element };
   const context = vm.createContext({ performance:{now:()=>perf}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, document, location: { origin: 'https://brookwood.example' },

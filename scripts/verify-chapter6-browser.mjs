@@ -5,7 +5,7 @@ import {mkdirSync,writeFileSync,mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import assert from 'node:assert/strict';
-const base='http://127.0.0.1:3000';
+const base='http://127.0.0.1:3000',earlyClose=process.argv.includes('--early-close');
 const browser=spawn(process.env.BROOKWOOD_CHROME??'C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--remote-debugging-port=9336','--user-data-dir='+mkdtempSync(join(tmpdir(),'brookwood-ch6-')),'--no-first-run','--no-default-browser-check','--disable-background-networking','--autoplay-policy=no-user-gesture-required','about:blank'],{windowsHide:true,stdio:'ignore'});
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 let ws,id=0;const pending=new Map(),errors=[];
@@ -38,7 +38,7 @@ try{
   }
   assert(await evaluate(tv,"document.getElementById('chapter6HostCode').hidden && document.getElementById('chapter6HostCode').value===''"));
   await evaluate(tv,`(()=>{const b=[...document.querySelectorAll('#chapter6HostAnswers button')].find(x=>x.textContent===${JSON.stringify(text)});if(!b)throw Error('Missing host choice');b.click();})()`);
-  await waitStep(text==='Player Returned With Token'?'return':text.startsWith('TEST:')?'vote':'locked');if(!text.startsWith('TEST:')&&text!=='Player Returned With Token'){await advance();await waitStep('result');}await pause(1500);
+  await waitStep(text==='Player Returned With Token'?'return':text.startsWith('TEST:')?'vote':text==='CLOSE VOTING'?'selected':'locked');if(!text.startsWith('TEST:')&&text!=='CLOSE VOTING'&&text!=='Player Returned With Token'){await advance();await waitStep('result');}await pause(1500);
  }
  async function transition(game){
   await waitStep('transition');
@@ -53,24 +53,33 @@ try{
  assert(await evaluate(tv,"!document.getElementById('chapter6TV').hidden"));
  assert(await evaluate(phone,"!document.getElementById('mazePhoneBox').classList.contains('hidden')"));
  if((await state()).chapter6.step==='takeover')await advance();await evaluate(tv,"document.getElementById('chapter6HostToggle').click()");await pause(300);await evaluate(tv,"document.getElementById('chapter6HostCode').value='1031';document.getElementById('chapter6HostLogin').click()");await pause(300);loginCount=1;await evaluate(tv,"document.getElementById('chapter6HostClose').click()");await screenshot('doors');
- const labels=['Black — IX','The Sixth Sense (1999)','3:45','17 minutes'];
+ const labels=earlyClose?['Red — XIII','The Exorcist (1973)','3:15','17 minutes']:['Black — IX','The Sixth Sense (1999)','3:45','17 minutes'];
  for(let game=0;game<4;game++){
   if(game===2){await advance();await waitStep('exposure');assert(await evaluate(tv,"!document.getElementById('chapter6Image').hidden && document.getElementById('chapter6Image').src.endsWith('morgue_memory.png')"));assert(!(await evaluate(phone,"document.body.innerHTML.includes('morgue_memory.png')")));await screenshot('memory');await advance();}
   while((await state()).chapter6.step!=='answer')await advance();await waitStep('answer');
-  if(game===2)assert(await evaluate(tv,"document.getElementById('chapter6Image').hidden"));
+  if(game===0){const order=(await state()).chapter6.doorOrder;
+   const rendered=()=>evaluate(tv,"[...document.querySelectorAll('#chapter6Doors img')].map(img=>img.src.split('/').pop().replace('_door.png',''))");assert.deepEqual(await rendered(),order);assert.notDeepEqual(order,['red','blue','green','black']);await screenshot('shuffled-doors');await send('Page.reload',{},tv);await pause(1700);assert.deepEqual(await rendered(),order);assert.deepEqual((await state()).chapter6.doorOrder,order);
+  }
+  if(game===1)await screenshot('boxoffice-question');if(game===2){assert(await evaluate(tv,"document.getElementById('chapter6Image').hidden"));await screenshot('memory-question');}
   if(game===3)await screenshot('bridge');
-  await hostChoice(labels[game]);const s=await state();assert.equal(s.chapter6.results[game].correct,true);assert.equal(s.chapter6.lives,3);await advance();await transition(game);
+  await hostChoice(labels[game]);const s=await state();assert.equal(s.chapter6.results[game].correct,!earlyClose||game===3);assert.equal(s.chapter6.lives,earlyClose?Math.max(0,2-game):3);await screenshot('result-'+game);await advance();
+  if((await state()).chapter6.step==='zero'){assert(earlyClose&&game===2);assert(await evaluate(tv,"!document.getElementById('chapter6Waveform').hidden && document.getElementById('chapter6Image').hidden"));await screenshot('zero-lives');await advance();}
+  await transition(game);
  }
  while((await state()).chapter6.step!=='silence')await advance();assert.equal((await state()).chapter6.step,'silence');await screenshot('silence');
  for(const [offset,number] of [[12000,23],[26000,24],[40000,25]]){const s=await state();await post('/__test/time',{advanceMs:Math.max(0,s.chapter6.phaseAt+offset-s.serverNow)});await pause(1500);const file='ch6_'+number+'_';assert(await evaluate(tv,`(window.__brookwoodAudio??[]).filter(a=>!a.paused&&a.src.includes('/chapter6/')).length===1`));assert(await evaluate(tv,`(()=>{const a=(window.__brookwoodAudio??[]).find(a=>!a.paused&&a.src.includes(${JSON.stringify(file)}));if(!a)return false;a.currentTime=a.duration-.05;return true;})()`));await pause(250);}
  await advance();await waitStep('verdict');
  assert.equal(await evaluate(tv,"document.getElementById('chapter6Question').textContent"),'SILENCE COMPLETE — AWAITING VERDICT');
- assert.equal(await evaluate(tv,"document.getElementById('chapter6Screamer')"),null);await hostChoice('PASS');await advance();await transition(4);
+ assert.equal(await evaluate(tv,"document.getElementById('chapter6Screamer')"),null);await hostChoice(earlyClose?'FAIL':'PASS');if(earlyClose){assert(await evaluate(tv,"!document.getElementById('chapter6Image').hidden && document.getElementById('chapter6Image').src.endsWith('silence_jumpscare.png')"));await screenshot('silence-failure');}await advance();await transition(4);
  // Keep both real phones connected as finale transitions into the vote.
  await post('/api/me',a);await post('/api/me',b);await advance();await waitStep('vote');
  await hostChoice('TEST: VOTE SIMULATED PLAYERS (BEFORE REAL BALLOTS)');
  const selected=(await post('/api/me',a)).chapter6.candidates.find(x=>x.name==='Test 1A');assert(selected);
- for(const tab of [phone,phoneB]){await pause(1500);const options=await evaluate(tab,"[...document.getElementById('mazePhoneTarget').options].map(x=>x.textContent)");assert(!options.includes(a.name));await evaluate(tab,`document.getElementById('mazePhoneTarget').value=${JSON.stringify(selected.id)};document.getElementById('mazePhoneVote').click()`);await pause(1600);}
+ for(const [index,tab] of [phone,phoneB].entries()){await pause(1500);const options=await evaluate(tab,"[...document.getElementById('mazePhoneTarget').options].map(x=>x.textContent)");assert(!options.includes(a.name));await evaluate(tab,`document.getElementById('mazePhoneTarget').value=${JSON.stringify(selected.id)};document.getElementById('mazePhoneVote').click()`);await pause(1600);
+  if(index===0){const partial=await state();assert.equal(partial.chapter6.step,'vote');assert.equal(partial.chapter6.voteCount,11);assert.equal(partial.chapter6.voterCount,12);assert.equal(partial.chapter6.selectedPlayer,null);await screenshot('pending-vote');await send('Page.reload',{},phone);await pause(1600);assert.equal((await state()).chapter6.voteCount,11);assert.equal((await state()).chapter6.step,'vote');
+   if(earlyClose){await hostChoice('CLOSE VOTING');assert.equal((await state()).chapter6.voteCount,11);break;}
+  }
+ }
  await waitStep('selected');await advance();await waitStep('waiting');await hostChoice('Player Returned With Token');await advance();await waitStep('complete');
  assert(await evaluate(tv,"document.getElementById('chapter6Content').hidden && document.getElementById('chapter6HUD').hidden && document.getElementById('chapter6Image').hidden && document.getElementById('chapter6Audio').hidden"));
  await send('Page.reload',{},tv);await pause(1700);assert(await evaluate(tv,"document.getElementById('chapter6Content').hidden"));
@@ -94,5 +103,6 @@ try{
  const finalFresh=await state();
  const denied=await fetch(base+'/api/host',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'chapter-select',checkpoint:'chapter1',...a})});assert.equal(denied.status,403);assert.equal((await state()).generation,finalFresh.generation);
  assert.deepEqual(errors,[]);console.log('Browser PASS: built TV + two phones → five host answers/verdict → private token votes → return → black completion + refresh. Screenshots in logs/.');
+ console.log('Voting PASS: first real vote remains pending at 11/12; refresh preserves ballots; '+(earlyClose?'authenticated early close':'all ballots automatic completion'));
  console.log('Navigation PASS: real Ctrl+Shift+C above maze → wrong PIN rejected → Chapter 1 → refresh → Chapter 6 fresh state → refresh; ordinary player denied.');
 }finally{ws?.close();browser.kill();}
