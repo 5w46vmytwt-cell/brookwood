@@ -2,7 +2,7 @@ import test,{beforeEach,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {fresh,CAS_SCRIPT,publicState,updateState,resetState} from '../api/_state.js';
-import {startChapter6,advanceChapter6,validateChapter6,mazeHostAction,makeMazeTestSelector,makeTokenVoter,touchMazePresence,chapter6Progress,withinMazeRun} from '../api/_chapter6.js';
+import {startChapter6,advanceChapter6,validateChapter6,mazeHostAction,makeMazeTestSelector,makeFinalCastTestSelector,makeTokenVoter,touchMazePresence,chapter6Progress,withinMazeRun} from '../api/_chapter6.js';
 import {recordings,gate,introDuration,phaseCues,memoryVisible,jumpVisible,games} from '../chapter6-timing.js';
 import {mp3Metadata} from './mp3-metadata.js';
 import host from '../api/host.js';
@@ -23,11 +23,59 @@ beforeEach(()=>{
  };
 });
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
-function fixture(real=12){
+function fixture(real=12,modern=false){
  const s=fresh();s.players=Array.from({length:12},(_,i)=>({id:'p'+i,token:'t'+i,name:'Guest '+i,partnerId:'p'+(i%2?i-1:i+1),ready:true,alive:true,hearts:3,inventory:[],...(i>=real?{simulated:true}:{})}));
- makeMazeTestSelector()(s);validateChapter6(s);return s;
+ makeMazeTestSelector()(s);if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
 }
 function request(s,action,extra={}){return {action,generation:s.generation,chapter6StartedAt:s.chapter6.startedAt,sequence:s.chapter6.sequence,...extra};}
+function modernAdvance(s){now=s.chapter6.deadline;const cue=phaseCues(s.chapter6)[0];if(['intro','result','zero','finale','selected','return'].includes(s.chapter6.step)&&cue)mazeHostAction(s,request(s,'maze-audio-ended',{recording:cue.number}));else advanceChapter6(s);validateChapter6(s);}
+function modernQuestion(s){while(!['answer','silence'].includes(s.chapter6.step))modernAdvance(s);}
+test('new takeover and each intro require full authenticated narration, with persistent shuffled doors',async()=>{
+ const s=fixture(12,true),order=[...s.chapter6.doorOrder];assert.equal(new Set(order).size,4);assert.equal(s.chapter6.step,'takeover');modernAdvance(s);
+ for(const number of [1,2,3]){assert.equal(phaseCues(s.chapter6)[0].number,number);now=s.chapter6.deadline+5000;const snapshot=JSON.stringify(s);advanceChapter6(s);assert.equal(JSON.stringify(s),snapshot);
+  assert.throws(()=>mazeHostAction(s,request(s,'maze-audio-ended',{recording:32})));raw=JSON.stringify(s);assert.equal((await call(host,request(s,'maze-audio-ended',{recording:number}))).status,403);modernAdvance(s);
+ }
+ assert.equal(s.chapter6.step,'answer');assert.deepEqual(chapter6Progress(s).doorOrder,order);assert.deepEqual(structuredClone(s).chapter6.doorOrder,order);
+});
+test('modern full maze locks answers, preserves 15-second exposure, 60-second silence and finale interstitial',()=>{
+ const s=fixture(12,true);
+ for(let game=0;game<5;game++){
+  if(game===2){modernAdvance(s);assert.equal(s.chapter6.step,'exposure');assert.equal(s.chapter6.deadline-s.chapter6.phaseAt,15000);const c=structuredClone(s.chapter6);assert(memoryVisible(c,c.phaseAt+14999));assert(!memoryVisible(c,c.deadline));assert.deepEqual(phaseCues(c),[]);modernAdvance(s);assert.equal(phaseCues(s.chapter6)[0].number,15);}
+  modernQuestion(s);if(game===4){assert.equal(s.chapter6.deadline-s.chapter6.phaseAt,60000);const cues=phaseCues(s.chapter6);for(let i=1;i<cues.length;i++)assert(cues[i].at>=cues[i-1].at+cues[i-1].durationMs);modernAdvance(s);mazeHostAction(s,request(s,'maze-verdict',{answer:'pass'}));}
+  else answer(s,games[game].correct);
+  assert.equal(s.chapter6.step,'locked');assert.deepEqual(phaseCues(s.chapter6),[]);const lock=structuredClone(s);now=s.chapter6.deadline-1;advanceChapter6(lock);assert.equal(lock.chapter6.step,'locked');modernAdvance(s);assert.equal(s.chapter6.step,'result');modernAdvance(s);assert.equal(s.chapter6.step,'transition');assert.equal(s.chapter6.deadline-s.chapter6.phaseAt,game===4?5000:4000);modernAdvance(s);
+ }
+ assert.equal(s.chapter6.step,'gameover');assert.deepEqual(phaseCues(s.chapter6),[]);modernAdvance(s);assert.equal(phaseCues(s.chapter6)[0].number,28);
+});
+test('Game 5 final-life loss skips Recording 32 and goes to the losing GAME OVER finale',()=>{
+ const s=fixture(12,true);for(let game=0;game<5;game++){modernQuestion(s);if(game===4){modernAdvance(s);mazeHostAction(s,request(s,'maze-verdict',{answer:'fail'}));}else answer(s,['red','A','C','B'][game]);modernAdvance(s);modernAdvance(s);assert.equal(s.chapter6.step,'transition');modernAdvance(s);}
+ assert.equal(s.chapter6.lives,0);assert.equal(s.chapter6.zeroConsumed,false);assert.equal(s.chapter6.step,'gameover');modernAdvance(s);assert.equal(phaseCues(s.chapter6)[0].number,29);
+});
+test('final cast checkpoint preserves actual assignments and identities, persists after refresh and is PIN protected',async()=>{
+ const s=fixture(2,true),cast=structuredClone(s.chapter5.rounds),players=structuredClone(s.players);raw=JSON.stringify(s);
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter5-finale'})).status,403);
+ const result=await call(host,{action:'chapter-select',checkpoint:'chapter5-finale',code:'maze-host'});assert.equal(result.status,200);const next=JSON.parse(raw);assert.equal(next.phase,'chapter5-finale');assert(!next.chapter6);assert.deepEqual(next.chapter5.rounds,cast);assert.deepEqual(next.players,players);assert.equal(result.data.state.chapter5.winners.length,6);
+ assert.equal((await call(me,{id:'p0',token:'t0'})).data.chapter5.winners.length,6);
+ const lobby=fresh();lobby.players=players;makeFinalCastTestSelector()(lobby);assert.equal(lobby.phase,'chapter5-finale');assert.equal(new Set(lobby.chapter5.rounds.map(r=>r.winnerPlayerId)).size,6);
+});
+test('unfinished final-cast checkpoint retains completed ballots, assigned identities and actual machete holder',async()=>{
+ const s=fixture(2,true);delete s.chapter6;s.phase='chapter5-casting';const c=s.chapter5;c.roundIndex=1;c.castStartedAt=null;c.completedAt=null;
+ c.rounds[0].winnerPlayerId='p8';c.rounds[0].votes=Object.fromEntries(s.players.map(p=>[p.id,p.id==='p8'?'p9':'p8']));
+ for(let i=1;i<6;i++){const r=c.rounds[i];r.votes={};r.winnerPlayerId=null;r.completedAt=null;if(i>1)r.startedAt=null;}
+ s.chapter4.selectedPlayerId='p6';s.macheteHolderPlayerId='p6';s.chapter4.votes=Object.fromEntries(s.players.map(p=>[p.id,p.id==='p6'?'p7':'p6']));raw=JSON.stringify(s);
+ const result=await call(host,{action:'chapter-select',checkpoint:'chapter5-finale',code:'maze-host'});assert.equal(result.status,200);const next=JSON.parse(raw);
+ assert.equal(next.chapter5.rounds[0].winnerPlayerId,'p8');assert.deepEqual(next.chapter5.rounds[0].votes,c.rounds[0].votes);assert.equal(new Set(next.chapter5.rounds.map(r=>r.winnerPlayerId)).size,6);assert.equal(next.macheteHolderPlayerId,'p6');
+});
+test('legacy duplicate casting assignments remain readable, flagged and unchanged by final-cast review',async()=>{
+ const s=fixture();delete s.chapter6;s.phase='chapter5-complete';delete s.chapter5.eligibilityVersion;const r=s.chapter5.rounds[1];r.winnerPlayerId='p0';r.votes=Object.fromEntries(s.players.map(p=>[p.id,p.id==='p0'?'p1':'p0']));raw=JSON.stringify(s);
+ const projection=publicState(s);assert.equal(projection.chapter5.duplicateAssignments,true);const prior=structuredClone(s.chapter5.rounds);
+ const result=await call(host,{action:'chapter-select',checkpoint:'chapter5-finale',code:'maze-host'});assert.equal(result.status,200);assert.equal(result.data.state.chapter5.duplicateAssignments,true);assert.deepEqual(JSON.parse(raw).chapter5.rounds,prior);
+});
+test('concurrent audio completions advance one cue once and late completion starts a full answer window',async()=>{
+ const s=fixture(12,true);modernAdvance(s);now=s.chapter6.deadline;raw=JSON.stringify(s);const body={...request(s,'maze-audio-ended',{recording:1}),code:'maze-host'};
+ const results=await Promise.all([call(host,body),call(host,body),call(host,body)]);assert.equal(results.filter(r=>r.status===200).length,1);assert.equal(JSON.parse(raw).chapter6.audioIndex,1);
+ Object.assign(s,JSON.parse(raw));modernAdvance(s);assert.equal(s.chapter6.audioIndex,2);now=s.chapter6.deadline+5000;const completedAt=now;mazeHostAction(s,request(s,'maze-audio-ended',{recording:3}));assert.equal(s.chapter6.phaseAt,completedAt);assert.equal(s.chapter6.deadline,completedAt+120000);
+});
 function advance(s){now=s.chapter6.deadline;advanceChapter6(s);validateChapter6(s);}
 function answer(s,value){mazeHostAction(s,request(s,'maze-answer',{answer:value}));validateChapter6(s);}
 function finish(s){advance(s);if(s.chapter6.step==='zero')advance(s);assert.equal(s.chapter6.step,'transition');advance(s);}
@@ -96,7 +144,7 @@ test('Chapter 5 completion starts once, preserves all chapter results and identi
  const s=fixture();delete s.chapter6;s.phase='chapter5-complete';const prior=structuredClone(s);
  startChapter6(s);assert.deepEqual(s.players,prior.players);assert.deepEqual(s.chapter5,prior.chapter5);assert.deepEqual(s.chapter4,prior.chapter4);assert.equal(s.macheteHolderPlayerId,prior.macheteHolderPlayerId);
  const c=s.chapter6;assert.equal(c.lives,3);assert.equal(c.screamerId,s.chapter5.rounds[0].winnerPlayerId);
- const cues=phaseCues(c);assert.deepEqual(cues.map(x=>x.number),[1,2,3]);assert.equal(cues[0].at,0);assert.equal(cues[1].at,gate(1));assert.equal(cues[2].at,gate(1)+gate(2));assert.equal(c.deadline,c.startedAt+introDuration(0));
+ const cues=phaseCues(c);assert.deepEqual(cues,[]);assert.equal(c.step,'takeover');assert.equal(c.deadline,c.startedAt+4000);
  const snapshot=JSON.stringify(s);startChapter6(s);assert.equal(JSON.stringify(s),snapshot);
 });
 for(const [door,n,correct] of [['red',4,false],['blue',5,false],['green',6,false],['black',7,true]])test('Four Doors '+door+' reveals once with correct life deduction',()=>{
@@ -122,11 +170,11 @@ test('Memory exposure is exactly 15000 ms and never reappears in question/result
  const cues=phaseCues(c);assert.equal(cues[1].at,c.phaseAt-c.startedAt+gate(14)+15000);
  const refreshed=structuredClone(c);assert(!memoryVisible(refreshed,start+15000));advance(s);assert(!memoryVisible(c,now));answer(s,'C');assert(!memoryVisible(c,now));
 });
-test('Silence cues at 24/17/10 remaining, 500ms jump scare, no verdict before zero or automatic pass',()=>{
+test('Silence cues at 48/34/20 remaining, 500ms jump scare, no verdict before zero or automatic pass',()=>{
  const s=fixture();for(const value of ['black','C','C','B']){advance(s);answer(s,value);finish(s);}advance(s);const c=s.chapter6;
- assert.equal(c.step,'silence');assert.equal(c.deadline-c.phaseAt,30000);const offset=c.phaseAt-c.startedAt;
- assert.deepEqual(phaseCues(c).map(x=>[x.number,x.at-offset,x.type]),[[23,6000,'sfx'],[24,13000,'sfx'],[25,20000,'sfx']]);
- assert(!jumpVisible(c,c.phaseAt+24999));assert(jumpVisible(c,c.phaseAt+25000));assert(jumpVisible(c,c.phaseAt+25499));assert(!jumpVisible(c,c.phaseAt+25500));
+ assert.equal(c.step,'silence');assert.equal(c.deadline-c.phaseAt,60000);const offset=c.phaseAt-c.startedAt;
+ assert.deepEqual(phaseCues(c).map(x=>[x.number,x.at-offset,x.type]),[[23,12000,'narration'],[24,26000,'narration'],[25,40000,'narration']]);
+ assert(!jumpVisible(c,c.phaseAt+54999));assert(jumpVisible(c,c.phaseAt+55000));assert(jumpVisible(c,c.phaseAt+55499));assert(!jumpVisible(c,c.phaseAt+55500));
  assert.throws(()=>mazeHostAction(s,request(s,'maze-verdict',{answer:'pass'})));advance(s);assert.equal(c.step,'verdict');assert.equal(c.results.length,4);assert.equal(c.deadline,null);
 });
 test('zero lives plays 32 once after current failure; all five games continue and finale loses',()=>{
@@ -139,8 +187,8 @@ test('zero lives plays 32 once after current failure; all five games continue an
  }
  assert.equal(zero,1);assert.equal(s.chapter6.results.length,5);assert.equal(s.chapter6.lives,0);assert.equal(phaseCues(s.chapter6)[0].number,29);validateChapter6(s);
 });
-test('third life lost in Game 5 plays 32 before lose finale; surviving lives choose recording 28',()=>{
- const s=fixture();play(s,['red','A','C','B','fail']);assert.equal(s.chapter6.zeroConsumed,true);assert.equal(s.chapter6.zeroAt,s.chapter6.results[4].resolvedAt+gate(27));assert.equal(phaseCues(s.chapter6)[0].number,29);
+test('third life lost in Game 5 skips 32 before lose finale; surviving lives choose recording 28',()=>{
+ const s=fixture();play(s,['red','A','C','B','fail']);assert.equal(s.chapter6.zeroConsumed,false);assert.equal(s.chapter6.zeroAt,null);assert.equal(phaseCues(s.chapter6)[0].number,29);
  const win=fixture();play(win);assert.equal(win.chapter6.lives,3);assert.equal(phaseCues(win.chapter6)[0].number,28);
 });
 test('real connected electorate is dynamic; holder may vote but cannot be candidate; ballots remain private',()=>{
@@ -202,8 +250,8 @@ test('host navigation leaves the maze cleanly and reinitializes Chapter 6 prereq
  assert.equal(leave.status,200);assert.equal(leave.data.state.phase,'opening');
  const earlier=JSON.parse(raw);assert(!earlier.chapter6);assert.notEqual(earlier.generation,oldGeneration);assert.deepEqual(earlier.players,players);
  const enter=await call(host,{action:'chapter-select',checkpoint:'chapter6',code:'maze-host'});assert.equal(enter.status,200);
- const maze=JSON.parse(raw);validateChapter6(maze);assert.equal(maze.chapter6.lives,3);assert.equal(maze.chapter6.step,'intro');assert.equal(maze.chapter6.results.length,0);
- assert.equal(maze.chapter6.deadline,maze.chapter6.startedAt+introDuration(0));assert.equal(maze.chapter6.screamerId,maze.chapter5.rounds[0].winnerPlayerId);assert.equal(maze.chapter6.macheteId,maze.chapter4.selectedPlayerId);
+ const maze=JSON.parse(raw);validateChapter6(maze);assert.equal(maze.chapter6.lives,3);assert.equal(maze.chapter6.step,'takeover');assert.equal(maze.chapter6.results.length,0);
+ assert.equal(maze.chapter6.deadline,maze.chapter6.startedAt+4000);assert.equal(maze.chapter6.screamerId,maze.chapter5.rounds[0].winnerPlayerId);assert.equal(maze.chapter6.macheteId,maze.chapter4.selectedPlayerId);
  assert.deepEqual(maze.players,players);assert.notEqual(maze.generation,earlier.generation);assert.equal(enter.data.state.chapter6.startedAt,maze.chapter6.startedAt);
  const refreshed=await call(me,{id:'p1',token:'t1'});assert.equal(refreshed.data.chapter6.startedAt,maze.chapter6.startedAt);assert.equal(refreshed.data.chapter6.lives,3);
 });

@@ -29,6 +29,15 @@ test('TV never renders the SCREAMER name, awaits verdict and finishes on black',
  c.step='complete';c.sequence++;paint(10);
  for(const id of ['chapter6Content','chapter6HUD','chapter6Audio','chapter6HostToggle','chapter6Image'])assert(document.getElementById(id).hidden);
 });
+test('modern HUD shows shared lives, a distinct exposure countdown, locked answer and bridge solution',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{audioVersion:2,audioIndex:0,step:'exposure',deadline:16000});paint(5000);
+ assert.equal(document.getElementById('chapter6Timer').textContent,'MEMORIZE · 10');assert.equal(document.getElementById('chapter6Lives').textContent,'♥♥♥');assert.equal(document.getElementById('chapter6Question').textContent,'MEMORIZE THE SCENE');
+ Object.assign(c,{game:3,step:'locked',lives:2,results:[{correct:true},{correct:true},{correct:true},{answer:'A',correct:false,recording:20}]});paint(10000);
+ assert.equal(document.getElementById('chapter6Question').textContent,'ANSWER LOCKED');assert.equal(document.getElementById('chapter6Detail').textContent,'15 minutes');assert.equal(document.getElementById('chapter6Lives').textContent,'♥♥♥');
+ c.step='result';paint(12000);assert.equal(document.getElementById('chapter6Lives').textContent,'♥♥♡');assert(document.getElementById('chapter6Detail').textContent.includes('TOTAL: 17 MINUTES'));
+ c.game=4;c.step='gameover';paint(14000);assert.equal(document.getElementById('chapter6Title').textContent,'GAME OVER');assert.equal(document.getElementById('chapter6Detail').textContent,'THE TOKEN STILL AWAITS');
+ c.step='waiting';c.selectedPlayer={name:'Guest'};paint(15000);assert.equal(document.getElementById('chapter6Title').textContent,'RETRIEVE THE TOKEN');assert.equal(document.getElementById('chapter6Objective').textContent,'AWAITING RETURN');
+});
 test('transition reconstruction fades out, holds absolute black, then reveals only the next intro without audio',()=>{
  for(const outgoing of ['result','zero'])for(let game=0;game<5;game++){
   const {document,c,paint}=harness();Object.assign(c,{game,step:'transition',deadline:5000,transitionFrom:{step:outgoing,phaseAt:500},results:Array.from({length:5},()=>({answer:'black',correct:true,recording:7}))});
@@ -45,7 +54,7 @@ test('transition reconstruction fades out, holds absolute black, then reveals on
 test('SCREAMER identity never appears in any Game 5 scene and waveform, interruptions and jump remain',()=>{
  const {document,c,paint}=harness();c.game=4;c.deadline=31000;c.results[4]={answer:'pass',correct:true,recording:26};
  for(const step of ['intro','silence','verdict','result']){c.step=step;c.sequence++;paint(0);assert(!document.getElementById('chapter6Screamer').textContent);assert(!document.getElementById('chapter6Waveform').hidden);}
- c.step='silence';c.sequence++;paint(13000);assert(!document.getElementById('chapter6Chicken').hidden);
- paint(25000);assert(!document.getElementById('chapter6Image').hidden);assert(document.getElementById('chapter6Image').src.endsWith('silence_jumpscare.png'));
- paint(25500);assert(document.getElementById('chapter6Image').hidden);
+ c.step='silence';c.sequence++;paint(26000);assert(!document.getElementById('chapter6Chicken').hidden);
+ paint(55000);assert(!document.getElementById('chapter6Image').hidden);assert(document.getElementById('chapter6Image').src.endsWith('silence_jumpscare.png'));
+ paint(55500);assert(document.getElementById('chapter6Image').hidden);
 });

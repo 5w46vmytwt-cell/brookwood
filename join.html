@@ -42,7 +42,7 @@ function render(j,timing){
   if(me?.chapter6&&!j.chapter6&&j.chapter5?.startedAt===me.chapter6.previousChapter5StartedAt)return;
   if(j.chapter6){privateRuntime.acceptState({phase:'lobby'});me=j;show('maze');document.getElementById('opening').classList.remove('show');const mazeSession=auth;BrookwoodMazePhone.render(j,{document,auth,request:lobbyRequest,onState:render,onInvalid:clearSession,isCurrent:()=>auth===mazeSession});return;}
   if(me?.chapter5&&!j.chapter5&&((j.chapter4&&j.chapter4.startedAt===me.chapter4?.startedAt)||(j.chapter3&&j.chapter3.startedAt===me.chapter3?.startedAt)))return;
-  if(j.chapter5){const old=me?.chapter5,next=j.chapter5;if(old?.startedAt===next.startedAt&&(old.roundIndex>next.roundIndex||(old.roundIndex===next.roundIndex&&((old.round.voted&&!next.round.voted)||(old.round.completedAt&&!next.round.completedAt)))||(old.completedAt&&!next.completedAt)||(old.rulesStartedAt&&!next.rulesStartedAt)||(old.readyAt&&!next.readyAt)))return;privateRuntime.acceptState({phase:'lobby'});me=j;renderCast(j);return;}
+  if(j.chapter5){const old=me?.chapter5,next=j.chapter5;if(old?.navigationId===next.navigationId&&old?.startedAt===next.startedAt&&(old.roundIndex>next.roundIndex||(old.roundIndex===next.roundIndex&&((old.round.voted&&!next.round.voted)||(old.round.completedAt&&!next.round.completedAt)))||(old.completedAt&&!next.completedAt)||(old.rulesStartedAt&&!next.rulesStartedAt)||(old.readyAt&&!next.readyAt)))return;privateRuntime.acceptState({phase:'lobby'});me=j;renderCast(j);return;}
   if(j.chapter4){const old=me?.chapter4;if(old?.startedAt===j.chapter4.startedAt){if(old.complete&&!j.chapter4.complete)return;if(!j.chapter4.complete&&old.voted&&!j.chapter4.voted)return;}privateRuntime.acceptState({phase:'lobby'});me=j;renderDoor(j);return;}
   if(j.chapter3){
     if(me?.chapter3?.startedAt===j.chapter3.startedAt&&((me.chapter3.readAt!==null&&j.chapter3.readAt===null)||(me.chapter3.openedAt!==null&&j.chapter3.openedAt===null)))return;
@@ -122,11 +122,11 @@ function renderCast(j){
   const c=j.chapter5,r=c.round,intro=['chapter5-intro','chapter5-waiting','chapter5-rules'].includes(j.phase),waiting=j.phase==='chapter5-waiting',finale=['chapter5-finale','chapter5-complete'].includes(j.phase);
   const key=c.startedAt+':'+r.id,selector=document.getElementById('castingTarget'),previous=castingSelectionRun===key?selector.value:'';
   selector.innerHTML='';const prompt=document.createElement('option');prompt.value='';prompt.textContent='Choose another player';selector.appendChild(prompt);
-  for(const p of j.others){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;selector.appendChild(option);}selector.value=previous;castingSelectionRun=key;
+  for(const p of j.others.filter(p=>!c.candidateIds||c.candidateIds.includes(p.id))){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;selector.appendChild(option);}selector.value=previous;castingSelectionRun=key;
   const canVote=!intro&&!finale&&r.votingActive&&!r.voted;
   selector.classList.toggle('hidden',!canVote);const button=document.getElementById('castingSubmit');button.classList.toggle('hidden',!canVote);button.disabled=castingPending;
   document.getElementById('castingTitle').textContent=waiting?'READY FOR A LITTLE FUN?':intro?'THE CAST':finale?'THE CAST IS COMPLETE':r.winner?r.title:r.voted?'VOTE RECORDED':r.title;
-  document.getElementById('castingCopy').textContent=intro?'The original Brookwood group cast their own horror movie before entering haunted houses. Six roles. No self-voting. One vote per role. The same person may win multiple roles.':finale?c.winners.map(w=>w.title+': '+w.player.name).join('\n'):r.winner?r.winner.name:r.voted?'Waiting for everyone else...':r.setup;
+  document.getElementById('castingCopy').textContent=intro?'The original Brookwood group cast their own horror movie before entering haunted houses. Six roles. No self-voting. One vote per role. Each player may win one role.':finale?c.winners.map(w=>w.title+': '+w.player.name).join('\n'):r.winner?r.winner.name:r.voted?'Waiting for everyone else...':r.setup;
   document.getElementById('castingCopy').style.whiteSpace='pre-line';
   if(waiting)document.getElementById('castingCopy').textContent='WAITING FOR THE HOST';
   else if(!intro&&!finale&&!r.votingActive&&!r.voted&&!r.winner)document.getElementById('castingCopy').textContent='Listen to the narrator. Voting opens when this role is introduced.';

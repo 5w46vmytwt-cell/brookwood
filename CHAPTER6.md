@@ -12,7 +12,7 @@ Ctrl+Shift+C reuses the existing Chapter Select panel during Chapter 6. Its maze
 
 Chapter 6 starts through the existing TV progression loop when Chapter 5 reports `chapter5-complete`. The fixed-purpose `/api/chapter6` start retains all earlier state and is atomic/idempotent. `api/_chapter6.js` stores phase clocks, outcomes, shared lives, zero-life narration consumption, casting/retrieval references, connected-phone presence, private ballots, and token confirmation in the existing Redis room. Answers, silence verdict, simulated voting helper, and token confirmation require existing host authorization plus current generation/run/scene.
 
-Narration timing uses measured MPEG frame duration with the established 200 ms chapter narration tail. Answer windows remain a full 120/120/90/180 seconds; silence lasts 30 seconds. Memory exposure is exactly 15 seconds. Early answers cancel warning cues. The last Box Office recording starts 6.192 seconds before the deadline and ends at zero; spoken-number waveform alignment has not been independently annotated. Silence overlaps duck the older voice to 18% rather than moving the timer. The optional jump-scare sting is omitted; the supplied image flashes for 500 ms.
+Narration timing uses measured MPEG frame duration with the established 200 ms chapter narration tail. Answer windows remain a full 120/120/90/180 seconds; silence lasts 60 seconds. Memory exposure is exactly 15 seconds. Early answers cancel warning cues. The last Box Office recording starts 6.192 seconds before the deadline and ends at zero; spoken-number waveform alignment has not been independently annotated. Silence interruptions start at 48, 34, and 20 seconds remaining, with the jump scare at five seconds remaining. New runs require authenticated TV narration completion before mandatory cinematic progression. The optional jump-scare sting is omitted; the supplied image flashes for 500 ms.
 
 Four Doors timeout shows no selected door, uses no invented narration, and holds the generic failure screen for 1500 ms. Failure results finish before the once-only zero-life clip. All five games still run at zero. Finale selects recording 28 or 29, then phone voting, recording 30, indefinite host-confirmed retrieval wait, expanded recording 31, and black completion.
 
@@ -76,7 +76,7 @@ The production build copies public browser files and approved media to ignored `
 | ch6_19_bridge_correct.mp3 | 9.795918 |
 | ch6_20_bridge_wrong.mp3 | 17.946122 |
 | ch6_21_silence_intro.mp3 | 31.320816 |
-| ch6_22_silence_rules.mp3 | 24.450612 |
+| ch6_22_silence_rules.mp3 | 17.789388 |
 | ch6_23_silence_whisper.mp3 | 7.627755 |
 | ch6_24_silence_chicken_reaction.mp3 | 6.112653 |
 | ch6_25_silence_accusation.mp3 | 5.955918 |
@@ -87,3 +87,17 @@ The production build copies public browser files and approved media to ignored `
 | ch6_30_retriever_selected.mp3 | 10.448980 |
 | ch6_31_token_return.mp3 | 33.149388 |
 | ch6_32_all_lives_lost.mp3 | 25.155918 |
+
+Recording 22 was intentionally replaced by the user: 784512 samples, 17.789388 seconds, spoken 60-second rules. Preserve its supplied bytes. New runs persist audioVersion 2, individual intro cues, a 15-second exposure, answer lock, takeover, and GAME OVER. Legacy persisted runs retain their original phase progression.
+
+## Coordinated polish release
+
+New maze runs serialize takeover → individual narration → question/exposure → answer lock (1800 ms) → result narration → black transition. The authenticated TV reports media ended; /api/progress alone cannot advance mandatory narration in audioVersion 2. Blocked or interrupted playback shows a resume action; authentication expiry requires host login and explicit resume. Old runs without audioVersion 2 keep their persisted phase behavior. Doors are shuffled once per start request and persisted by identity.
+
+Games 1–4 retain 120/120/90/180-second answer windows. Game 5 now uses 60 seconds, after recordings 21 and the supplied 22 finish. Whisper/chicken/accusation occur at 48/34/20 seconds remaining; the 500-ms image scare occurs at five seconds remaining, suppressed if narration remains active. Recording 32 applies only to final-life losses in Games 1–4. After Game 5, the 1-second fade, 3-second black hold and 1-second reveal lead to a 3-second GAME OVER interstitial, then the complete win/lose narration and token retrieval.
+
+Chapter 5 new runs assign at most one role per player. Server eligibility excludes prior winners; simulated votes use the same candidates. Legacy duplicate assignments remain intact and are flagged in projections. An unfinished legacy round with ballots targeting an assigned player fails closed with a host-review message rather than changing ballots. The PIN-protected CHAPTER 5 — FINAL CAST REVEAL checkpoint retains completed actual assignments, otherwise prepares a valid cast using stored player identities. It preserves Chapter 4 retrieval data when completed assignments exist.
+
+The supplied Recording 22 SHA-256 is A8954C205D8ED6746CB146C3A0D18D882C5A597C7EDFF0A1C8C2B9E0D7D5ED8F. No recording is edited or regenerated by this change.
+
+Local polish validation (2026-10-12): 440/440 automated tests, production build (155 public files), and accelerated built-TV/two-phone rehearsal passed, including the three silence interruptions, authenticated media completion, private voting/return, black completion, refresh/navigation, and final-cast checkpoint. Acceleration seeks media near its end to exercise real browser `ended` events; actual-party speech clarity and autoplay remain device-dependent. Production release verification is recorded separately after deployment.

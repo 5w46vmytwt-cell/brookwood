@@ -862,7 +862,7 @@ const castVote=(p,target,roleId=state().chapter5.rounds[state().chapter5.roundIn
 const castSimulated=()=>call('host',{code:'test-host',action:'test-cast-simulated',chapter5StartedAt:state().chapter5.startedAt,roleId:state().chapter5.rounds[state().chapter5.roundIndex].id});
 function votingTime(){const c=state().chapter5,r=c.rounds[c.roundIndex];return r.startedAt+castingVotingOffset(r.id);}
 async function finishCastingRound(real){
-  await serverClock(votingTime(),async()=>{assert.equal((await castSimulated()).status,200);assert.equal((await castVote(real[0],real[1].id)).status,200);assert.equal((await castVote(real[1],real[0].id)).status,200);});
+  await serverClock(votingTime(),async()=>{assert.equal((await castSimulated()).status,200);const eligible=(await call('state',{},'GET')).data.chapter5.candidateIds;for(const p of real)assert.equal((await castVote(p,eligible.find(id=>id!==p.id))).status,200);});
   return state().chapter5.rounds[state().chapter5.roundIndex];
 }
 
@@ -1074,14 +1074,16 @@ test('corrupt package, casting ballots, round clocks and winner states are rejec
   for(const mutate of variants){const s=structuredClone(valid);mutate(s);raw=JSON.stringify(s);assert.equal((await call('state',{},'GET')).status,503);}
 });
 
-test('a unique highest-vote player may win multiple casting roles and adjacent rounds retain their own black buffers',async()=>{
+test('a casting winner is excluded from later rounds and adjacent rounds retain their own black buffers',async()=>{
   await castingRun();const cast=structuredClone(state().players),winner=cast[0];
   for(let i=0;i<2;i++){
+    const chosen=cast[i];
     await serverClock(votingTime(),async()=>{
-      const results=await Promise.all(cast.map(p=>castVote(p,p.id===winner.id?cast[1].id:winner.id)));
+      if(i===1)assert.equal((await castVote(cast[2],winner.id)).status,409);
+      const results=await Promise.all(cast.map(p=>castVote(p,p.id===chosen.id?cast[i+1].id:chosen.id)));
       assert(results.every(r=>r.status===200));
     });
-    const r=state().chapter5.rounds[i];assert.equal(r.winnerPlayerId,winner.id);
+    const r=state().chapter5.rounds[i];assert.equal(r.winnerPlayerId,chosen.id);
     await serverClock(r.completedAt+castingCompletionMs(r.id,state().chapter5.revealVersion),()=>call('progress'));
     assert.equal(state().chapter5.rounds[i+1].startedAt,r.completedAt+castingCompletionMs(r.id,state().chapter5.revealVersion));
   }

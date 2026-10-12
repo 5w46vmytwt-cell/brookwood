@@ -281,9 +281,9 @@
     "bitrates": [
       128
     ],
-    "frames": 936,
-    "samples": 1078272,
-    "durationMs": 24450.61224489796
+    "frames": 681,
+    "samples": 784512,
+    "durationMs": 17789.38775510204
   },
   {
     "number": 23,

@@ -5,7 +5,8 @@ import {CHAPTER5_RULES_MS,roleNarrationOffset} from '../chapter5-audio-timing.js
 
 export const isChapter5=s=>chapter5Phases.includes(s.phase);
 const positive=t=>Number.isFinite(t)&&t>0;
-const freshChapter5=startedAt=>({audioVersion:1,revealVersion:1,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
+const freshChapter5=startedAt=>({eligibilityVersion:1,audioVersion:1,revealVersion:1,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
+export const castingCandidates=s=>s.players.filter(p=>!s.chapter5.rounds.slice(0,s.chapter5.roundIndex).some(r=>r.winnerPlayerId===p.id));
 const version=c=>c.audioVersion===1?1:0;
 export function validatePackage(s){
   if(!positive(s.packageOpenedAt)||s.macheteHolderPlayerId!==s.chapter4?.selectedPlayerId||s.packageOpenedAt<s.chapter4.completedAt)throw Error('Invalid package confirmation.');
@@ -16,6 +17,8 @@ export function validateChapter5(s){
   if(!validChapter3Cast(s)||!c||!positive(c.startedAt)||c.startedAt<s.packageOpenedAt||!Array.isArray(c.rounds)||c.rounds.length!==6||!Number.isInteger(c.roundIndex)||c.roundIndex<0||c.roundIndex>5)throw Error('Invalid Chapter 5 state.');
   if(c.audioVersion!==undefined&&c.audioVersion!==1)throw Error('Unsupported casting audio version.');
   if(c.revealVersion!==undefined&&c.revealVersion!==1)throw Error('Unsupported casting reveal version.');
+  if(c.eligibilityVersion!==undefined&&c.eligibilityVersion!==1)throw Error('Unsupported casting eligibility version.');
+  if(c.eligibilityVersion===1){const winners=c.rounds.map(r=>r.winnerPlayerId).filter(Boolean);if(new Set(winners).size!==winners.length)throw Error('Duplicate casting role assignment.');}
   if(c.revealVersion===1&&c.audioVersion!==1)throw Error('Narrated reveals require casting audio.');
   if(version(c)){
     const introductory=['chapter5-intro','chapter5-waiting'].includes(s.phase);
@@ -27,6 +30,7 @@ export function validateChapter5(s){
     if(r.id!==castingRoles[i].id||!r.votes||Array.isArray(r.votes)||typeof r.votes!=='object')throw Error('Invalid casting round.');
     const entries=Object.entries(r.votes);
     if(entries.some(([v,t])=>!cast.has(v)||!cast.has(t)||v===t))throw Error('Invalid casting ballot.');
+    if(c.eligibilityVersion===1&&entries.some(([,target])=>c.rounds.slice(0,i).some(prior=>prior.winnerPlayerId===target)))throw Error('Casting ballot targets an assigned player.');
     if(r.startedAt===null){if(entries.length||r.completedAt!==null||r.winnerPlayerId!==null)throw Error('Invalid future round.');}
     else if(!positive(r.startedAt)||r.startedAt<(i===0?(version(c)?c.rulesStartedAt+CHAPTER5_RULES_MS:c.startedAt+CHAPTER5_LEGACY_INTRO_MS):c.rounds[i-1].completedAt+castingCompletionMs(c.rounds[i-1].id,c.revealVersion)-(c.revealVersion===1||r.id==='killer'?0:500)))throw Error('Invalid casting clock.');
     if(r.completedAt===null){if(entries.length>=12||r.winnerPlayerId!==null)throw Error('Invalid incomplete casting round.');}
@@ -102,6 +106,9 @@ export function makeCastingVoter(choose=randomInt){
     if(Date.now()<r.startedAt+castingVotingOffset(r.id,version(s.chapter5)))throw new LobbyError(409,'Wait for the role narration to finish.');
     if(entries.some(([v,t])=>typeof t!=='string'||!cast.has(v)||!cast.has(t)||v===t))throw new LobbyError(400,'Choose another current player.');
     const pending=entries.filter(([id])=>!Object.hasOwn(r.votes,id));if(!pending.length)return UNCHANGED;
+    const eligible=new Set(castingCandidates(s).map(p=>p.id));
+    if(pending.some(([,target])=>!eligible.has(target)))throw new LobbyError(409,'That player already has a casting role. Choose another player.');
+    if(Object.values(r.votes).some(id=>!eligible.has(id)))throw new LobbyError(409,'This legacy round contains votes for an assigned player. Existing votes are preserved; use the host final-cast checkpoint to review the cast.');
     if(r.completedAt!==null)throw new LobbyError(409,'Casting is complete for this role.');
     for(const [id,target] of pending)r.votes[id]=target;
     if(Object.keys(r.votes).length===12){
@@ -116,7 +123,7 @@ export function chapter5Progress(s,playerId){
   if(!isChapter5(s))return null;
   const c=s.chapter5,now=Date.now(),r=c.rounds[c.roundIndex],player=id=>{const p=s.players.find(p=>p.id===id);return p?{id:p.id,name:p.name}:null;};
   const revealed=round=>round.completedAt!==null&&now>=round.completedAt+castingRevealOffset(round.id,c.revealVersion);
-  return {audioVersion:version(c),revealVersion:c.revealVersion??0,startedAt:c.startedAt,readyAt:c.readyAt??null,rulesStartedAt:c.rulesStartedAt??null,roundIndex:c.roundIndex,castStartedAt:c.castStartedAt,completedAt:c.completedAt,
+  return {navigationId:c.navigationId??null,candidateIds:castingCandidates(s).map(p=>p.id),duplicateAssignments:new Set(c.rounds.map(r=>r.winnerPlayerId).filter(Boolean)).size!==c.rounds.filter(r=>r.winnerPlayerId).length,audioVersion:version(c),revealVersion:c.revealVersion??0,startedAt:c.startedAt,readyAt:c.readyAt??null,rulesStartedAt:c.rulesStartedAt??null,roundIndex:c.roundIndex,castStartedAt:c.castStartedAt,completedAt:c.completedAt,
     round:{id:r.id,title:castingRoles[c.roundIndex].title,setup:castingRoles[c.roundIndex].setup,question:castingRoles[c.roundIndex].question,startedAt:r.startedAt,completedAt:r.completedAt,narrationStartedAt:version(c)&&r.startedAt!==null?r.startedAt+roleNarrationOffset(r.id):null,votingOpensAt:r.startedAt!==null?r.startedAt+castingVotingOffset(r.id,version(c)):null,votingActive:s.phase==='chapter5-casting'&&r.completedAt===null&&now>=r.startedAt+castingVotingOffset(r.id,version(c)),
       voteCount:Object.keys(r.votes).length,winner:revealed(r)?player(r.winnerPlayerId):null,...(playerId?{voted:Object.hasOwn(r.votes,playerId)}:{})},
     winners:c.rounds.filter(revealed).map(r=>({roleId:r.id,title:castingRoles.find(role=>role.id===r.id).title,player:player(r.winnerPlayerId)}))};
