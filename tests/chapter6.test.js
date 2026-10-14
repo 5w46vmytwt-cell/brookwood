@@ -25,7 +25,7 @@ beforeEach(()=>{
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
 function fixture(real=12,modern=false){
  const s=fresh();s.players=Array.from({length:12},(_,i)=>({id:'p'+i,token:'t'+i,name:'Guest '+i,partnerId:'p'+(i%2?i-1:i+1),ready:true,alive:true,hearts:3,inventory:[],...(i>=real?{simulated:true}:{})}));
- makeMazeTestSelector()(s);if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
+ makeMazeTestSelector()(s);delete s.chapter6.controlVersion;if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
 }
 function request(s,action,extra={}){return {action,generation:s.generation,chapter6StartedAt:s.chapter6.startedAt,sequence:s.chapter6.sequence,...extra};}
 function modernAdvance(s){now=s.chapter6.deadline;const cue=phaseCues(s.chapter6)[0];if(['intro','result','zero','finale','selected','return'].includes(s.chapter6.step)&&cue)mazeHostAction(s,request(s,'maze-audio-ended',{recording:cue.number}));else advanceChapter6(s);validateChapter6(s);}
@@ -134,11 +134,11 @@ test('normal PIN authentication establishes the maze session while old chapter a
  assert.equal((await call(host,{action:'start'},'POST',{cookie})).status,403);
  process.env.HOST_KEY='rotated';assert.equal((await call(host,{action:'maze-session'},'POST',{cookie})).status,403);
 });
-test('all 43 assets and exact MPEG durations match runtime cues',()=>{
+test('all 44 assets and exact MPEG durations match runtime cues',()=>{
  for(const r of recordings){const b=fs.readFileSync('.'+r.src);assert.equal(mp3Metadata(b).durationMs,r.durationMs);}
  const images=['red_door','blue_door','green_door','black_door','red_reveal','blue_reveal','green_reveal','black_reveal','morgue_memory','bridge_background','silence_jumpscare'];
  for(const name of images)assert.equal(fs.readFileSync('assets/chapter6/'+name+'.png').toString('hex',0,8),'89504e470d0a1a0a');
- assert.equal(fs.readdirSync('assets/chapter6/audio').length,32);
+ assert.equal(fs.readdirSync('assets/chapter6/audio').length,33);
 });
 test('Chapter 5 completion starts once, preserves all chapter results and identities, sequences 1/2/3',()=>{
  const s=fixture();delete s.chapter6;s.phase='chapter5-complete';const prior=structuredClone(s);
@@ -299,4 +299,41 @@ test('legacy pending electorate migration retains ballots and every previously o
 });
 test('new door shuffles never reproduce the fixed narration order and persist on reconstruction',()=>{
  for(let i=0;i<40;i++){const s=fixture(12,true);assert.notDeepEqual(s.chapter6.doorOrder,['red','blue','green','black']);assert.equal(new Set(s.chapter6.doorOrder).size,4);assert.deepEqual(chapter6Progress(structuredClone(s)).doorOrder,s.chapter6.doorOrder);}
+});
+
+test('ready checkpoint follows full recordings 1/2 and only an authenticated host starts Game 1',async()=>{
+ const s=fixture(12,true);s.chapter6.controlVersion=1;while(s.chapter6.step!=='ready')modernAdvance(s);assert.equal(s.chapter6.step,'ready');assert.equal(s.chapter6.deadline,null);assert.deepEqual(phaseCues(s.chapter6),[]);const saved=JSON.stringify(s);now+=100000;advanceChapter6(s);assert.equal(JSON.stringify(s),saved);raw=saved;
+ assert.equal((await call(host,request(s,'maze-start-games'))).status,403);const b={...request(s,'maze-start-games'),code:'maze-host'};const results=await Promise.all([call(host,b),call(host,b)]);assert.equal(results.filter(r=>r.status===200).length,1);const current=JSON.parse(raw);assert.equal(phaseCues(current.chapter6)[0].number,3);assert.equal(current.chapter6.step,'intro');validateChapter6(current);
+});
+test('server expiry preserves all choices and lives; late correct and no-consensus resolutions are atomic',async()=>{
+ for(const answerId of ['black','red','no-consensus']){
+  const s=fixture(12,true);modernQuestion(s);s.chapter6.controlVersion=1;now=s.chapter6.deadline;advanceChapter6(s);assert.equal(s.chapter6.step,'expired');assert.equal(s.chapter6.deadline,null);assert.equal(s.chapter6.lives,3);assert.equal(s.chapter6.results.length,0);validateChapter6(s);const refreshed=structuredClone(s);now+=100000;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'expired');raw=JSON.stringify(refreshed);
+  const b={...request(refreshed,'maze-answer',{answer:answerId}),code:'maze-host'};assert.equal((await call(host,request(refreshed,'maze-answer',{answer:answerId}))).status,403);const replies=await Promise.all([call(host,b),call(host,b)]);assert.equal(replies.filter(r=>r.status===200).length,1);const result=JSON.parse(raw);assert.equal(result.chapter6.results.length,1);assert.equal(result.chapter6.lives,answerId==='black'?3:2);assert.equal(result.chapter6.step,'locked');assert.equal(result.chapter6.deadline-result.chapter6.phaseAt,3000);validateChapter6(result);
+ }
+});
+test('new ready test destination is PIN-protected and preserves cast and retrieval references',async()=>{
+ const s=fixture(2,true),prior=structuredClone(s.players);raw=JSON.stringify(s);assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter6-ready'})).status,403);assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter6-ready',code:'maze-host'})).status,200);const c=JSON.parse(raw);assert.equal(c.chapter6.step,'ready');assert.equal(c.chapter6.lives,3);assert.deepEqual(c.players,prior);assert.equal(c.chapter6.screamerId,c.chapter5.rounds[0].winnerPlayerId);validateChapter6(c);
+});
+test('ambient supplied asset has exact decoded frame duration and remains separate from narration',()=>{
+ const metadata=mp3Metadata(fs.readFileSync('assets/chapter6/audio/ch6_ambient_maze.mp3'));assert.equal(metadata.durationMs,142920);assert.equal(metadata.sampleRate,48000);assert.equal(metadata.channels,2);assert(!recordings.some(r=>r.src.includes('ambient')));
+});
+
+test('all four expired knowledge games await the host, no consensus costs one life and zero narration occurs once',()=>{
+ const s=fixture(12,true);s.chapter6.controlVersion=1;
+ for(let game=0;game<4;game++){
+  while(s.chapter6.step!=='answer'){if(s.chapter6.step==='ready')mazeHostAction(s,request(s,'maze-start-games'));else modernAdvance(s);}
+  const lives=s.chapter6.lives;modernAdvance(s);assert.equal(s.chapter6.step,'expired');assert.equal(s.chapter6.lives,lives);mazeHostAction(s,request(s,'maze-answer',{answer:'no-consensus'}));assert.equal(s.chapter6.lives,Math.max(0,lives-1));modernAdvance(s);modernAdvance(s);
+  if(game===2){assert.equal(s.chapter6.step,'zero');assert.equal(phaseCues(s.chapter6)[0].number,32);modernAdvance(s);}else assert.notEqual(s.chapter6.step,'zero');modernAdvance(s);
+ }
+ while(s.chapter6.step!=='silence')modernAdvance(s);assert.equal(s.chapter6.deadline-s.chapter6.phaseAt,60000);modernAdvance(s);assert.equal(s.chapter6.step,'verdict');assert.equal(s.chapter6.lives,0);validateChapter6(s);
+});
+
+test('ready testing jump retains completed real casting assignments rather than recasting players',async()=>{
+ const s=fixture(2,true);delete s.chapter6;s.phase='chapter5-complete';s.chapter5.rounds[0].winnerPlayerId='p8';s.chapter5.rounds[0].votes=Object.fromEntries(s.players.map(p=>[p.id,p.id==='p8'?'p9':'p8']));const cast=structuredClone(s.chapter5.rounds),holder=s.macheteHolderPlayerId;raw=JSON.stringify(s);
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter6-ready',code:'maze-host'})).status,200);const next=JSON.parse(raw);assert.deepEqual(next.chapter5.rounds,cast);assert.equal(next.chapter6.screamerId,'p8');assert.equal(next.chapter6.macheteId,holder);assert.equal(next.chapter6.step,'ready');validateChapter6(next);
+});
+
+test('ready checkpoint preserves all six winners while the final cast presentation is still pending',async()=>{
+ const s=fixture(2,true);delete s.chapter6;s.phase='chapter5-finale';s.chapter5.completedAt=null;s.chapter5.castStartedAt=now;s.chapter5.rounds[0].winnerPlayerId='p8';s.chapter5.rounds[0].votes=Object.fromEntries(s.players.map(p=>[p.id,p.id==='p8'?'p9':'p8']));const actual=s.chapter5.rounds.map(r=>({winner:r.winnerPlayerId,votes:structuredClone(r.votes)}));raw=JSON.stringify(s);
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter6-ready',code:'maze-host'})).status,200);const next=JSON.parse(raw);assert.deepEqual(next.chapter5.rounds.map(r=>({winner:r.winnerPlayerId,votes:r.votes})),actual);assert.equal(next.chapter6.step,'ready');assert(next.chapter5.completedAt<=now);validateChapter6(next);
 });

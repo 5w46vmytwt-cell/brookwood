@@ -1,3 +1,7 @@
+# Cinematic/host-control/soundtrack authorization (2026-10-13)
+
+The user approved exclusive Chapter 5 finale messages, the supplied Chapter 6 ambient MP3, a host-session EVERYONE READY checkpoint, maze vignette and host resolution after knowledge timer expiry, plus production deployment after validation. The existing final-cast checkpoint retains actual six-role results and starts the six-person presentation without replaying rounds. No production Redis reset or environment changes are authorized. Preserve Chapters 1–4, Chapter 5 gameplay/recordings/cast and all supplied media bytes. New controlVersion 1 maze runs persist intro black pauses, ready and expired phases; legacy runs retain their prior clocks/progression. See CHAPTER6.md.
+
 # Chapter 6 visual/voting release authorization (2026-10-12)
 
 The user approved Chapter 6-only door/card/HUD/result/zero-life/failure-scare polish and token-voting corrections, tests, isolated local rehearsal and the existing feature branch → main → Vercel production workflow. Preserve Chapters 1–5 and all supplied audio bytes. Do not reset production Redis, modify environment variables or create projects/databases. Current implementation and election migration/tie rules are documented in CHAPTER6.md; older first-ballot/30-second-presence/random-token-tie notes are superseded. Production release is not verified until explicitly checked.

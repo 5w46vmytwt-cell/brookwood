@@ -54,8 +54,8 @@ export const chapter5FinaleTimeline={id:'chapter5-finale',end:CHAPTER5_FINALE_MS
   text('rules',24600,30100,'chapter5-rules',"YOU DON'T KNOW THE RULES YET.",{fadeOut:[28600,30100]})
 ]};
 export function polishedFinaleTimeline(){
-  const shift=COMPLETE_CAST_END_MS-8500;
-  return {id:'chapter5-narrated-finale',end:POLISHED_FINALE_MS,cues:chapter5FinaleTimeline.cues.map(c=>c.id==='cast'?{...c,end:COMPLETE_CAST_END_MS,visual:{...c.visual,fadeOut:[COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS]}}:{...c,at:c.at+shift,end:c.end+shift,visual:{...c.visual,fadeOut:c.visual.fadeOut.map(t=>t+shift)}})};
+  const messages=chapter5FinaleTimeline.cues.slice(1).map((cue,i)=>{const at=COMPLETE_CAST_END_MS+600+i*3500,end=at+3000;return {...cue,at,end,visual:{...cue.visual,fadeIn:[at,at+600],fadeOut:[end-600,end]}};});
+  return {id:'chapter5-narrated-finale',end:POLISHED_FINALE_MS,cues:[{...chapter5FinaleTimeline.cues[0],end:COMPLETE_CAST_END_MS,visual:{...chapter5FinaleTimeline.cues[0].visual,fadeOut:[COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS]}},...messages]};
 }
 export class Chapter5View{
   constructor(document,Renderer,clock){this.document=document;this.Renderer=Renderer;this.clock=clock;this.renderer=null;this.key=null;this.state=null;}

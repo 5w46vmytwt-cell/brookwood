@@ -65,3 +65,6 @@
 #chapter5-wife p{color:#b9e0d8;font-size:clamp(19px,2.2vw,34px)}#chapter5-wife .party-kicker{font-size:clamp(12px,1.2vw,20px);letter-spacing:.2em;color:#c6b5df}
 @media(max-aspect-ratio:4/3){.broadcast-mic{left:6vw;width:20vw;height:40vh;top:26vh}#chapter5TV .broadcast-status{padding-left:30vw}.broadcast-label{font-size:clamp(12px,3vw,23px)}.broadcast-wave{left:8vw}.party-orbit{inset:5vh 3vw}}
 @media(prefers-reduced-motion:reduce){#chapter5TV .broadcast-wave i,#chapter5TV .broadcast-stamp,#chapter5-approved,#chapter5TV .party-orbit{animation:none!important;transition:none!important}}
+
+/* Exclusive finale messages share a single central cinematic position. */
+#chapter5-ofCourse,#chapter5-onlyGame,#chapter5-tonight,#chapter5-someoneElse,#chapter5-unlikeYours,#chapter5-rules{padding:4vh 5vw;justify-content:center}

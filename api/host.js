@@ -6,14 +6,14 @@ import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
 import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
-  const sessionAction=['maze-login','maze-session','maze-audio-ended','maze-answer','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
+  const sessionAction=['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
   const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
   if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
   if(pinValid)issueHostSession(req,res);
   try{
     if(['maze-login','maze-session'].includes(req.body.action))return send(res,200,{ok:true,authenticated:true});
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
-    if(['maze-audio-ended','maze-answer','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body.action)){
+    if(['maze-audio-ended','maze-answer','maze-start-games','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body.action)){
       let state;await updateState(withinMazeRun(s=>{const result=mazeHostAction(s,req.body);state=publicState(s);return result;}));
       return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});
     }
@@ -43,9 +43,9 @@ export default async function handler(req,res){
       }));return send(res,200,{ok:true});
     }
     if(req.body.action==='chapter-select'){
-      const select=req.body.checkpoint==='chapter5-finale'?makeFinalCastTestSelector():req.body.checkpoint==='chapter6'?makeMazeTestSelector():['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
+      const select=req.body.checkpoint==='chapter5-finale'?makeFinalCastTestSelector():['chapter6','chapter6-ready'].includes(req.body.checkpoint)?makeMazeTestSelector(req.body.checkpoint):['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
       let state;
-      await updateState(s=>{const mazeNavigation=isChapter6(s)||['chapter6','chapter5-finale'].includes(req.body.checkpoint);const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
+      await updateState(s=>{const mazeNavigation=isChapter6(s)||['chapter6','chapter6-ready','chapter5-finale'].includes(req.body.checkpoint);const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
       return send(res,200,{ok:true,...(state?{state:{...state,serverNow:Date.now()}}:{})});
     }
     if(req.body.action==='test-read-simulated'){

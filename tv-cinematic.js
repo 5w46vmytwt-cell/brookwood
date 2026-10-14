@@ -25,6 +25,7 @@ export class TVCinematicRuntime {
     this.chapter4VoteAt=CHAPTER4_VOTING_MS;
     this.scheduler=new AbsoluteCueScheduler({autoSync:false,now,requestFrame,cancelFrame,
       onElapsed:(elapsed,meta)=>{
+        this.chapter6Visuals?.advanceAmbient();
         if(this.state?.chapter6){this.chapter6Visuals.update(this.state,meta);this.onElapsed(elapsed,this.state);return;}
         if(chapter5Phases.includes(this.state?.phase)){
           this.chapter5Visuals.update(this.state);this.chapter5Audio.update(this.state,meta);
@@ -71,7 +72,7 @@ export class TVCinematicRuntime {
     const chapter5=chapter5Phases.includes(state.phase);
     const chapter6=!!state.chapter6;
     if(chapter6){this.audio.stop();this.chapter3Audio.stop();this.chapter3Visuals.stop();this.chapter4Audio.stop();this.chapter4Visuals.stop();this.chapter5Audio.stop();this.chapter5Visuals.stop();const score=this.audio.soundtrack;if(score?.audio){score.audio.pause();score.target=0;score.ramp=null;score.audio.volume=0;}}
-    else this.chapter6Visuals.stop();
+    else this.chapter6Visuals.stop(true);
     if(chapter4||chapter5){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
     if(chapter5&&!chapter5Phases.includes(previous?.phase)){
       const score=this.audio.soundtrack;

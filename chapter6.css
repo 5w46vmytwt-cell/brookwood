@@ -41,3 +41,7 @@
 .maze-zero{background:radial-gradient(ellipse at center,#160909,#000 70%)!important}.maze-zero #chapter6Title{font-size:clamp(40px,6vw,110px);color:#c19191}.maze-zero #chapter6Question,.maze-zero #chapter6Detail{font-size:clamp(24px,2.7vw,48px);color:#b4a3a3}.maze-zero #chapter6Waveform{height:120px}.maze-zero #chapter6Waveform i{background:#803d3d;width:10px}
 .maze-failure-scare #chapter6Image{inset:13vh 3vw 5vh;width:94vw;height:82vh;object-fit:contain;background:#000;box-shadow:0 0 60px #6b141480}.maze-failure-scare #chapter6Content{display:none}.maze-failure-scare #chapter6HUD{z-index:12}.maze-failure-scare.maze-impact #chapter6Image{animation:mazeFailureImpact .18s steps(2) 2}@keyframes mazeFailureImpact{50%{filter:contrast(1.7);transform:scale(1.02)}}
 @media(max-height:700px){.maze-question #chapter6Content{gap:3vh}.maze-question #chapter6Choices li{min-height:14vh}}@media(prefers-reduced-motion:reduce){.maze-failure-scare.maze-impact #chapter6Image{animation:none}}
+
+/* Restrained maze vignette; the opaque curtain preserves true black holds. */
+#chapter6TV{background:radial-gradient(ellipse at 50% 45%,#261019 0%,#120b16 38%,#070609 68%,#000 100%)}
+#chapter6ReadyStart{order:10;padding:18px 36px;border:1px solid #865252;background:#190c10;color:#d8c2c2;font:clamp(20px,2vw,34px) Georgia,serif;letter-spacing:.13em;cursor:pointer}#chapter6ReadyStart:disabled{opacity:.4}

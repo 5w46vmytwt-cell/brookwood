@@ -3,7 +3,7 @@ let current=null,pending=false,selectionRun=null;
 export function renderMazePhone(state,{document,auth,request,onState,onInvalid,isCurrent=()=>true}){
  current=state;const c=state.chapter6,node=id=>document.getElementById(id);
  node('mazePhoneTitle').textContent=c.step==='complete'?'THE KILLER’S MAZE':c.step==='vote'?'CHOOSE WHO GOES':'THE KILLER’S MAZE';
- node('mazePhoneCopy').textContent=c.step==='transition'?'Watch the TV. The next scene is about to begin.':c.step==='complete'?'':c.step==='vote'?'Vote privately for the laundry room token retriever.':['selected','waiting'].includes(c.step)?c.selectedPlayer.name+'\nWAITING FOR THE TOKEN':c.step==='return'?'Watch the TV.':c.game===4?'Remain silent. Watch the TV.':'Watch the TV. The host submits the group answer.';
+ node('mazePhoneCopy').textContent=c.step==='ready'?'Everyone ready? Waiting for the host to start the games.':c.step==='expired'?"Time is up. The host will resolve the group answer.":c.step==='transition'?'Watch the TV. The next scene is about to begin.':c.step==='complete'?'':c.step==='vote'?'Vote privately for the laundry room token retriever.':['selected','waiting'].includes(c.step)?c.selectedPlayer.name+'\nWAITING FOR THE TOKEN':c.step==='return'?'Watch the TV.':c.game===4?'Remain silent. Watch the TV.':'Watch the TV. The host submits the group answer.';
  node('mazePhoneLives').textContent=c.lives+' / 3 SHARED LIVES';
  const canVote=c.canVote&&!c.voted,selector=node('mazePhoneTarget'),old=selectionRun===c.startedAt?selector.value:'';
  selector.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose another eligible player';selector.appendChild(placeholder);

@@ -81,13 +81,14 @@ for(const [index,role] of castingRoles.entries())test(role.id+' suspense-to-winn
   assert.equal(timeline.cues.find(c=>c.id==='winner').at,t.winnerAt);
   const css=fs.readFileSync('chapter5.css','utf8');assert(css.includes('#chapter5-winnerName{font-size:clamp(54px,9vw,160px)'));assert(css.includes('#chapter5-winnerRole{font:clamp(18px,2.2vw,34px)'));
 });
-test('full cast shows all six approved images for the entire narration plus 3s then preserves mystery relative timing',()=>{
+test('full cast shows all six approved images for the entire narration plus 3s then presents exclusive fading mystery messages',()=>{
   const e=fixture(),timeline=polishedFinaleTimeline(),shift=COMPLETE_CAST_END_MS-8500;
   assert.equal(COMPLETE_CAST_HOLD_MS,Math.ceil(completeCastRecording.durationMs)+3000);
   assert.equal(e.resolve(timeline,COMPLETE_CAST_HOLD_MS).cast.opacity,1);assert.equal(e.resolve(timeline,COMPLETE_CAST_HOLD_MS+750).cast.opacity,.5);
   assert.equal(e.resolve(timeline,COMPLETE_CAST_END_MS).cast.opacity,0);
-  assert.equal(e.resolve(timeline,COMPLETE_CAST_END_MS+2499).ofCourse.opacity,0);assert.equal(e.resolve(timeline,COMPLETE_CAST_END_MS+2500).ofCourse.opacity,1);
-  assert.equal(e.resolve(timeline,12000+shift).onlyGame.opacity,1);assert.equal(timeline.end,POLISHED_FINALE_MS);assert.equal(castingFinaleMs(1),timeline.end);
+  for(let t=COMPLETE_CAST_END_MS;t<timeline.end;t+=100){const frame=e.resolve(timeline,t);assert(Object.values(frame).filter(v=>v.opacity>0).length<=1);}
+  const messages=timeline.cues.slice(1);for(let i=0;i<messages.length;i++){const cue=messages[i];assert.equal(cue.visual.fadeIn[1]-cue.at,600);assert.equal(cue.end-cue.visual.fadeOut[0],600);if(i)assert.equal(cue.at-messages[i-1].end,500);assert.equal(e.resolve(timeline,cue.at+1000)[cue.id].opacity,1);assert.equal(e.resolve(timeline,cue.end)[cue.id].opacity,0);}
+  assert.equal(timeline.end,POLISHED_FINALE_MS);assert.equal(castingFinaleMs(1),timeline.end);
   const html=fs.readFileSync('tv.html','utf8');for(const role of castingRoles)assert(html.includes('src="'+role.src+'"'));assert(!html.includes('id="chapter5-roleTitle"'));
 });
 test('reveal refresh seeks active narration, skips expired voice and repeated polls cannot replay it',async()=>{

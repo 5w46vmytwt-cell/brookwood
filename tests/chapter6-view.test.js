@@ -87,3 +87,13 @@ test('silence failure scare stays through the entire narration result and never 
  for(const t of [0,500,gate(27)-1,gate(27)+5000]){paint(t);assert(!document.getElementById('chapter6Image').hidden);assert(document.getElementById('chapter6Image').src.endsWith('silence_jumpscare.png'));assert.equal(document.getElementById('chapter6Question').textContent,'');assert(document.getElementById('chapter6TV').classList.contains('maze-impact')===(t<500));}
  c.results[4]={answer:'pass',correct:true,recording:26};paint(100);assert(document.getElementById('chapter6Image').hidden);assert.equal(document.getElementById('chapter6Question').textContent,'SURVIVED');
 });
+
+test('ready and expired TV scenes preserve cinematic copy, original answer cards and frozen timer',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{controlVersion:1,audioVersion:2,game:0,audioIndex:1,step:'ready',deadline:null});paint(1000);assert.equal(document.getElementById('chapter6Question').textContent,'EVERYONE READY?');assert(document.getElementById('chapter6HUD').hidden);assert(document.getElementById('chapter6Doors').hidden);assert.equal(document.getElementById('chapter6Choices').children.length,0);assert(document.getElementById('chapter6Detail').textContent.includes('WAITING FOR THE HOST'));
+ c.step='expired';c.sequence++;paint(5000);assert.equal(document.getElementById('chapter6Timer').textContent,'00:00');assert.equal(document.getElementById('chapter6Question').textContent,"TIME'S UP");assert.equal(document.getElementById('chapter6Choices').children.length,4);assert(!document.getElementById('chapter6Doors').hidden);assert(!document.getElementById('chapter6HUD').hidden);
+ c.step='result';c.results[0]={answer:'no-consensus',correct:false,recording:null};c.lives=2;paint(6000);assert.equal(document.getElementById('chapter6Detail').textContent,'NO CONSENSUS.\nTIME RAN OUT.\nONE LIFE LOST.');
+});
+test('intro message fade-outs and black pauses reconstruct without playing another cue',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{controlVersion:1,audioVersion:2,game:0,audioIndex:0,step:'intro-gap',deadline:2100});
+ for(const [t,black] of [[0,0],[300,.5],[600,1],[1099,1]]){paint(t);assert.equal(Number(document.getElementById('chapter6Curtain').style.opacity),black);assert.deepEqual(phaseCues(c),[]);assert(document.getElementById('chapter6HUD').hidden);if(t>=600)assert(document.getElementById('chapter6Content').hidden);}
+});

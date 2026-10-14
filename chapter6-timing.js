@@ -11,6 +11,7 @@ export const answerWindows=[120000,120000,90000,180000,60000];
 export const TRANSITION_MS=4000;
 // Reconstruct from the persisted phase clock; no client transition timer.
 export function transitionVisual(c,now){
+ if(c.step==='intro-gap'){const t=Math.max(0,now-c.phaseAt);return {scene:t<600?{...c,step:'intro'}:null,black:Math.min(1,t/600)};}
  if(c.step==='takeover')return {scene:null,black:1};
  if(c.step!=='transition')return {scene:c,black:0};
  const t=Math.max(0,now-c.phaseAt);
