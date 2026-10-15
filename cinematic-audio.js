@@ -6,7 +6,7 @@
   class Soundtrack {
     constructor(config) {
       this.config = config; this.target = 0; this.ramp = null; this.pending = false;
-      this.attempted = false; this.unavailable = false;
+      this.attempted = false; this.unavailable = false; this.generation=0;
       try {
         this.audio = new Audio(config.src); this.audio.preload = 'auto';
         this.audio.loop = true; this.audio.volume = 0;
@@ -18,18 +18,19 @@
     }
     start(gesture = false) {
       if (this.unavailable || this.pending || !this.audio.paused || (this.attempted && !gesture)) return;
-      this.attempted = true; this.pending = true;
+      this.attempted = true; this.pending = true; const generation=this.generation;
       // A blocked first attempt may have finished its ramp silently. Fade in
       // when permission arrives, without seeking the persistent musical clock.
       this.audio.volume = 0;
       this.ramp = { at: Date.now(), from: 0, to: this.target, duration: this.config.fadeMs };
       try {
         Promise.resolve(this.audio.play()).catch(error => {
-          this.audio.pause();
+          if(generation!==this.generation)return;this.audio.pause();
           console.warn('Brookwood soundtrack playback blocked or failed; retry on interaction', error);
-        }).finally(() => { this.pending = false; });
+        }).finally(() => { if(generation===this.generation)this.pending = false; });
       } catch (error) { this.pending = false; console.warn('Brookwood soundtrack playback failed', error); }
     }
+    cancel(){this.generation++;this.pending=false;this.attempted=false;this.target=0;this.ramp=null;if(this.audio){this.audio.volume=0;this.audio.pause();}}
     setTarget(target) {
       if (!this.audio || this.unavailable || target === this.target) return;
       this.advance(); this.target = target;

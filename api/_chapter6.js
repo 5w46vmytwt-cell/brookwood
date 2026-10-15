@@ -5,8 +5,8 @@ import {gate,introDuration,answerWindows,games,resultRecording,TRANSITION_MS,int
 import {castingVotingOffset,castingCompletionMs,castingFinaleMs,CHAPTER5_INTRO_MS} from '../chapter5-timing.js';
 import {CHAPTER5_RULES_MS} from '../chapter5-audio-timing.js';
 export const isChapter6=s=>s.phase==='chapter6';
-const steps=['intro-gap','ready','expired','takeover','exposure','locked','gameover','intro','answer','silence','verdict','result','zero','transition','finale','vote','selected','waiting','return','complete'];
-const timed=['intro-gap','takeover','exposure','locked','gameover','intro','answer','silence','result','zero','transition','finale','selected','return'];
+const steps=['prepare-image','silence-ready','result-reveal','intro-gap','ready','expired','takeover','exposure','locked','gameover','intro','answer','silence','verdict','result','zero','transition','finale','vote','selected','waiting','return','complete'];
+const timed=['result-reveal','intro-gap','takeover','exposure','locked','gameover','intro','answer','silence','result','zero','transition','finale','selected','return'];
 export const PRESENCE_MS=30000;
 function shuffleDoors(){const original=['red','blue','green','black'];let order;do{order=[...original];for(let i=3;i>0;i--){const j=randomInt(i+1);[order[i],order[j]]=[order[j],order[i]];}}while(order.every((id,i)=>id===original[i]));return order;}
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
@@ -31,7 +31,7 @@ export function startChapter6(s,now=Date.now(),doorOrder=shuffleDoors()){
  if(isChapter6(s))return UNCHANGED;
  if(s.phase!=='chapter5-complete')return UNCHANGED;
  validateChapter5(s);
- s.chapter6={controlVersion:1,audioVersion:2,audioIndex:0,doorOrder:[...doorOrder],startedAt:now,phaseAt:now,deadline:now+4000,step:'takeover',game:0,lives:3,zeroConsumed:false,zeroAt:null,results:[],screamerId:s.chapter5.rounds.find(r=>r.id==='screamer').winnerPlayerId,macheteId:s.macheteHolderPlayerId,sequence:0,presence:{},voterIds:[],electorateLocked:false,votes:{},selectedPlayerId:null,tokenReturnedAt:null,completedAt:null,testMode:s.players.some(p=>p.simulated===true)};
+ s.chapter6={pacingVersion:1,controlVersion:1,audioVersion:2,audioIndex:0,doorOrder:[...doorOrder],startedAt:now,phaseAt:now,deadline:now+4000,step:'takeover',game:0,lives:3,zeroConsumed:false,zeroAt:null,results:[],screamerId:s.chapter5.rounds.find(r=>r.id==='screamer').winnerPlayerId,macheteId:s.macheteHolderPlayerId,sequence:0,presence:{},voterIds:[],electorateLocked:false,votes:{},selectedPlayerId:null,tokenReturnedAt:null,completedAt:null,testMode:s.players.some(p=>p.simulated===true)};
  s.phase='chapter6';
 }
 export function makeMazeStarter(){const order=shuffleDoors(),at=Date.now();return s=>startChapter6(s,at,order);}
@@ -39,6 +39,11 @@ export function validateChapter6(s){
  validateChapter5({...s,phase:'chapter5-complete'});
  const c=s.chapter6,cast=new Set(s.players.map(p=>p.id));
  if(!c||!Number.isFinite(c.startedAt)||c.startedAt<s.chapter5.completedAt||!steps.includes(c.step)||!Number.isInteger(c.game)||c.game<0||c.game>4||!Number.isInteger(c.sequence)||c.sequence<0||!Number.isFinite(c.phaseAt)||c.phaseAt<c.startedAt||!Number.isInteger(c.lives)||c.lives<0||c.lives>3||typeof c.zeroConsumed!=='boolean'||typeof c.testMode!=='boolean'||c.screamerId!==s.chapter5.rounds.find(r=>r.id==='screamer').winnerPlayerId||c.macheteId!==s.macheteHolderPlayerId)throw Error('Invalid Chapter 6 state.');
+ if(c.pacingVersion!==undefined&&c.pacingVersion!==1)throw Error('Invalid maze pacing version.');
+ if(['prepare-image','silence-ready','result-reveal'].includes(c.step)&&c.pacingVersion!==1)throw Error('Invalid maze presentation phase.');
+ if(c.step==='prepare-image'&&c.game!==2||c.step==='silence-ready'&&c.game!==4||c.step==='result-reveal'&&(c.game===4||c.deadline!==c.phaseAt+1600))throw Error('Invalid maze presentation game.');
+ if(c.exposureStartedAt!==undefined&&(!Number.isFinite(c.exposureStartedAt)||c.exposureStartedAt<c.startedAt))throw Error('Invalid memory exposure start.');
+ if(c.pacingVersion===1&&c.step==='exposure'&&(c.phaseAt!==c.exposureStartedAt||c.deadline!==c.exposureStartedAt+30000))throw Error('Invalid memory exposure window.');
  if(c.controlVersion!==undefined&&c.controlVersion!==1)throw Error('Invalid maze controls version.');
  if(['intro-gap','ready','expired'].includes(c.step)&&c.controlVersion!==1)throw Error('Invalid maze controls phase.');
  if(['intro-gap','ready'].includes(c.step)&&c.game!==0||c.step==='expired'&&c.game===4)throw Error('Invalid maze checkpoint game.');
@@ -48,7 +53,7 @@ export function validateChapter6(s){
  if(c.step==='transition'&&(!['result','zero'].includes(c.transitionFrom?.step)||!Number.isFinite(c.transitionFrom.phaseAt)||c.transitionFrom.phaseAt<c.startedAt||c.transitionFrom.phaseAt>c.phaseAt||c.deadline!==c.phaseAt+(c.audioVersion===2&&c.game===4?5000:TRANSITION_MS)))throw Error('Invalid maze transition.');
  if(!Array.isArray(c.results)||c.results.length>5||c.results.some((r,i)=>r.game!==i||!Number.isFinite(r.resolvedAt)||r.resolvedAt<c.startedAt||typeof r.correct!=='boolean'||r.recording!==resultRecording(i,r.answer,r.correct)))throw Error('Invalid maze results.');
  const losses=c.results.filter(r=>!r.correct).length;
- if(c.lives!==Math.max(0,3-losses)||c.results.length<c.game||c.results.length>c.game+1||(['locked','gameover','result','zero','transition','finale','vote','selected','waiting','return','complete'].includes(c.step)&&c.results.length!==c.game+1)||(['intro-gap','ready','expired','takeover','exposure','intro','answer','silence','verdict'].includes(c.step)&&c.results.length!==c.game))throw Error('Invalid maze progression.');
+ if(c.lives!==Math.max(0,3-losses)||c.results.length<c.game||c.results.length>c.game+1||(['result-reveal','locked','gameover','result','zero','transition','finale','vote','selected','waiting','return','complete'].includes(c.step)&&c.results.length!==c.game+1)||(['prepare-image','silence-ready','intro-gap','ready','expired','takeover','exposure','intro','answer','silence','verdict'].includes(c.step)&&c.results.length!==c.game))throw Error('Invalid maze progression.');
  if(c.results.some(r=>r.answer!==null&&(r.game<4?r.answer!=='no-consensus'&&!games[r.game].options.some(([id])=>id===r.answer):!['pass','fail'].includes(r.answer)))||c.results.some(r=>r.correct!==(r.game===4?r.answer==='pass':r.answer===games[r.game].correct)))throw Error('Invalid maze answer.');
  if(c.zeroConsumed?(c.lives!==0||!Number.isFinite(c.zeroAt)):c.zeroAt!==null)throw Error('Invalid zero-lives narration.');
  if(['gameover','finale','vote','selected','waiting','return','complete'].includes(c.step)&&c.results.length!==5)throw Error('Premature finale.');
@@ -88,12 +93,14 @@ export function advanceChapter6(s,now=Date.now(),audioEnded=false){
  if(c.audioVersion===2&&phaseCues(c).length&&['intro','result','zero','finale','selected','return'].includes(c.step)&&!audioEnded)return UNCHANGED;
  const end=c.deadline;
  if(c.step==='takeover'){c.audioIndex=0;enter(c,'intro',end,gate(1));}
- else if(c.step==='locked')enter(c,'result',end,c.results[c.game].recording?gate(c.results[c.game].recording):c.controlVersion===1&&c.results[c.game].answer==='no-consensus'?3000:1500);
+ else if(c.step==='locked'&&c.pacingVersion===1&&c.game<4)enter(c,'result-reveal',end,1600);
+ else if(['locked','result-reveal'].includes(c.step))enter(c,'result',end,c.results[c.game].recording?gate(c.results[c.game].recording):c.controlVersion===1&&c.results[c.game].answer==='no-consensus'?3000:1500);
  else if(c.step==='intro-gap'){if(c.audioIndex===1)enter(c,'ready',end);else{c.audioIndex++;enter(c,'intro',end,gate(2));}}
  else if(c.step==='gameover')enter(c,'finale',end,gate(c.lives>0?28:29));
  else if(c.step==='exposure'){c.audioIndex=1;enter(c,'intro',end,gate(15));}
  else if(c.step==='intro'){
-  if(c.audioVersion===2&&c.game===2&&c.audioIndex===0)enter(c,'exposure',now,15000);
+  if(c.audioVersion===2&&c.game===2&&c.audioIndex===0)enter(c,c.pacingVersion===1?'prepare-image':'exposure',now,c.pacingVersion===1?null:15000);
+  else if(c.pacingVersion===1&&c.game===4&&c.audioIndex===1)enter(c,'silence-ready',now);
   else if(c.controlVersion===1&&c.game===0&&c.audioIndex<2)enter(c,'intro-gap',now,1100);
   else if(c.audioVersion===2&&c.audioIndex<introNumbers(c.game).length-1){c.audioIndex++;enter(c,'intro',now,gate(introNumbers(c.game)[c.audioIndex]));}
   else enter(c,c.game===4?'silence':'answer',c.audioVersion===2?now:end,answerWindows[c.game]);
@@ -120,6 +127,14 @@ export function mazeHostAction(s,b,now=Date.now()){
  if(b.action==='maze-audio-ended'){
   const cues=phaseCues(c);if(c.audioVersion!==2||!['intro','result','zero','finale','selected','return'].includes(c.step)||cues.length!==1||b.recording!==cues[0].number||now<c.deadline)throw new LobbyError(409,'Narration is not complete for this scene.');
   return advanceChapter6(s,now,true);
+ }
+ if(b.action==='maze-image-ready'){
+  if(c.step!=='prepare-image'||c.game!==2)throw new LobbyError(409,'The memory display is not being prepared.');
+  c.exposureStartedAt=now+1500;enter(c,'exposure',c.exposureStartedAt,30000);return;
+ }
+ if(b.action==='maze-begin-silence'){
+  if(c.step!=='silence-ready'||c.game!==4)throw new LobbyError(409,'Wait for the full silence introduction and rules.');
+  enter(c,'silence',now,60000);return;
  }
  if(b.action==='maze-start-games'){
   if(c.step!=='ready')throw new LobbyError(409,'The maze is not waiting for the host.');
@@ -168,7 +183,7 @@ export function makeTokenVoter(){return (s,id,target,b,now=Date.now())=>{
 };}
 export function chapter6Progress(s,playerId){
  if(!isChapter6(s))return null;const c=s.chapter6,name=id=>s.players.find(p=>p.id===id)?.name??'';
- return {controlVersion:c.controlVersion??0,audioVersion:c.audioVersion??1,audioIndex:c.audioIndex??0,doorOrder:c.doorOrder??['red','blue','green','black'],startedAt:c.startedAt,previousChapter5StartedAt:s.chapter5.startedAt,phaseAt:c.phaseAt,deadline:c.deadline,step:c.step,...(c.step==='transition'?{transitionFrom:{...c.transitionFrom}}:{}),game:c.game,lives:c.lives,sequence:c.sequence,zeroConsumed:c.zeroConsumed,results:c.results.map(r=>({...r})),screamer:{id:c.screamerId,name:name(c.screamerId)},macheteId:c.macheteId,selectedPlayer:c.selectedPlayerId?{id:c.selectedPlayerId,name:name(c.selectedPlayerId)}:null,completedAt:c.completedAt,voteCount:Object.keys(c.votes).length,voterCount:c.voterIds.length,voteClosedAt:c.voteClosedAt??null,electorateLocked:c.electorateLocked,testMode:c.testMode,
+ return {pacingVersion:c.pacingVersion??0,exposureStartedAt:c.exposureStartedAt??null,controlVersion:c.controlVersion??0,audioVersion:c.audioVersion??1,audioIndex:c.audioIndex??0,doorOrder:c.doorOrder??['red','blue','green','black'],startedAt:c.startedAt,previousChapter5StartedAt:s.chapter5.startedAt,phaseAt:c.phaseAt,deadline:c.deadline,step:c.step,...(c.step==='transition'?{transitionFrom:{...c.transitionFrom}}:{}),game:c.game,lives:c.lives,sequence:c.sequence,zeroConsumed:c.zeroConsumed,results:c.results.map(r=>({...r})),screamer:{id:c.screamerId,name:name(c.screamerId)},macheteId:c.macheteId,selectedPlayer:c.selectedPlayerId?{id:c.selectedPlayerId,name:name(c.selectedPlayerId)}:null,completedAt:c.completedAt,voteCount:Object.keys(c.votes).length,voterCount:c.voterIds.length,voteClosedAt:c.voteClosedAt??null,electorateLocked:c.electorateLocked,testMode:c.testMode,
  ...(playerId?{voted:Object.hasOwn(c.votes,playerId),canVote:c.step==='vote'&&s.players.find(p=>p.id===playerId)?.simulated!==true&&(!c.electorateLocked||c.voterIds.includes(playerId)),candidates:candidatePlayers(s).filter(p=>p.id!==c.macheteId&&p.id!==playerId).map(p=>({id:p.id,name:p.name}))}:{})};
 }
 function simulatedTokenVotes(s,now){

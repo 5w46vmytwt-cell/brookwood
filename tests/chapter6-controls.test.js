@@ -52,3 +52,7 @@ test('authenticated ready host recovers on refresh and expired controls retain e
  controls.update(current);await new Promise(r=>setImmediate(r));assert(!node('chapter6ReadyStart').hidden);await node('chapter6ReadyStart').onclick();assert.equal(requests.at(-1).action,'maze-start-games');assert(!Object.hasOwn(requests.at(-1),'code'));
  Object.assign(current.chapter6,{step:'expired',game:1,sequence:2});controls.update(current);assert(node('chapter6ReadyStart').hidden);assert.equal(node('chapter6HostAnswers').children.length,6);assert.equal(node('chapter6HostAnswers').children.at(-1).textContent,"THE GROUP COULDN'T AGREE");await node('chapter6HostAnswers').children.at(-1).onclick();assert.equal(requests.at(-1).answer,'no-consensus');
 });
+
+test('silence ready host controls recover the existing session and start without a PIN',async()=>{
+ const {document,node}=harness(),requests=[],current=state();Object.assign(current.chapter6,{step:'silence-ready',game:4,pacingVersion:1});const controls=installMazeControls({document,runtime:{unlockChapter6(){}},acceptState(){},request:async(_path,body)=>{requests.push(body);return body.action==='maze-session'?{authenticated:true}:{state:current};}});controls.update(current);await new Promise(r=>setImmediate(r));assert(!node('chapter6ReadyStart').hidden);assert.equal(node('chapter6ReadyStart').textContent,'BEGIN THE CHALLENGE');await node('chapter6ReadyStart').onclick();assert.equal(requests.at(-1).action,'maze-begin-silence');assert(!Object.hasOwn(requests.at(-1),'code'));
+});

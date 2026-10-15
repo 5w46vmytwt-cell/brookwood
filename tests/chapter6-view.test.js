@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Chapter6View} from '../chapter6.js';
@@ -96,4 +97,24 @@ test('ready and expired TV scenes preserve cinematic copy, original answer cards
 test('intro message fade-outs and black pauses reconstruct without playing another cue',()=>{
  const {document,c,paint}=harness();Object.assign(c,{controlVersion:1,audioVersion:2,game:0,audioIndex:0,step:'intro-gap',deadline:2100});
  for(const [t,black] of [[0,0],[300,.5],[600,1],[1099,1]]){paint(t);assert.equal(Number(document.getElementById('chapter6Curtain').style.opacity),black);assert.deepEqual(phaseCues(c),[]);assert(document.getElementById('chapter6HUD').hidden);if(t>=600)assert(document.getElementById('chapter6Content').hidden);}
+});
+
+test('new result scenes show selected artwork and hide central game titles after the exclusive fade',()=>{
+ for(const [game,answer,asset] of [[0,'black','black_reveal.png'],[1,'C',null],[2,'C','morgue_memory.png'],[3,'B','bridge_background.png']]){
+  const {document,c,paint}=harness();Object.assign(c,{pacingVersion:1,game,step:'locked',deadline:4000});c.results[game]={answer,correct:true,recording:[7,12,16,19][game]};paint(100);assert(document.getElementById('chapter6Image').hidden||game===3);
+  c.step='result-reveal';c.phaseAt=1000;c.deadline=2600;paint(799);assert.equal(document.getElementById('chapter6Question').textContent,'ANSWER LOCKED');paint(800);assert(document.getElementById('chapter6Title').hidden);assert(document.getElementById('chapter6TV').classList.contains('maze-result'));
+  c.step='result';c.phaseAt=2600;paint(2000);assert(document.getElementById('chapter6Title').hidden);if(asset)assert(document.getElementById('chapter6Image').src.endsWith(asset));else assert(document.getElementById('chapter6TV').classList.contains('maze-result-boxoffice'));
+  if(game===0)assert.equal(document.getElementById('chapter6Question').textContent,'YOU CHOSE THE RIGHT DOOR.');if(game===2)assert(document.getElementById('chapter6Detail').textContent.includes('3:45'));if(game===3)assert(document.getElementById('chapter6Detail').textContent.includes('17 MINUTES'));
+ }
+});
+test('memory window shows the prepared image without consuming exposure on a fade and restores remaining countdown',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{pacingVersion:1,audioVersion:2,step:'exposure',phaseAt:2500,exposureStartedAt:2500,deadline:32500});paint(1499);assert(document.getElementById('chapter6Image').hidden);assert.equal(document.getElementById('chapter6Timer').textContent,'');paint(1500);assert(!document.getElementById('chapter6Image').hidden);assert.equal(document.getElementById('chapter6Timer').textContent,'MEMORIZE · 30');assert.equal(document.getElementById('chapter6Image').style.opacity,'1');paint(11500);assert.equal(document.getElementById('chapter6Timer').textContent,'MEMORIZE · 20');paint(31499);assert(!document.getElementById('chapter6Image').hidden);paint(31500);assert(document.getElementById('chapter6Image').hidden);
+});
+test('Game 5 failure shock fades to the killer waveform while one unchanged narration continues',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{pacingVersion:1,game:4,step:'result',lives:0,results:[{correct:false},{correct:false},{correct:false},{correct:true},{answer:'fail',correct:false,recording:27}]});paint(0);assert(!document.getElementById('chapter6Image').hidden);paint(2750);assert.equal(document.getElementById('chapter6Image').style.opacity,'0.5');paint(3000);assert(document.getElementById('chapter6Image').hidden);assert(!document.getElementById('chapter6Waveform').hidden);assert.equal(document.getElementById('chapter6Question').textContent,'YOU FAILED.');assert.equal(document.getElementById('chapter6Detail').textContent,'NO LIVES REMAIN.');assert.equal(phaseCues(c)[0].number,27);
+ c.results[2].correct=true;paint(5000);assert.equal(document.getElementById('chapter6Detail').textContent,'ONE LIFE LOST.');
+});
+
+test('navy vignette uses the approved four navy tones and keeps scoped green/red result lighting',()=>{
+ const css=fs.readFileSync('chapter6.css','utf8'),theme=css.match(/#chapter6TV\{background:radial-gradient\(ellipse at 50% 45%,([^}]*)/)[1];for(const color of ['#050B16','#0B1628','#17283A','#02050A'])assert(theme.includes(color));assert(!theme.includes('#120b16'));for(const kind of ['doors','boxoffice','memory','bridge'])assert(css.includes('.maze-result-'+kind));assert(css.includes('.maze-success:after'));assert(css.includes('.maze-failure:after'));assert(css.includes('#chapter6Image.memory{opacity:1!important;filter:none!important;transform:none!important;transition:none!important;animation:none!important}'));
 });

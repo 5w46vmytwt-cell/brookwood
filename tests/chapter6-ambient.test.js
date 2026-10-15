@@ -17,3 +17,11 @@ test('maze score uses one looping shared player element, starts after unlock and
 test('maze completion fades the score to zero and pauses it on the existing scheduler',()=>{
  const {ambient,audio,at}=harness();ambient.update({step:'intro'},{ended:false,audio:{paused:false}});at(900);ambient.advance();ambient.update({step:'complete'},null);at(1075);ambient.advance();assert(audio.volume>0&&audio.volume<.05);assert(!audio.paused);at(1250);ambient.advance();assert.equal(audio.volume,0);assert(audio.paused);
 });
+
+test('one maze soundtrack starts with the first cast transition message and survives the chapter boundary',()=>{
+ const {ambient,audio,media,at}=harness(),state={chapter5:{startedAt:1000,castStartedAt:2000}};ambient.track.config.fadeMs=2000;ambient.updateCast(state,4599,3600,null);assert(audio.paused);ambient.updateCast(state,4600,3600,null);assert(!audio.paused);at(1000);ambient.advance();assert(Math.abs(audio.volume-.06)<.001);at(2000);ambient.advance();assert.equal(audio.volume,.12);audio.currentTime=42;ambient.update({step:'takeover'},null);ambient.update({step:'intro'},{ended:false,audio:{paused:false}});assert.equal(audio.plays,1);assert.equal(media.length,1);assert.equal(audio.currentTime,42);assert.equal(ambient.track.target,.05);
+});
+
+test('refresh during a paced takeover recovers one quiet looping soundtrack without waiting for narration',()=>{
+ const {ambient,audio,media}=harness();ambient.update({step:'takeover',pacingVersion:1},null);assert(!audio.paused);ambient.update({step:'ready',pacingVersion:1},null);ambient.update({step:'silence-ready',pacingVersion:1},null);assert.equal(audio.plays,1);assert.equal(media.length,1);assert.equal(ambient.track.target,.12);
+});

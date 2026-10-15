@@ -1,3 +1,17 @@
+## Cinematic pacing release (2026-10-14)
+
+The user authorized this polish and the existing feature branch ? main ? Vercel production workflow. New maze runs persist pacingVersion 1; legacy active runs keep their prior pacing without a Redis reset. Chapters 1?4, cast assignments, voting, scores, credentials and supplied recordings remain unchanged.
+
+Ambient music begins at the first mystery message after the complete cast presentation, fades in over two seconds, and retains the same looping element across Chapter 5 ? 6. It uses the existing single TV scheduler and 12% ambient / 5% narration targets. Refresh reconstructs one loop with the existing audio-unlock action. Four Doors description pauses were explicitly deferred by the user: Recording 03 remains continuous; 04?07 remain outcome recordings.
+
+Knowledge answers retain the three-second lock, followed by a persisted 1600-ms exclusive fade into game-specific result artwork. Door outcomes use the selected reveal asset; cinema, memory and bridge results retain their correct answers and complete narration. Chapter 6 uses a navy vignette, with green/red result treatments.
+
+After memory introduction completion, prepare-image waits for the authenticated TV to decode the image. A fenced readiness action persists exposureStartedAt 1500 ms ahead for synchronization. The image has no opacity/transform transition, is fully shown at that authoritative timestamp, and remains for exactly 30000 server milliseconds. Refresh uses the remaining interval; the 90-second answer window is unchanged. No client clock can extend exposure.
+
+Game 5 enters persisted silence-ready only after recordings 21 and 22 finish. BEGIN THE CHALLENGE requires the existing host session and starts the authoritative 60-second window once. The timed scare lasts three seconds at five seconds remaining. Failure presents a three-second shock (last 500 ms fading), then the killer waveform while the same failure recording continues. Text accurately distinguishes a lost life from already-zero lives.
+
+Local validation: 475/475 tests and the 158-file production build passed. Built TV plus two isolated phones passed both success/all-ballot and failure/host-close rehearsals. Non-accelerated memory visibility measured 29999.0 ms (one-frame sampling; server interval exactly 30000 ms). Silence measured 60117.0 ms from host click to persisted verdict (server interval exactly 60000 ms); timed scare measured 3000.0 ms. All three interruptions ended naturally at full volume without overlap. Production verification follows release; local measurements are not production-session mutations.
+
 # Chapter 6 implementation and rehearsal
 
 Branch: `feat/chapter6-killers-maze`. Pre-implementation checkpoint: `76463e32cfd79837913b77d79ce36d2e7b13e0c9`.

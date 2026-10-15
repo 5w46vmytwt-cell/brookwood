@@ -11,6 +11,7 @@ export const answerWindows=[120000,120000,90000,180000,60000];
 export const TRANSITION_MS=4000;
 // Reconstruct from the persisted phase clock; no client transition timer.
 export function transitionVisual(c,now){
+ if(c.step==='result-reveal'){const t=Math.max(0,now-c.phaseAt);return {scene:{...c,step:t<800?'locked':'result',phaseAt:t<800?c.phaseAt:c.deadline},black:t<800?t/800:Math.max(0,1-(t-800)/800)};}
  if(c.step==='intro-gap'){const t=Math.max(0,now-c.phaseAt);return {scene:t<600?{...c,step:'intro'}:null,black:Math.min(1,t/600)};}
  if(c.step==='takeover')return {scene:null,black:1};
  if(c.step!=='transition')return {scene:c,black:0};
@@ -44,7 +45,7 @@ export function phaseCues(c){
  }
  return cues.map(cue=>({...cue,at:cue.at+offset}));
 }
-export function memoryVisible(c,serverNow){return c.game===2&&(c.audioVersion===2?c.step==='exposure'&&serverNow<c.deadline:c.step==='intro'&&serverNow>=c.phaseAt+gate(14)&&serverNow<c.phaseAt+gate(14)+15000);}
-export const jumpVisible=(c,now)=>c.step==='silence'&&now>=c.phaseAt+55000&&now<c.phaseAt+55500;
+export function memoryVisible(c,serverNow){return c.game===2&&(c.audioVersion===2?c.step==='exposure'&&serverNow>=c.phaseAt&&serverNow<c.deadline:c.step==='intro'&&serverNow>=c.phaseAt+gate(14)&&serverNow<c.phaseAt+gate(14)+15000);}
+export const jumpVisible=(c,now)=>c.step==='silence'&&now>=c.phaseAt+55000&&now<c.phaseAt+(c.pacingVersion===1?58000:55500);
 
 export function orderedOptions(c){const options=games[c.game].options;return c.game===0&&c.doorOrder?c.doorOrder.map(id=>options.find(option=>option[0]===id)):options;}

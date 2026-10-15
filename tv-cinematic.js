@@ -10,6 +10,7 @@ import {Chapter4View,chapter4AudioTimeline} from './chapter4.js';
 import {chapter4Audio,chapter4Score} from './chapter4-audio.js';
 import {chapter5Phases} from './chapter5-timing.js';
 import {Chapter5View} from './chapter5.js';
+import {COMPLETE_CAST_END_MS} from './chapter5-reveal-timing.js';
 import {Chapter5Audio} from './chapter5-audio.js';
 import {Chapter6View} from './chapter6.js';
 import './chapter6-interface.js';
@@ -29,7 +30,8 @@ export class TVCinematicRuntime {
         if(this.state?.chapter6){this.chapter6Visuals.update(this.state,meta);this.onElapsed(elapsed,this.state);return;}
         if(chapter5Phases.includes(this.state?.phase)){
           this.chapter5Visuals.update(this.state);this.chapter5Audio.update(this.state,meta);
-          this.document.getElementById('chapter5EnableAudio').hidden=!this.chapter5Audio.needsUnlock();
+          if(['chapter5-finale','chapter5-complete'].includes(this.state.phase))this.chapter6Visuals.ambient.updateCast(this.state,elapsed,this.state.chapter5.revealVersion===1?COMPLETE_CAST_END_MS+600:11000,this.chapter5Audio.player.active);
+          this.document.getElementById('chapter5EnableAudio').hidden=!(this.chapter5Audio.needsUnlock()||this.chapter6Visuals.ambient.needsUnlock());
           this.onElapsed(elapsed,this.state);return;
         }
         if(chapter4Phases.includes(this.state?.phase)){
@@ -72,6 +74,7 @@ export class TVCinematicRuntime {
     const chapter5=chapter5Phases.includes(state.phase);
     const chapter6=!!state.chapter6;
     if(chapter6){this.audio.stop();this.chapter3Audio.stop();this.chapter3Visuals.stop();this.chapter4Audio.stop();this.chapter4Visuals.stop();this.chapter5Audio.stop();this.chapter5Visuals.stop();const score=this.audio.soundtrack;if(score?.audio){score.audio.pause();score.target=0;score.ramp=null;score.audio.volume=0;}}
+    else if(['chapter5-finale','chapter5-complete'].includes(state.phase)){this.chapter6Visuals.stopNarration();if(previous?.chapter6||!['chapter5-finale','chapter5-complete'].includes(previous?.phase))this.chapter6Visuals.ambient.stop(true);}
     else this.chapter6Visuals.stop(true);
     if(chapter4||chapter5){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
     if(chapter5&&!chapter5Phases.includes(previous?.phase)){
@@ -91,7 +94,7 @@ export class TVCinematicRuntime {
   originalElapsedNow(){return this.elapsedNow()+(this.state?.chapter6?this.state.chapter6.startedAt-this.state.startedAt:chapter5Phases.includes(this.state?.phase)?this.state.chapter5.startedAt-this.state.startedAt:chapter4Phases.includes(this.state?.phase)?this.state.chapter4.startedAt-this.state.startedAt:chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
   unlockChapter3(){if(this.chapter3Audio.startedAt===null)this.chapter3Audio.unlock();}
   unlockChapter4(){if(this.chapter4Audio.startedAt===null)this.chapter4Audio.unlock();}
-  unlockChapter5(){this.chapter5Audio.unlock();}
+  unlockChapter5(){this.chapter5Audio.unlock();this.chapter6Visuals.ambient.unlock();}
   unlockChapter6(){this.chapter6Visuals.unlock();}
   unlockBackground(){if(this.state?.chapter6)return;if(chapter5Phases.includes(this.state?.phase))return;if(chapter4Phases.includes(this.state?.phase))this.chapter4Audio.unlockBackground();else this.audio.unlockBackground();}
   unlockForTestJump(){this.audio.unlock({background:!this.state?.chapter6&&!chapter4Phases.includes(this.state?.phase)&&!chapter5Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();this.unlockChapter5();this.unlockChapter6();}
