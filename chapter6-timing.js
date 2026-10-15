@@ -11,6 +11,7 @@ export const answerWindows=[120000,120000,90000,180000,60000];
 export const TRANSITION_MS=4000;
 // Reconstruct from the persisted phase clock; no client transition timer.
 export function transitionVisual(c,now){
+ if(c.step==='return-fade'){const t=Math.max(0,now-c.phaseAt);return {scene:{...c,step:'waiting'},black:Math.min(1,t/600)};}
  if(c.step==='result-reveal'){const t=Math.max(0,now-c.phaseAt);return {scene:{...c,step:t<800?'locked':'result',phaseAt:t<800?c.phaseAt:c.deadline},black:t<800?t/800:Math.max(0,1-(t-800)/800)};}
  if(c.step==='intro-gap'){const t=Math.max(0,now-c.phaseAt);return {scene:t<600?{...c,step:'intro'}:null,black:Math.min(1,t/600)};}
  if(c.step==='takeover')return {scene:null,black:1};
@@ -19,7 +20,7 @@ export function transitionVisual(c,now){
  if(t<1000)return {scene:{...c,...c.transitionFrom},black:t/1000};
  const revealAt=c.audioVersion===2&&c.game===4?4000:3000;
  if(t<revealAt)return {scene:null,black:1};
- return {scene:{...c,game:c.game===4?4:c.game+1,step:c.game===4?(c.audioVersion===2?'gameover':'finale'):'intro',phaseAt:c.deadline},black:Math.max(0,1-(t-revealAt)/1000)};
+ return {scene:{...c,game:c.game===4?4:c.game+1,step:c.game===4?(c.audioVersion===2&&c.polishVersion!==1?'gameover':'finale'):'intro',phaseAt:c.deadline},black:Math.max(0,1-(t-revealAt)/1000)};
 }
 export const games=[
  {title:'THE FOUR DOORS',question:'Which door will you choose?',options:[['red','Red — XIII'],['blue','Blue — VI'],['green','Green — VII'],['black','Black — IX']],correct:'black'},
@@ -38,14 +39,19 @@ export function phaseCues(c){
  }else if(c.step==='answer'&&c.game===1){
   cues=[{...recording(9),at:60000},{...recording(10),at:90000},{...recording(11),at:120000-Math.ceil(recording(11).durationMs)}];
  }else if(c.step==='silence'){
-  cues=[23,24,25].map((n,i)=>({...recording(n),at:[12000,26000,40000][i]}));
+  cues=[23,24,25].map((n,i)=>({...recording(n),at:[12000,26000+(c.polishVersion===1?768:0),40000][i]}));
  }else{
   const n=c.step==='result'?c.results[c.game]?.recording:c.step==='zero'?32:c.step==='finale'?(c.lives>0?28:29):c.step==='selected'?30:c.step==='return'?31:null;
   if(n)cues=[{...recording(n),at:0}];
  }
+ if(c.polishVersion===1&&c.step==='silence')cues.push(...soundEffects.map(cue=>({...cue,at:cue.id==='chapter6-sfx-chicken'?26000:52000})));
  return cues.map(cue=>({...cue,at:cue.at+offset}));
 }
 export function memoryVisible(c,serverNow){return c.game===2&&(c.audioVersion===2?c.step==='exposure'&&serverNow>=c.phaseAt&&serverNow<c.deadline:c.step==='intro'&&serverNow>=c.phaseAt+gate(14)&&serverNow<c.phaseAt+gate(14)+15000);}
-export const jumpVisible=(c,now)=>c.step==='silence'&&now>=c.phaseAt+55000&&now<c.phaseAt+(c.pacingVersion===1?58000:55500);
+export const jumpVisible=(c,now)=>c.step==='silence'&&now>=c.phaseAt+(c.polishVersion===1?52000:55000)&&now<c.phaseAt+(c.polishVersion===1?55000:c.pacingVersion===1?58000:55500);
 
 export function orderedOptions(c){const options=games[c.game].options;return c.game===0&&c.doorOrder?c.doorOrder.map(id=>options.find(option=>option[0]===id)):options;}
+
+// A 200-ms execution tail lets native ended fire; mediaDurationMs prevents replaying padding on refresh.
+export const soundEffects=[{id:'chapter6-sfx-chicken',type:'sfx',src:'/assets/chapter6/audio/ch6_sfx_chicken.mp3',mediaDurationMs:768,durationMs:968,volume:.7},{id:'chapter6-sfx-scream',type:'sfx',src:'/assets/chapter6/audio/ch6_sfx_scream.mp3',mediaDurationMs:3312,durationMs:3512,volume:.75}];
+export const answerRevealed=(c,now)=>c.results[c.game]?.correct||c.polishVersion!==1||now>=c.phaseAt+3000;

@@ -13,7 +13,8 @@ export class MazeNarration{
   const elapsed=this.clock.elapsedNow(),now=c.startedAt+elapsed;
   if(this.active){if(this.active.ended)this.ack(this.active,now);else return;}
   if(this.active)return;
-  const cues=phaseCues(c),cue=cues.find(x=>elapsed>=x.at&&(mandatory(c)||elapsed<x.at+x.durationMs));
+  if([...(this.player.activeSfx?.values()??[])].some(entry=>!entry.audio.paused))return;
+  const cues=phaseCues(c),cue=cues.find(x=>x.type==='narration'&&elapsed>=x.at&&(mandatory(c)||elapsed<x.at+x.durationMs));
   if(!cue)return;
   const id=c.sequence+':'+cue.id;if(this.finished.has(id))return;
   const audio=this.player.media.get(cue.id);if(!audio)return;

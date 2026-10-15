@@ -25,7 +25,7 @@ beforeEach(()=>{
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
 function fixture(real=12,modern=false){
  const s=fresh();s.players=Array.from({length:12},(_,i)=>({id:'p'+i,token:'t'+i,name:'Guest '+i,partnerId:'p'+(i%2?i-1:i+1),ready:true,alive:true,hearts:3,inventory:[],...(i>=real?{simulated:true}:{})}));
- makeMazeTestSelector()(s);delete s.chapter6.pacingVersion;delete s.chapter6.controlVersion;if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
+ makeMazeTestSelector()(s);delete s.chapter6.polishVersion;delete s.chapter6.pacingVersion;delete s.chapter6.controlVersion;if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
 }
 function request(s,action,extra={}){return {action,generation:s.generation,chapter6StartedAt:s.chapter6.startedAt,sequence:s.chapter6.sequence,...extra};}
 function modernAdvance(s){now=s.chapter6.deadline;const cue=phaseCues(s.chapter6)[0];if(['intro','result','zero','finale','selected','return'].includes(s.chapter6.step)&&cue)mazeHostAction(s,request(s,'maze-audio-ended',{recording:cue.number}));else advanceChapter6(s);validateChapter6(s);}
@@ -134,11 +134,11 @@ test('normal PIN authentication establishes the maze session while old chapter a
  assert.equal((await call(host,{action:'start'},'POST',{cookie})).status,403);
  process.env.HOST_KEY='rotated';assert.equal((await call(host,{action:'maze-session'},'POST',{cookie})).status,403);
 });
-test('all 44 assets and exact MPEG durations match runtime cues',()=>{
+test('all 46 assets and exact MPEG durations match runtime cues',()=>{
  for(const r of recordings){const b=fs.readFileSync('.'+r.src);assert.equal(mp3Metadata(b).durationMs,r.durationMs);}
  const images=['red_door','blue_door','green_door','black_door','red_reveal','blue_reveal','green_reveal','black_reveal','morgue_memory','bridge_background','silence_jumpscare'];
  for(const name of images)assert.equal(fs.readFileSync('assets/chapter6/'+name+'.png').toString('hex',0,8),'89504e470d0a1a0a');
- assert.equal(fs.readdirSync('assets/chapter6/audio').length,33);
+ assert.equal(fs.readdirSync('assets/chapter6/audio').length,35);
 });
 test('Chapter 5 completion starts once, preserves all chapter results and identities, sequences 1/2/3',()=>{
  const s=fixture();delete s.chapter6;s.phase='chapter5-complete';const prior=structuredClone(s);
@@ -350,4 +350,17 @@ test('memory requires authenticated decoded-image readiness, stores one future s
 test('Game 5 readiness follows both full recordings and starts a single 60-second challenge only for the host',async()=>{
  const s=fixture(12,true);for(let game=0;game<4;game++){modernQuestion(s);answer(s,games[game].correct);modernAdvance(s);modernAdvance(s);modernAdvance(s);}s.chapter6.pacingVersion=1;s.chapter6.controlVersion=1;
  modernAdvance(s);assert.equal(phaseCues(s.chapter6)[0].number,22);assert.throws(()=>mazeHostAction(s,request(s,'maze-begin-silence')));modernAdvance(s);assert.equal(s.chapter6.step,'silence-ready');assert.equal(s.chapter6.deadline,null);assert.deepEqual(phaseCues(s.chapter6),[]);const saved=JSON.stringify(s);now+=60000;advanceChapter6(s);assert.equal(JSON.stringify(s),saved);raw=saved;const b=request(s,'maze-begin-silence');assert.equal((await call(host,b)).status,403);const replies=await Promise.all([call(host,{...b,code:'maze-host'}),call(host,{...b,code:'maze-host'})]);assert.equal(replies.filter(r=>r.status===200).length,1);const c=JSON.parse(raw).chapter6;assert.equal(c.step,'silence');assert.equal(c.deadline-c.phaseAt,60000);assert(jumpVisible(c,c.phaseAt+55000));assert(jumpVisible(c,c.phaseAt+57999));assert(!jumpVisible(c,c.phaseAt+58000));assert.equal(phaseCues(c).length,3);
+});
+
+test('memory-ready persists until one authenticated confirmation, then decoded readiness preserves exact exposure',async()=>{
+ const s=fixture(12,true);for(let game=0;game<2;game++){modernQuestion(s);answer(s,games[game].correct);modernAdvance(s);modernAdvance(s);modernAdvance(s);}Object.assign(s.chapter6,{polishVersion:1,pacingVersion:1});modernAdvance(s);assert.equal(s.chapter6.step,'memory-ready');const saved=JSON.stringify(s);now+=60000;advanceChapter6(s);assert.equal(JSON.stringify(s),saved);raw=saved;const b=request(s,'maze-show-image');assert.equal((await call(host,b)).status,403);const replies=await Promise.all([call(host,{...b,code:'maze-host'}),call(host,{...b,code:'maze-host'})]);assert.equal(replies.filter(r=>r.status===200).length,1);const next=JSON.parse(raw);assert.equal(next.chapter6.step,'prepare-image');mazeHostAction(next,request(next,'maze-image-ready'));assert.equal(next.chapter6.deadline-next.chapter6.phaseAt,30000);validateChapter6(next);
+});
+test('silence intro completion starts a persisted four-second gap before rules and preserves the ready gate',()=>{
+ const s=fixture(12,true);for(let game=0;game<4;game++){modernQuestion(s);answer(s,games[game].correct);modernAdvance(s);modernAdvance(s);modernAdvance(s);}Object.assign(s.chapter6,{polishVersion:1,pacingVersion:1});now=s.chapter6.deadline+1234;advanceChapter6(s);assert.equal(s.chapter6.audioIndex,0);mazeHostAction(s,request(s,'maze-audio-ended',{recording:21}));assert.equal(s.chapter6.step,'silence-gap');assert.equal(s.chapter6.deadline-now,4000);assert.deepEqual(phaseCues(s.chapter6),[]);now+=3999;advanceChapter6(s);assert.equal(s.chapter6.step,'silence-gap');now++;advanceChapter6(s);assert.equal(phaseCues(s.chapter6)[0].number,22);modernAdvance(s);assert.equal(s.chapter6.step,'silence-ready');validateChapter6(s);
+});
+test('polished silence cues keep speech separate from effects, move scare to eight seconds and never replay it in results',()=>{
+ const c={polishVersion:1,pacingVersion:1,step:'silence',phaseAt:1000,startedAt:1000};const cues=phaseCues(c),chicken=cues.find(x=>x.id==='chapter6-sfx-chicken'),scream=cues.find(x=>x.id==='chapter6-sfx-scream'),reaction=cues.find(x=>x.number===24);assert.equal(chicken.at,26000);assert.equal(reaction.at,chicken.at+chicken.mediaDurationMs);assert.equal(scream.at,52000);assert(!jumpVisible(c,52999));assert(jumpVisible(c,53000));assert(jumpVisible(c,55999));assert(!jumpVisible(c,56000));for(const fx of [chicken,scream])assert.equal(mp3Metadata(fs.readFileSync('.'+fx.src)).durationMs,fx.mediaDurationMs);c.step='result';c.game=4;c.results=[null,null,null,null,{recording:27}];assert(phaseCues(c).every(x=>x.type==='narration'));
+});
+test('finale skips the redundant interstitial and token return fades before full Recording 31',()=>{
+ const s=fixture(12,true);for(let game=0;game<5;game++){modernQuestion(s);if(game===4){modernAdvance(s);mazeHostAction(s,request(s,'maze-verdict',{answer:'pass'}));}else answer(s,games[game].correct);modernAdvance(s);modernAdvance(s);if(game===4)s.chapter6.polishVersion=1;modernAdvance(s);}assert.equal(s.chapter6.step,'finale');assert.equal(phaseCues(s.chapter6)[0].number,28);modernAdvance(s);const voter=makeTokenVoter();for(const p of s.players)voter(s,p.id,p.id==='p1'?'p2':'p1',request(s,'token-vote'));modernAdvance(s);assert.equal(s.chapter6.step,'waiting');mazeHostAction(s,request(s,'maze-token-return'));assert.equal(s.chapter6.step,'return-fade');assert.deepEqual(phaseCues(s.chapter6),[]);modernAdvance(s);assert.equal(s.chapter6.step,'return');assert.equal(phaseCues(s.chapter6)[0].number,31);now+=100000;advanceChapter6(s);assert.equal(s.chapter6.step,'return');modernAdvance(s);assert.equal(s.chapter6.step,'complete');
 });

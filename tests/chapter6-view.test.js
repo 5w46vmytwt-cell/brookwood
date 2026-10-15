@@ -36,8 +36,8 @@ test('modern HUD shows shared lives, a distinct exposure countdown, locked answe
  Object.assign(c,{game:3,step:'locked',lives:2,results:[{correct:true},{correct:true},{correct:true},{answer:'A',correct:false,recording:20}]});paint(10000);
  assert.equal(document.getElementById('chapter6Question').textContent,'ANSWER LOCKED');assert.equal(document.getElementById('chapter6Detail').textContent,'15 minutes');assert.equal(document.getElementById('chapter6Lives').textContent,'♥♥♥');
  c.step='result';paint(12000);assert.equal(document.getElementById('chapter6Lives').textContent,'♥♥♡');assert(document.getElementById('chapter6Detail').textContent.includes('TOTAL: 17 MINUTES'));
- c.game=4;c.step='gameover';paint(14000);assert.equal(document.getElementById('chapter6Title').textContent,'GAME OVER');assert.equal(document.getElementById('chapter6Detail').textContent,'THE TOKEN STILL AWAITS');
- c.step='waiting';c.selectedPlayer={name:'Guest'};paint(15000);assert.equal(document.getElementById('chapter6Title').textContent,'RETRIEVE THE TOKEN');assert.equal(document.getElementById('chapter6Objective').textContent,'AWAITING RETURN');
+ c.game=4;c.step='gameover';paint(14000);assert.equal(document.getElementById('chapter6Title').textContent,'GAME OVER');assert.equal(document.getElementById('chapter6Detail').textContent,'');
+ c.step='waiting';c.selectedPlayer={name:'Guest'};paint(15000);assert.equal(document.getElementById('chapter6Title').textContent,'SOMETHING IS WAITING FOR YOU.');assert.equal(document.getElementById('chapter6Objective').textContent,'AWAITING RETURN');
 });
 test('transition reconstruction fades out, holds absolute black, then reveals only the next intro without audio',()=>{
  for(const outgoing of ['result','zero'])for(let game=0;game<5;game++){
@@ -117,4 +117,19 @@ test('Game 5 failure shock fades to the killer waveform while one unchanged narr
 
 test('navy vignette uses the approved four navy tones and keeps scoped green/red result lighting',()=>{
  const css=fs.readFileSync('chapter6.css','utf8'),theme=css.match(/#chapter6TV\{background:radial-gradient\(ellipse at 50% 45%,([^}]*)/)[1];for(const color of ['#050B16','#0B1628','#17283A','#02050A'])assert(theme.includes(color));assert(!theme.includes('#120b16'));for(const kind of ['doors','boxoffice','memory','bridge'])assert(css.includes('.maze-result-'+kind));assert(css.includes('.maze-success:after'));assert(css.includes('.maze-failure:after'));assert(css.includes('#chapter6Image.memory{opacity:1!important;filter:none!important;transform:none!important;transition:none!important;animation:none!important}'));
+});
+
+
+test('wrong movie and memory answers reveal only three seconds into the refresh-safe result scene',()=>{
+ for(const game of [1,2]){const {document,c,paint}=harness();Object.assign(c,{polishVersion:1,pacingVersion:1,game,step:'result-reveal',phaseAt:1000,deadline:2600,results:[]});c.results[game]={answer:'A',correct:false,recording:game===1?13:17};
+ paint(800);assert.equal(document.getElementById('chapter6Detail').textContent,'');c.step='result';c.phaseAt=2600;
+ for(const elapsed of [1600,4599]){paint(elapsed);assert.equal(document.getElementById('chapter6Question').textContent,'WRONG ANSWER');assert.equal(document.getElementById('chapter6Detail').textContent,'');assert(document.getElementById('chapter6Image').hidden);}
+ paint(4600);assert(document.getElementById('chapter6Detail').textContent.includes(game===1?'The Sixth Sense':'3:45'));assert.equal(phaseCues(c)[0].number,game===1?13:17);
+ c.results[game].correct=true;paint(1600);assert(document.getElementById('chapter6Detail').textContent);
+ }
+});
+test('memory-ready hides imagery and timers; finale owns one scene and return owns only the killer waveform',()=>{
+ const {document,c,paint}=harness();Object.assign(c,{polishVersion:1,pacingVersion:1,audioVersion:2,game:2,step:'memory-ready',deadline:null});paint(10000);assert.equal(document.getElementById('chapter6Question').textContent,'ARE YOU READY?');assert(document.getElementById('chapter6Image').hidden);assert.equal(document.getElementById('chapter6Timer').textContent,'');
+ Object.assign(c,{game:4,step:'finale'});paint(0);assert(document.getElementById('chapter6Token').hidden);assert(!document.getElementById('chapter6Detail').textContent.includes('TOKEN'));c.step='vote';c.voteCount=0;c.voterCount=2;paint(0);assert.equal(document.getElementById('chapter6Title').textContent,'SOMETHING IS WAITING FOR YOU.');
+ c.step='waiting';c.selectedPlayer={name:'Actual Guest'};paint(0);assert.equal(document.getElementById('chapter6Question').textContent,'WAITING FOR Actual Guest TO RETURN.');c.step='return-fade';c.deadline=1600;paint(300);assert.equal(Number(document.getElementById('chapter6Curtain').style.opacity),.5);c.step='return';paint(600);assert(document.getElementById('chapter6Token').hidden);assert(document.getElementById('chapter6Title').hidden);assert(!document.getElementById('chapter6Waveform').hidden);assert.equal(phaseCues(c)[0].number,31);
 });

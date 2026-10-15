@@ -17,7 +17,7 @@ export function installMazeControls({document,runtime,acceptState,request}){
  };
  node('chapter6HostCode').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();node('chapter6HostLogin').click();}});
  node('chapter6HostClose').onclick=close;
- node('chapter6ReadyStart').onclick=()=>submit(state?.chapter6.step==='silence-ready'?'maze-begin-silence':'maze-start-games','start');
+ node('chapter6ReadyStart').onclick=()=>submit(state?.chapter6.step==='memory-ready'?'maze-show-image':state?.chapter6.step==='silence-ready'?'maze-begin-silence':'maze-start-games','start');
  node('chapter6Audio').onclick=()=>runtime.unlockChapter6();
  document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
  async function submit(action,answer){
@@ -31,16 +31,16 @@ export function installMazeControls({document,runtime,acceptState,request}){
   state=next;if(!next?.chapter6){close();return;}const c=next.chapter6;
   const key=next.generation+':'+c.startedAt+':'+c.sequence;if(scene!==key){scene=key;selectedAnswer=null;}
   if(c.step==='transition')close();
-  node('chapter6ReadyStart').hidden=!['ready','silence-ready'].includes(c.step)||!authenticated;node('chapter6ReadyStart').disabled=pending;node('chapter6ReadyStart').textContent=c.step==='silence-ready'?'BEGIN THE CHALLENGE':'START THE GAMES';
-  if(['ready','silence-ready'].includes(c.step)&&!authenticated&&authReadyRun!==next.generation+':'+c.startedAt){
+  node('chapter6ReadyStart').hidden=!['ready','silence-ready','memory-ready'].includes(c.step)||!authenticated;node('chapter6ReadyStart').disabled=pending;node('chapter6ReadyStart').textContent=c.step==='memory-ready'?'SHOW THE IMAGE':c.step==='silence-ready'?'BEGIN THE CHALLENGE':'START THE GAMES';
+  if(['ready','silence-ready','memory-ready'].includes(c.step)&&!authenticated&&authReadyRun!==next.generation+':'+c.startedAt){
    const run=next.generation+':'+c.startedAt;authReadyRun=run;
    Promise.resolve(request('/api/host',{action:'maze-session'})).then(()=>{if(state?.generation+':'+state?.chapter6?.startedAt!==run)return;authenticated=true;update(state);}).catch(()=>{});
   }
   node('chapter6HostCode').hidden=authenticated;node('chapter6HostLogin').hidden=authenticated;
   node('chapter6HostLogin').disabled=pending;choices.hidden=!authenticated;
   choices.replaceChildren();node('chapter6HostStatus').textContent=games[c.game].title+' — '+c.step.toUpperCase();
-  const options=c.step==='silence-ready'?[['begin','BEGIN THE CHALLENGE']]:c.step==='ready'?[['start','START THE GAMES']]:['answer','expired'].includes(c.step)?[...orderedOptions(c),...(c.controlVersion===1&&c.step==='expired'?[['no-consensus',"THE GROUP COULDN'T AGREE"]]:[])]:c.step==='verdict'?[['pass','PASS'],['fail','FAIL']]:c.step==='waiting'?[['returned','Player Returned With Token']]:c.step==='vote'?[...(c.testMode?[['simulated','TEST: VOTE SIMULATED PLAYERS (BEFORE REAL BALLOTS)']]:[]),['close','CLOSE VOTING']]:[];
-  for(const [id,label] of options){const button=document.createElement('button');button.textContent=label;button.disabled=pending||(id==='close'&&!c.voteCount);button.className=selectedAnswer===id?'selected':'';button.onclick=()=>{selectedAnswer=id;return submit(c.step==='silence-ready'?'maze-begin-silence':c.step==='ready'?'maze-start-games':['answer','expired'].includes(c.step)?'maze-answer':c.step==='verdict'?'maze-verdict':c.step==='vote'?(id==='close'?'maze-close-voting':'maze-test-vote'):'maze-token-return',id);};choices.appendChild(button);}
+  const options=c.step==='memory-ready'?[['show','SHOW THE IMAGE']]:c.step==='silence-ready'?[['begin','BEGIN THE CHALLENGE']]:c.step==='ready'?[['start','START THE GAMES']]:['answer','expired'].includes(c.step)?[...orderedOptions(c),...(c.controlVersion===1&&c.step==='expired'?[['no-consensus',"THE GROUP COULDN'T AGREE"]]:[])]:c.step==='verdict'?[['pass','PASS'],['fail','FAIL']]:c.step==='waiting'?[['returned','Player Returned With Token']]:c.step==='vote'?[...(c.testMode?[['simulated','TEST: VOTE SIMULATED PLAYERS (BEFORE REAL BALLOTS)']]:[]),['close','CLOSE VOTING']]:[];
+  for(const [id,label] of options){const button=document.createElement('button');button.textContent=label;button.disabled=pending||(id==='close'&&!c.voteCount);button.className=selectedAnswer===id?'selected':'';button.onclick=()=>{selectedAnswer=id;return submit(c.step==='memory-ready'?'maze-show-image':c.step==='silence-ready'?'maze-begin-silence':c.step==='ready'?'maze-start-games':['answer','expired'].includes(c.step)?'maze-answer':c.step==='verdict'?'maze-verdict':c.step==='vote'?(id==='close'?'maze-close-voting':'maze-test-vote'):'maze-token-return',id);};choices.appendChild(button);}
  }
  return {update,close};
 }

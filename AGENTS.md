@@ -1,3 +1,15 @@
+## Targeted finale and sound polish (2026-10-14)
+
+Approved scope: Chapter 6 only, existing GitHub feature/main/Vercel production workflow; no live Redis reset, environment changes, narration replacement or Chapters 1-5 edits. Fresh runs persist polishVersion 1; existing runs retain their stored progression.
+
+Wrong Box Office and memory results hide the correct answer until result phaseAt + 3000 ms, without delaying narration; memory result artwork also stays hidden until then so its clock cannot leak the answer. After Recording 14, memory-ready waits for authenticated SHOW THE IMAGE; only then does decoded prepare-image acknowledgment establish the unchanged 30-second exposure. The 90-second question is unchanged.
+
+Recording 21 completion now establishes a four-second persisted silence-gap before Recording 22. Both still finish before host silence-ready and the 60-second challenge. Supplied ch6_sfx_chicken.mp3 is 768 ms (36864 samples at 48 kHz); it plays at 34 seconds remaining, immediately before the spoken reaction. Supplied ch6_sfx_scream.mp3 is 3312 ms (158976 samples at 48 kHz), triggered once with the three-second image at eight seconds remaining. Effects use a 200-ms execution tail so the existing Player does not truncate native playback; refresh skips this tail. Effects use the existing Player syncSfx engine, are balanced at 70%/75%, and yield to narration. Neither effect plays during failure results. Original MP3 bytes remain untouched.
+
+The finale enters its win/loss narration directly after the cinematic transition, omitting the extra gameover wait. Voting then shows SOMETHING IS WAITING FOR YOU / IN THE LAUNDRY ROOM. Waiting uses the authoritative selected name. Host confirmation enters a persisted 600-ms waiting-scene fade, followed by Recording 31 on the dark killer waveform alone, then the existing black completion. Election logic and authorization remain unchanged.
+
+Local validation: full regression 483/483 passed; after the focused browser exposed a sound-effect cutoff edge case, the final affected Chapter 6 tests passed 90/90 (including run initialization, refresh, native-completion padding, server phases and views). The final 160-file production build passed. The earlier focused browser segment verified wrong-answer delays/refresh, authorized memory readiness and unchanged 30-second exposure; native rules spacing measured 4727 ms from ended to playing. Remaining focused TV/two-phone verification passed: both effects decoded, played once and ended without narration overlap, three-second earlier scare, private voting, selected-name waiting, full native Recording 31 on waveform and final black. Interrupted local tool/harness runs were resumed on isolated memory state; no production mutation was used. Production verification follows the Git release.
+
 ## Cinematic pacing release (2026-10-14)
 
 The user authorized this polish and the existing feature branch ? main ? Vercel production workflow. New maze runs persist pacingVersion 1; legacy active runs keep their prior pacing without a Redis reset. Chapters 1?4, cast assignments, voting, scores, credentials and supplied recordings remain unchanged.
