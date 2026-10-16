@@ -38,6 +38,8 @@ let messagePending=null,revealUntil=0,acknowledgedRun=null;
 const privateRuntime=new BrookwoodPrivatePhone.Runtime({onState:renderPrivate});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)privateRuntime.suspend()});
 function render(j,timing){
+  if(me?.chapter7&&j.generation===me.generation&&(j.chapter7?.id===me.chapter7.id?j.chapter7.sequence<me.chapter7.sequence:!j.chapter7))return;
+  if(j.chapter7){privateRuntime.acceptState({phase:'lobby'});me=j;show('maze');document.getElementById('opening').classList.remove('show');document.getElementById('mazePhoneTitle').textContent='';document.getElementById('mazePhoneCopy').textContent=j.chapter7.step==='waiting'?'Wait for the TV.':'Watch the TV.';for(const id of ['mazePhoneLives','mazePhoneTarget','mazePhoneVote','mazePhoneCount','mazePhoneError'])document.getElementById(id).hidden=true;return;}
   if(me?.chapter6&&j.chapter6?.startedAt===me.chapter6.startedAt&&(j.chapter6.sequence<me.chapter6.sequence||(me.chapter6.voted&&!j.chapter6.voted)))return;
   if(me?.chapter6&&!j.chapter6&&j.chapter5?.startedAt===me.chapter6.previousChapter5StartedAt)return;
   if(j.chapter6){privateRuntime.acceptState({phase:'lobby'});me=j;show('maze');document.getElementById('opening').classList.remove('show');const mazeSession=auth;BrookwoodMazePhone.render(j,{document,auth,request:lobbyRequest,onState:render,onInvalid:clearSession,isCurrent:()=>auth===mazeSession});return;}

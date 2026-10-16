@@ -1,4 +1,5 @@
 import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail,isChapter4,withinChapter4Run,activateDoorVoting,makeChapter4Starter,publicState} from './_state.js';
+import {isChapter7,advanceChapter7,withinBroadcastRun} from './_chapter7.js';
 import {PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
 import {isChapter5,withinCastingRun,advanceCasting} from './_chapter5.js';
 import {isChapter6,withinMazeRun,advanceChapter6} from './_chapter6.js';
@@ -10,6 +11,7 @@ export default async function handler(req,res){
   try{
     let outcome;
     const startChapter4=makeChapter4Starter();
+    const broadcastChange=withinBroadcastRun(s=>{const result=advanceChapter7(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const mazeChange=withinMazeRun(s=>{const result=advanceChapter6(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const castingChange=withinCastingRun(s=>{const result=advanceCasting(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const doorChange=withinChapter4Run(s=>{const result=activateDoorVoting(s);outcome={ok:true,eligible:s.phase!=='chapter4-opening',phase:s.phase};return result;});
@@ -18,6 +20,7 @@ export default async function handler(req,res){
       outcome={ok:true,eligible:s.phase!=='chapter3-opening',phase:s.phase};return result;
     });
     await updateState(withinCinematicRun(s=>{
+      if(isChapter7(s)||(isChapter6(s)&&s.chapter6.step==='complete'))return broadcastChange(s);
       if(isChapter6(s))return mazeChange(s);
       if(isChapter5(s))return castingChange(s);
       if(isChapter4(s))return doorChange(s);

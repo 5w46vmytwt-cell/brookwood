@@ -1,3 +1,7 @@
+## Chapter 7 Phase 1 authorization (2026-10-16)
+
+The user authorized the supplied WESTMAN NEWS MP4 opening, targeted boundary/playback tests, one production build, one focused local browser rehearsal, and one release through the existing GitHub → Vercel workflow. Chapters 1–5 remain locked; Chapter 6 is functionally locked except for the minimum completion handoff. Preserve all media bytes, cast, votes, lives, timing, existing Redis/environment configuration and production game data. Do not run the full regression suite unless a focused test reveals a shared regression. See CHAPTER7.md for the new persisted broadcast, audio handoff, existing-cookie host checkpoints and local verification. This entry records implementation scope, not verified production deployment.
+
 ## Targeted finale and sound polish (2026-10-14)
 
 Approved scope: Chapter 6 only, existing GitHub feature/main/Vercel production workflow; no live Redis reset, environment changes, narration replacement or Chapters 1-5 edits. Fresh runs persist polishVersion 1; existing runs retain their stored progression.

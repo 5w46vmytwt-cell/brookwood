@@ -18,7 +18,7 @@ global.fetch=async(url,options)=>{
  else throw Error('Unexpected local Redis command');
  return {ok:true,json:async()=>({result})};
 };
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.mp3':'audio/mpeg','.wav':'audio/wav'};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.mp3':'audio/mpeg','.wav':'audio/wav','.mp4':'video/mp4'};
 const server=http.createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,'http://localhost');let body={};

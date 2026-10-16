@@ -1,3 +1,4 @@
+import {isChapter7,withinBroadcastRun,broadcastHostAction,makeBroadcastTestSelector} from './_chapter7.js';
 import crypto from "node:crypto";
 import {issueHostSession,validHostSession} from './_host-session.js';
 import {isChapter6,withinMazeRun,mazeHostAction,makeMazeTestSelector,makeFinalCastTestSelector} from './_chapter6.js';
@@ -6,12 +7,14 @@ import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
 import {updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
-  const sessionAction=['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
+  const broadcastCheckpoint=req.body?.action==='chapter-select'&&['chapter7','chapter7-after'].includes(req.body?.checkpoint);
+  const sessionAction=broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
   const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
   if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
   if(pinValid)issueHostSession(req,res);
   try{
     if(['maze-login','maze-session'].includes(req.body.action))return send(res,200,{ok:true,authenticated:true});
+    if(['broadcast-playing','broadcast-ended'].includes(req.body.action)){let state;await updateState(withinBroadcastRun(s=>{const result=broadcastHostAction(s,req.body);state=publicState(s);return result;}));return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
     if(['maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body.action)){
       let state;await updateState(withinMazeRun(s=>{const result=mazeHostAction(s,req.body);state=publicState(s);return result;}));
@@ -43,9 +46,9 @@ export default async function handler(req,res){
       }));return send(res,200,{ok:true});
     }
     if(req.body.action==='chapter-select'){
-      const select=req.body.checkpoint==='chapter5-finale'?makeFinalCastTestSelector():['chapter6','chapter6-ready'].includes(req.body.checkpoint)?makeMazeTestSelector(req.body.checkpoint):['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
+      const select=broadcastCheckpoint?makeBroadcastTestSelector(req.body.checkpoint):req.body.checkpoint==='chapter5-finale'?makeFinalCastTestSelector():['chapter6','chapter6-ready'].includes(req.body.checkpoint)?makeMazeTestSelector(req.body.checkpoint):['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
       let state;
-      await updateState(s=>{const mazeNavigation=isChapter6(s)||['chapter6','chapter6-ready','chapter5-finale'].includes(req.body.checkpoint);const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
+      await updateState(s=>{const mazeNavigation=broadcastCheckpoint||isChapter7(s)||isChapter6(s)||['chapter6','chapter6-ready','chapter5-finale'].includes(req.body.checkpoint);const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
       return send(res,200,{ok:true,...(state?{state:{...state,serverNow:Date.now()}}:{})});
     }
     if(req.body.action==='test-read-simulated'){
@@ -78,7 +81,7 @@ export default async function handler(req,res){
       await updateState(s=>{
         if(!(["opening","photo","photo-complete"].includes(s.phase)||isChapter3(s)||isChapter4(s)||isChapter5(s)||isChapter6(s))||!Number.isFinite(s.startedAt)||s.startedAt<=0||Date.now()-s.startedAt<44000)
           throw new LobbyError(409,"Chapter 1 must finish before returning to the lobby.");
-        s.phase="lobby";s.startedAt=null;delete s.chapter3;delete s.chapter4;delete s.chapter5;delete s.chapter6;delete s.packageOpenedAt;delete s.macheteHolderPlayerId;
+        s.phase="lobby";s.startedAt=null;delete s.chapter3;delete s.chapter4;delete s.chapter5;delete s.chapter6;delete s.chapter7;delete s.packageOpenedAt;delete s.macheteHolderPlayerId;
       });
       return send(res,200,{ok:true});
     }

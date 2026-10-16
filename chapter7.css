@@ -1,0 +1,8 @@
+#chapter7TV{position:fixed;inset:0;z-index:60;background:#000;overflow:hidden}
+#chapter7TV[hidden],#chapter7TV [hidden]{display:none!important}
+#chapter7Video{display:block;width:100%;height:100%;object-fit:contain;background:#000;opacity:0}
+#chapter7Play,#chapter7Error{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#eee;background:#000;border:1px solid #666;padding:14px 22px;font:16px Arial,sans-serif}
+#chapter7Error{top:65%;border:0}
+body.chapter7-active{background:#000}
+body.chapter7-active>main,body.chapter7-active>#chapterSelectToggle{display:none}
+body.chapter7-active>#chapterSelectPanel{z-index:90}
