@@ -1,4 +1,6 @@
 import {updateState,send,fail,LobbyError,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,withinChapter4Run,makeDoorVoter} from "./_state.js";
+import {investigationVote} from './_chapter7-story.js';
+import {withinBroadcastRun} from './_chapter7.js';
 import {openPackage,makeCastingVoter,withinCastingRun} from './_chapter5.js';
 import {makeTokenVoter,withinMazeRun} from './_chapter6.js';
 export default async function handler(req,res){
@@ -10,6 +12,7 @@ export default async function handler(req,res){
     const change=s=>{
       const p=s.players.find(x=>x.id===req.body?.id&&x.token===req.body?.token);
       if(!p)throw new LobbyError(401,"Player session not found.");
+      if(req.body.action==='investigation-vote')return investigationVote(s,p.id,req.body.targetId,req.body);
       if(req.body.action==='token-vote')return tokenVote(s,p.id,req.body.targetId,req.body);
       if(req.body.action==='package-open')return openPackage(s,p.id,req.body.chapter4StartedAt);
       if(req.body.action==='casting-vote')return castVote(s,[[p.id,req.body.targetId]],req.body.chapter5StartedAt,req.body.roleId);
@@ -31,7 +34,7 @@ export default async function handler(req,res){
         p.ready=!!req.body.ready;
       }else throw new LobbyError(400,"Unknown action.");
     };
-    await updateState(req.body?.action==='token-vote'?withinMazeRun(change):req.body?.action==='casting-vote'?withinCastingRun(change):['door-vote','package-open'].includes(req.body?.action)?withinChapter4Run(change):['message-open','message-read'].includes(req.body?.action)?withinChapter3Run(change):req.body?.action==="photo-confirm"?withinCinematicRun(change):change);
+    await updateState(req.body?.action==='investigation-vote'?withinBroadcastRun(change):req.body?.action==='token-vote'?withinMazeRun(change):req.body?.action==='casting-vote'?withinCastingRun(change):['door-vote','package-open'].includes(req.body?.action)?withinChapter4Run(change):['message-open','message-read'].includes(req.body?.action)?withinChapter3Run(change):req.body?.action==="photo-confirm"?withinCinematicRun(change):change);
     return send(res,200,{ok:true});
   }catch(e){return fail(res,e);}
 }

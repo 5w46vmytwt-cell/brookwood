@@ -1,10 +1,13 @@
 import {BROADCAST_SRC,BLACKOUT_MS,BROADCAST_FADE_MS} from './chapter7-timing.js';
+import {Chapter7Investigation} from './chapter7-story.js';
+import {storyProgressDue} from './chapter7-story-timing.js';
 
 // Driven by the existing TV scheduler and poller. Only this TV owns media;
 // authenticated media events acknowledge state through the existing host API.
 export class Chapter7View{
- constructor(document,clock,{request=(...args)=>globalThis.lobbyRequest(...args),onState=(state,timing)=>document.dispatchEvent(new CustomEvent('brookwood-broadcast-state',{detail:{state,timing}}))}={}){
+ constructor(document,clock,{request=(...args)=>globalThis.lobbyRequest(...args),onState=(state,timing)=>document.dispatchEvent(new CustomEvent('brookwood-broadcast-state',{detail:{state,timing}})),createInvestigation=(doc,timer,options)=>new Chapter7Investigation(doc,timer,options)}={}){
   this.document=document;this.clock=clock;this.request=request;this.onState=onState;
+  this.createInvestigation=createInvestigation;
   this.video=document.getElementById('chapter7Video');this.button=document.getElementById('chapter7Play');this.error=document.getElementById('chapter7Error');
   this.epoch=0;this.id=null;this.state=null;this.authenticated=false;this.blocked=false;this.attempted=false;this.pending=new Set();this.failed=new Set();this.restored=false;
   this.video.addEventListener('playing',()=>{if(!this.state)return;this.blocked=false;this.error.hidden=true;this.button.hidden=true;if(this.state.chapter7.step==='blackout')this.ack('broadcast-playing');});
@@ -15,6 +18,12 @@ export class Chapter7View{
  now(){return this.state.chapter7.startedAt+this.clock.elapsedNow();}
  update(state){
   const c=state.chapter7;
+  if(c.investigation){
+   if(this.id!==c.id){this.stop();this.id=c.id;}
+   this.state=state;this.video.hidden=true;this.video.style.opacity='0';this.video.pause();this.button.hidden=true;this.error.hidden=true;
+   this.story??=this.createInvestigation(this.document,this.clock,{request:this.request,onState:this.onState});this.story.update(state);return;
+  }
+  this.video.hidden=false;
   if(this.id!==c.id){
    this.stop();this.state=state;this.id=c.id;const epoch=this.epoch;
    if(!['fading','waiting'].includes(c.step)){
@@ -52,5 +61,7 @@ export class Chapter7View{
   if(this.id===null&&this.state===null)return;
   this.epoch++;this.state=null;this.id=null;this.video.pause();this.video.removeAttribute('src');this.video.load();this.video.style.opacity='0';this.video.volume=1;
   this.button.hidden=true;this.error.hidden=true;this.authenticated=false;this.blocked=false;this.attempted=false;this.restored=false;this.pending.clear();this.failed.clear();
+  if(this.story?.state)this.story.stop();
  }
+ progressDue(now){const c=this.state?.chapter7;if(!c)return false;return c.step==='fading'?now>=c.endedAt+BROADCAST_FADE_MS:storyProgressDue(c,now);}
 }

@@ -13,6 +13,7 @@ import {Chapter5View} from './chapter5.js';
 import {COMPLETE_CAST_END_MS} from './chapter5-reveal-timing.js';
 import {Chapter5Audio} from './chapter5-audio.js';
 import {Chapter7View} from './chapter7.js';
+import {storyCheckpoints} from './chapter7-story-timing.js';
 import {Chapter6View} from './chapter6.js';
 import './chapter6-interface.js';
 
@@ -105,4 +106,4 @@ export class TVCinematicRuntime {
   unlockForTestJump(){if(this.state?.chapter7)return;this.audio.unlock({background:!this.state?.chapter6&&!chapter4Phases.includes(this.state?.phase)&&!chapter5Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();this.unlockChapter5();this.unlockChapter6();}
 }
 // Classic Chapter 1 assets load first; the TV's following module uses this bridge.
-globalThis.BrookwoodTV={Runtime:TVCinematicRuntime};
+globalThis.BrookwoodTV={Runtime:TVCinematicRuntime,chapter7Checkpoints:storyCheckpoints};

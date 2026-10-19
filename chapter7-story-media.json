@@ -1,0 +1,213 @@
+[
+  {
+    "step": "narrator",
+    "src": "/assets/chapter7/audio/ch7_01_narrator_returns.wav",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-narrator",
+    "number": 1,
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 3206400,
+    "durationMs": 33400,
+    "sha256": "1d024f791da2b10dea7fed33dfa00208cfadea6151a035db75a94dafa332d765"
+  },
+  {
+    "step": "podcast-intro",
+    "src": "/assets/chapter7/audio/ch7_02_podcast_intro.wav",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-podcast-intro",
+    "number": 2,
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 2644800,
+    "durationMs": 27550,
+    "sha256": "bf121426a2e1c07efb5a5f5294c0f01871bf793df1ac4502b65a794c81aa20dd"
+  },
+  {
+    "step": "possession",
+    "src": "/assets/chapter7/audio/ch7_03_possession.mp3",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-possession",
+    "number": 3,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 2378,
+    "samples": 2739456,
+    "durationMs": 62119.183673469386,
+    "sha256": "dd743b98d4f414507811e8adf66883ac4b0c77a3cbfcc17804d10d39173c1b45"
+  },
+  {
+    "step": "officer",
+    "src": "/assets/chapter7/audio/ch7_04a_police_officer.mp3",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-officer",
+    "number": 4,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1989,
+    "samples": 2291328,
+    "durationMs": 51957.55102040816,
+    "sha256": "1195266442bca4d88e22d09a9a1188c4d0ebb934a9af55373073ce4869ce1d8a"
+  },
+  {
+    "step": "prophecy",
+    "src": "/assets/chapter7/audio/ch7_04b_prophecy_whisper.mp3",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-prophecy",
+    "number": 5,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 24000,
+    "channels": 1,
+    "bitrates": [
+      160
+    ],
+    "frames": 286,
+    "samples": 164736,
+    "durationMs": 6864,
+    "sha256": "7ac7195b7c947c71d33ec65a03d428f05c2013c5f32526e72505de81ec222cb7"
+  },
+  {
+    "step": "reaction",
+    "src": "/assets/chapter7/audio/ch7_05_possession_reaction.mp3",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-reaction",
+    "number": 6,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1569,
+    "samples": 1807488,
+    "durationMs": 40986.12244897959,
+    "sha256": "9daebb9fd320c0ff487a295fbcb2eabb9fa03e8ffb2049f942572342129429a5"
+  },
+  {
+    "step": "premeditation",
+    "src": "/assets/chapter7/audio/ch7_06_premeditation.mp3",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-premeditation",
+    "number": 7,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1974,
+    "samples": 2274048,
+    "durationMs": 51565.71428571428,
+    "sha256": "f969c770ce1fcedf6b3985ca4a69564cae915e2006162dccf3b690f85a569848"
+  },
+  {
+    "step": "accomplice",
+    "src": "/assets/chapter7/audio/ch7_07_accomplice.mp3",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-accomplice",
+    "number": 8,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 2240,
+    "samples": 2580480,
+    "durationMs": 58514.28571428571,
+    "sha256": "4cc53f0a1ce254e1b696b09ee5a2f8f87c54ca13c96c693632cb3e2ffcfbb796"
+  },
+  {
+    "step": "vote-intro",
+    "src": "/assets/chapter7/audio/ch7_08_theory_vote_intro.wav",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-vote-intro",
+    "number": 9,
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 4528800,
+    "durationMs": 47175,
+    "sha256": "0c961368601dffdbbacbdb5b1c917d773a2a29e839af18096beb73384815b654"
+  },
+  {
+    "step": "photograph",
+    "src": "/assets/chapter7/audio/ch7_09_photograph_revelation.wav",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-photograph",
+    "number": 10,
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 3991200,
+    "durationMs": 41575,
+    "sha256": "cda63857f9c34981b4389e524d78e0cddb97d25fde1cd2aefa81232b1a4caa40"
+  },
+  {
+    "step": "scare",
+    "src": "/assets/chapter6/audio/ch6_sfx_scream.mp3",
+    "type": "sfx",
+    "volume": 0.75,
+    "id": "chapter7-story-scare",
+    "number": 11,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitrates": [
+      256
+    ],
+    "frames": 138,
+    "samples": 158976,
+    "durationMs": 3312,
+    "sha256": "fdd41c91fff4807e99a83f7da05d4322c860c295e8afabb91e2571dd69bece90"
+  },
+  {
+    "step": "incoming",
+    "src": "/assets/chapter3/audio/private-message-vibration.wav",
+    "type": "sfx",
+    "volume": 1,
+    "id": "chapter7-story-incoming",
+    "number": 12,
+    "encoding": 1,
+    "channels": 2,
+    "sampleRate": 44100,
+    "byteRate": 176400,
+    "blockAlign": 4,
+    "bits": 16,
+    "dataSize": 432180,
+    "durationMs": 2450,
+    "sha256": "7bc9374aa9109528a067b34c471f4b69507c36730a6d5e00782ba58ce2f08caf"
+  }
+]

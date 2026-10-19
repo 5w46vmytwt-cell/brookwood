@@ -51,7 +51,7 @@ function viewHarness({ready=4,deny=false,authenticated=true}={}){
  const listeners={},calls=[],nodes={};let elapsed=3000,plays=0,denied=deny;
  const video={style:{},readyState:ready,duration:BROADCAST_DURATION_MS/1000,currentTime:0,paused:true,ended:false,volume:1,muted:false,load(){},removeAttribute(){delete this.src;},pause(){this.paused=true;},addEventListener(type,fn){listeners[type]=fn;},play(){plays++;if(denied){denied=false;return Promise.reject(Error('NotAllowedError'));}this.paused=false;queueMicrotask(()=>listeners.playing());return Promise.resolve();}};
  nodes.chapter7Video=video;nodes.chapter7Play={hidden:true};nodes.chapter7Error={hidden:true};const s=broadcast();s.chapter7.startedAt=now-3000;
- const view=new Chapter7View({getElementById:id=>nodes[id]},{elapsedNow:()=>elapsed,canSync:()=>true},{request:async(_path,b)=>{calls.push(b);if(b.action==='maze-session'){if(!authenticated)throw Error('403');return {authenticated:true};}broadcastHostAction(s,b);return {state:structuredClone(s)};},onState:next=>view.update(next)});
+ const view=new Chapter7View({getElementById:id=>nodes[id]},{elapsedNow:()=>elapsed,canSync:()=>true},{createInvestigation:()=>({update(){},stop(){}}),request:async(_path,b)=>{calls.push(b);if(b.action==='maze-session'){if(!authenticated)throw Error('403');return {authenticated:true};}broadcastHostAction(s,b);return {state:structuredClone(s)};},onState:next=>view.update(next)});
  return {view,video,nodes,calls,listeners,state:s,at:t=>{elapsed=t;},plays:()=>plays};
 }
 test('actual playing event starts clock once; repeated renders never create duplicate players',async()=>{

@@ -6,3 +6,34 @@
 body.chapter7-active{background:#000}
 body.chapter7-active>main,body.chapter7-active>#chapterSelectToggle{display:none}
 body.chapter7-active>#chapterSelectPanel{z-index:90}
+#chapter7Investigation{position:absolute;inset:0;background:#000;color:#ede9dd;font-family:Georgia,serif;overflow:hidden}
+#chapter7Investigation[hidden],#chapter7Investigation [hidden]{display:none!important}
+#ch7Scene{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8vh 8vw;background:radial-gradient(ellipse at 50% 44%,#18201f 0,#080b0b 52%,#020303 100%)}
+#ch7Eyebrow{font:clamp(12px,1.2vw,22px) Arial,sans-serif;letter-spacing:.32em;color:#a7b8aa;margin-bottom:3vh}
+#ch7Title{font-size:clamp(36px,5.7vw,100px);font-weight:normal;letter-spacing:.04em;line-height:1.13;margin:1vh 0 3vh;max-width:90vw;text-wrap:balance}
+#ch7Subtitle{font:clamp(18px,1.8vw,32px)/1.6 Arial,sans-serif;letter-spacing:.06em;max-width:75vw;white-space:pre-line;color:#c4c7bf}
+#ch7Options{display:flex;gap:2vw;margin:4vh auto;max-width:88vw}
+#ch7Options article{flex:1;text-align:left;border-top:1px solid #708174;padding:2vh 2vw;background:#0c1210}
+#ch7Options h2{font:clamp(16px,1.7vw,28px) Arial,sans-serif;letter-spacing:.12em;color:#ced6cb}
+#ch7Options p{font:clamp(16px,1.5vw,26px)/1.5 Georgia,serif;color:#b5bfb4}
+#ch7Progress{font:clamp(16px,1.3vw,23px) Arial,sans-serif;letter-spacing:.14em;color:#8f9b92}
+#ch7Waveform{height:14vh;display:flex;gap:.55vw;align-items:center;justify-content:center;margin-top:5vh}
+#ch7Waveform i{display:block;width:.4vw;min-width:3px;height:10%;background:#a3b9a5;opacity:.65;border-radius:2px}
+#ch7Waveform.speaking i{animation:ch7-voice .85s ease-in-out infinite alternate}
+#ch7Waveform i:nth-child(3n){animation-delay:-.45s}#ch7Waveform i:nth-child(3n+1){animation-delay:-.2s}#ch7Waveform i:nth-child(4n){animation-duration:.5s}
+@keyframes ch7-voice{from{height:12%;opacity:.45}to{height:85%;opacity:1}}
+#chapter7Investigation[data-voice="BEYOND THE STATIC"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#22231c,#0b0c09 55%,#020302)}
+#chapter7Investigation[data-voice="THE EVIDENCE ROOM"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#14202a,#060a0e 55%,#020304)}
+#chapter7Investigation[data-voice="THE MISSING CHAPTER"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#271b19,#0c0807 55%,#030202)}
+#chapter7Investigation[data-voice="THE MISSING CHAPTER"] #ch7Waveform i{background:#bb9e92}
+#chapter7Investigation[data-scene="officer"] #ch7Title,#chapter7Investigation[data-scene="prophecy"] #ch7Title{font-family:monospace;letter-spacing:.16em}
+#ch7PhotoStage{position:absolute;inset:3vh 3vw;overflow:hidden;background:#000}
+#ch7PhotoStage img{position:absolute;width:100%;height:100%;object-fit:contain;inset:0;transform-origin:66% 19%;will-change:transform,opacity}
+#ch7PhotoStage #ch7Enhanced{transform-origin:62% 45%}
+#ch7Scare{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#ch7Curtain{position:absolute;inset:0;background:#000;pointer-events:none;opacity:0}
+#ch7Host{position:absolute;inset:auto 2vw 2vh;display:flex;gap:12px;justify-content:center;font-family:Arial,sans-serif;z-index:3}
+#ch7Host button{background:#080a09;color:#e0e4dd;border:1px solid #647364;padding:14px 20px;font-size:14px;cursor:pointer}
+#ch7Host button:disabled{opacity:.45;cursor:default}#ch7HostError{color:#c19d95;max-width:45vw}
+#chapterSelectPanel .test-panel{max-height:94vh;overflow:auto}#ch7CheckpointSetup[hidden]{display:none}#ch7CheckpointSetup label{display:block;font-size:12px;margin-top:14px}#ch7CheckpointSetup input{width:auto}
+@media(max-width:800px){#ch7Options{flex-direction:column;gap:8px;margin:2vh}#ch7Title{font-size:7vw}#ch7Subtitle{font-size:3vw}#ch7Waveform{margin-top:2vh;height:8vh}}

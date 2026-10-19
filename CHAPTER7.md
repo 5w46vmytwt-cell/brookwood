@@ -1,4 +1,55 @@
-# Chapter 7, Phase 1 — WESTMAN NEWS
+# Chapter 7 — THE THREE THEORIES & THE EVIDENCE
+
+## Current extension (2026-10-19)
+
+The original WESTMAN NEWS player and source MP4 remain unchanged in behavior. After native video completion and the existing 800-ms fade, the persisted broadcast stays `waiting` and its new `investigation` subtree begins the narrator. Existing phase-1 waiting states enter the investigation through the existing progress capability; no production data reset or migration is needed. Chapters 1–6 and their source media remain frozen.
+
+### Supplied recordings
+
+`node scripts/measure-chapter7-story.mjs --write` uses the existing RIFF/MPEG parsers to generate `chapter7-story-media.json` (format, samples and SHA-256) and `chapter7-recordings.js` (runtime cues). No source audio is edited. Actual asset names differ slightly from the requested logical names; all are matched and included, including the extra podcast introduction.
+
+| Scene | Actual filename under `assets/chapter7/audio/` | Measured seconds |
+| --- | --- | ---: |
+| Narrator returns | ch7_01_narrator_returns.wav | 33.400 |
+| Podcast introduction | ch7_02_podcast_intro.wav | 27.550 |
+| Possession | ch7_03_possession.mp3 | 62.119184 |
+| Police transmission | ch7_04a_police_officer.mp3 | 51.957551 |
+| Prophecy | ch7_04b_prophecy_whisper.mp3 | 6.864 |
+| Possession reaction | ch7_05_possession_reaction.mp3 | 40.986122 |
+| Premeditation | ch7_06_premeditation.mp3 | 51.565714 |
+| Accomplice | ch7_07_accomplice.mp3 | 58.514286 |
+| Vote introduction | ch7_08_theory_vote_intro.wav | 47.175 |
+| Photograph | ch7_09_photograph_revelation.wav | 41.575 |
+
+The existing Chapter 6 scream and jump-scare image are reused unchanged; the picture lasts 900 ms while its full 3.312-second effect finishes on black. After another second of silence, the established Chapter 3 private-message vibration (2.450 seconds) accompanies the incoming envelope message. No new background music or audio distortion is layered over the supplied clips.
+
+### Synchronization and elections
+
+`api/_chapter7-story.js` owns scene transitions and elections inside `chapter7.investigation`. The existing Redis compare-and-set transaction, host cookie, generation fence, player credentials, phone poller, TV scheduler and cinematic audio Player are reused. Narration phases never auto-advance from a deadline: an authenticated native `playing` event establishes the actual playback clock, and `ended` authorizes the next scene after the measured duration gate. Delayed loading starts from the first word; refresh seeks within an active clip. Reconstructed expired effects are consumed silently. Scene sequence and investigation/broadcast IDs fence obsolete callbacks.
+
+The winning real theory persists at `chapter7.investigation.elections.theory.winnerId`; the envelope retriever persists in `elections.envelope.winnerId`. Voter identities are real participants observed in the investigation within the preceding two minutes, with a conservative registered-real-player fallback if no phone has been observed. Each election freezes its electorate, stores immutable private ballots, waits for all ballots or authenticated CLOSE VOTING, and uses Chapter 6's existing deterministic hash ranking for ties. No individual choices or raw ballots are projected publicly. Phone presence writes are throttled to ten seconds and reads within that interval avoid a mutation transaction.
+
+Envelope candidates exclude the persisted Chapter 4 machete retriever, Chapter 6 token retriever, and other recorded physical-retrieval IDs. These people can still vote. If no eligible candidate or voting group exists, the host explicitly takes the retrieval task. A selected player is revealed for 4.5 seconds, followed by indefinite waiting for authenticated CONFIRM ENVELOPE RETURNED. A return is never inferred from a timer.
+
+The theory result uses an 800-ms voting fade, a three-second exclusive headline, a 1.5-second winner fade-in plus five-second hold, 1.2-second fade out and 3.5 seconds of silent black before the scare. These are presentation timings; narration lengths come only from measured media.
+
+### Photograph and host checkpoints
+
+The supplied PNGs are shown without modification or aspect-ratio distortion. Local speech recognition and audio-envelope alignment locate the farmhouse sentence at 29.730–31.770 seconds and “Look at the upstairs window” at 32.530–34.090 seconds in the photograph WAV. Attention begins at 29.730 seconds; enhancement starts at 34.300 seconds, using actual media position so buffering cannot reveal it early. The complete recording finishes before a further twelve-second enhanced-image hold and final fade to black. The figure's identity is not explained.
+
+Ctrl+Shift+C adds all twelve requested investigation checkpoints alongside the existing broadcast checkpoints. Existing host sessions require no new PIN. Missing theory/retriever prerequisites require the host to explicitly enable separate test outcomes and choose a theory or eligible player; they are never fabricated as real results. Rehearsal elections live in `testElections`, with completed test ballots archived in `testHistory`. Real `elections`, previous chapters, cast roles and retrieval history remain intact during checkpoint navigation.
+
+### Focused verification
+
+```
+node --test tests/chapter7.test.js tests/chapter7-story.test.js tests/chapter7-story-audio.test.js
+node scripts/verify-chapter7-story-browser.mjs
+npm run build
+```
+
+The current focused coverage passes 40/40 tests. The single local production build passed with 181 static files; supplied assets and browser modules were verified byte for byte against source. A final host-fallback checkpoint edge case and the exact-black CSS backdrop were checked with focused tests and syntax validation; no additional local build or full rehearsal was run. The local TV/two-phone rehearsal passed the full investigation flow, private ballots and refresh, prior-retriever exclusions, host return, all twelve cookie-authenticated checkpoints, silent phones, and zero audio overlap/runtime exceptions. Podcasts were sampled then sought to native completion for efficiency; the photograph recording and its final hold played at native speed. The enhanced image first became visible at 34.328 seconds. The harness uses isolated memory and never mutates production data. Phase-1 verification below is historical; its old indefinite waiting expectation is superseded by the new narrator handoff.
+
+# Chapter 7, Phase 1 — WESTMAN NEWS (historical release)
 
 This phase adds only the supplied fictional broadcast. Chapters 1–5 and Chapter 6 gameplay, recordings, effects, timers, scoring, cast and voting remain locked. Do not add later Chapter 7 content until requested.
 
