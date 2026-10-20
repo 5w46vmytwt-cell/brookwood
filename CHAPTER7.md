@@ -1,5 +1,13 @@
 # Chapter 7 — THE THREE THEORIES & THE EVIDENCE
 
+## Investigation ambience (2026-10-20)
+
+`chapter7-ambient.js` reuses the existing cinematic Player's synchronized looping track and the TV scheduler. `INVESTIGATION_AMBIENT_VOLUME` is the single volume setting (0.10); only this background fades, over 1200 ms. One element survives investigation scene changes, seeks to the investigation clock modulo the decoded media duration after refresh, and retries blocked playback through the existing audio unlock action. A slow, blocked or failed background never gates narration or changes its volume.
+
+The background plays during the original narrator's return/introduction, theory voting and verdict reveal, envelope voting/retrieval waiting, and both photograph views. Podcasts, their transitions, recovered radio/prophecy and connection recovery are excluded. The introduction fades the background before the first podcast; the verdict fade reaches zero before the completely silent black and phone ring. The ending fades to zero before completion. No Chapter 6 engine or soundtrack behavior changes.
+
+The supplied MP3 is preserved unchanged: 4,638,720 bytes, stereo 48 kHz, 6,958,080 MPEG samples / 144960 ms; SHA-256 `4251eb6f0ca9892bdf86ad70f216163e145bc7bb90579ae8a0c2725e6588a1d1`. Focused validation: `node --test tests/chapter7-ambient.test.js tests/chapter7-story-audio.test.js` passed 21/21 tests. The existing synchronized engine is exercised directly, including looping, fades, exclusions, refresh, delayed readiness, autoplay, pending playback and narration isolation. Production build and deployment are verified separately for this release.
+
 ## Final cinematic and voting fixes (2026-10-20)
 
 New runs, checkpoints and subsequent scene entries use `polishVersion: 2`; an already active scene finishes under its existing clock contract. After the preserved broadcast blackout, a 2800-ms persisted black recovery beat shows a faint analog signal line. No standalone connection-recovery sound exists in the supplied assets; this beat is intentionally quiet rather than borrowing speech or an unrelated effect. The existing camera shutter is available and reused unchanged at its existing 55% level (255.238 ms).
