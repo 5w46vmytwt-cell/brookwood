@@ -4,7 +4,7 @@ import {tokenVoteWinner} from './_chapter6.js';
 import {narrationOrder,theories,storyRecording,timedScenes,storyCheckpoints,PHOTO_ENHANCED_MS,narrationDuration,sceneDuration} from '../chapter7-story-timing.js';
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
 const theoryIds=theories.map(t=>t[0]);
-const validSteps=['connection','theory2-transition','theory3-transition','narrator-transition',...narrationOrder,'interlude','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','silent-black','scare','after-scare','incoming','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade','complete'];
+const validSteps=['connection-black','date-reveal','connection','theory2-transition','theory3-transition','narrator-transition',...narrationOrder,'interlude','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','silent-black','scare','after-scare','incoming','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade','complete'];
 export function previousRetrievers(s){
  const ids=new Set();
  function visit(value,path=''){
@@ -22,10 +22,10 @@ export function previousRetrievers(s){
 export const envelopeCandidates=s=>realPlayers(s).filter(p=>!previousRetrievers(s).has(p.id));
 export function startInvestigation(s,now=Date.now()){
  const c=s.chapter7;if(s.phase!=='chapter7'||c.step!=='waiting'||c.investigation)return UNCHANGED;
- c.investigation={polishVersion:2,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:now+timedScenes.connection,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
+ c.investigation={polishVersion:3,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
 }
 function enter(s,step,now,extra={}){
- const i=s.chapter7.investigation;i.polishVersion=2;i.step=step;i.phaseAt=now;i.deadline=sceneDuration(i,step)===undefined?null:now+sceneDuration(i,step);i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
+ const i=s.chapter7.investigation;i.polishVersion=3;i.step=step;i.phaseAt=now;i.deadline=sceneDuration(i,step)===undefined?null:now+sceneDuration(i,step);i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
 }
 function interlude(s,next,now){enter(s,'interlude',now,{next});}
 const electionKey=i=>i.step==='theory-vote'?'theory':'envelope';
@@ -92,9 +92,10 @@ export function investigationVote(s,id,target,b,now=Date.now()){
 export function advanceInvestigation(s,now=Date.now()){
  const i=s.chapter7?.investigation;if(!i)return startInvestigation(s,now);
  const repaired=recoverSimulatedSession(s,now);
+ if(i.step==='connection'&&i.polishVersion<3){enter(s,'connection',now);return;}
  if(i.step==='scare'){enter(s,'silent-black',now);return;}
  if(i.deadline===null||now<i.deadline)return repaired?undefined:UNCHANGED;
- const next={connection:'narrator','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
+ const next={'connection-black':'narrator','date-reveal':'podcast-intro','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
  if(i.step==='interlude'){if(i.next==='theory-vote')beginVote(s,'theory',now);else enter(s,i.next,now);return;}
  if(i.step==='message-hold'){beginVote(s,'envelope',now);return;}
  if(!next)return UNCHANGED;
@@ -132,6 +133,8 @@ export function investigationHostAction(s,b,now=Date.now()){
  }
  if(b.action==='investigation-audio-ended'){
   if(!cue||b.recording!==cue.id||i.audioStartedAt===null||now<i.audioStartedAt+narrationDuration(i)-i.offsetMs-250)throw new LobbyError(409,'The recording has not finished.');
+  if(i.step==='connection'){enter(s,'connection-black',now);return;}
+  if(i.step==='narrator'){enter(s,'date-reveal',now);return;}
   if(i.step==='photograph'){enter(s,'photo-hold',now);return;}
   if(i.step==='incoming'){beginVote(s,'envelope',now);return;}
   if(i.polishVersion>=1&&i.step==='officer'){interlude(s,'reaction',now);return;}
@@ -168,7 +171,7 @@ export function investigationProgress(s,playerId){
 export function validateInvestigation(s){
  const i=s.chapter7.investigation;if(!i)return;
  if(typeof i.id!=='string'||!i.id||!Number.isFinite(i.startedAt)||!validSteps.includes(i.step)||!Number.isInteger(i.sequence)||i.sequence<0||!Number.isFinite(i.phaseAt)||!Number.isFinite(i.offsetMs)||i.offsetMs<0||i.audioStartedAt!==null&&!Number.isFinite(i.audioStartedAt)||typeof i.testMode!=='boolean'||!i.presence||!i.elections)throw Error('Invalid Chapter 7 investigation.');
- if(i.polishVersion!==undefined&&![1,2].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
+ if(i.polishVersion!==undefined&&![1,2,3].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
  if(sceneDuration(i)===undefined?i.deadline!==null:i.deadline!==i.phaseAt+sceneDuration(i))throw Error('Invalid investigation clock.');
  const players=new Set(s.players.map(p=>p.id));
  for(const store of [i.elections,i.testElections??{}])for(const [key,e] of Object.entries(store)){

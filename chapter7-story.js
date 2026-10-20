@@ -1,5 +1,5 @@
 import {InvestigationAudio} from './chapter7-story-audio.js';
-import {theories,storyRecording,PHOTO_ATTENTION_MS,PHOTO_ENHANCED_MS,transitionFrame,narratorFrame,sceneDuration,smooth} from './chapter7-story-timing.js';
+import {theories,storyRecording,PHOTO_ATTENTION_MS,PHOTO_ENHANCED_MS,transitionFrame,narratorFrame,sceneDuration,smooth,connectionFrame,dateFrame} from './chapter7-story-timing.js';
 const clamp=x=>Math.min(1,Math.max(0,x));
 export function photographFrame(position){return {attention:clamp((position-PHOTO_ATTENTION_MS)/5000),enhanced:position>=PHOTO_ENHANCED_MS,mix:clamp((position-PHOTO_ENHANCED_MS)/1500)};}
 const logos={
@@ -29,7 +29,7 @@ export class Chapter7Investigation{
   node('ch7Options').replaceChildren();node('ch7Progress').textContent='';node('ch7Waveform').hidden=!cue||cue.type!=='narration';node('ch7Waveform').classList.toggle('speaking',!!this.audio.entry&&!(this.audio.entry.secondary??this.audio.entry.audio).paused&&!this.audio.entry.ended);
   const root=node('chapter7Investigation');root.dataset.scene=i.step;root.dataset.voice=podcasts[i.step]?.[0]??'narrator';
   let eyebrow='BROOKWOOD FARM · CASE FILE 1996',title='',subtitle='';
-  if(i.step==='narrator'){const f=narratorFrame(position);scene.style.opacity=String(f.scene);node('ch7Date').hidden=false;node('ch7Date').style.opacity=String(f.date);node('ch7Year').style.transform='scale('+f.yearScale+')';title='OCTOBER 31, 1996';subtitle='THE QUESTIONS REMAIN.';}
+  if(i.step==='narrator'){const f=narratorFrame(position);scene.style.opacity=String(f.scene);title='BROOKWOOD FARM';subtitle='THE QUESTIONS REMAIN.';}
   if(i.step==='podcast-intro'){title='THREE THEORIES';subtitle='ONE NIGHT. THREE POSSIBLE EXPLANATIONS.';}
   let identity=podcasts[i.step]?.[0];
   if(podcasts[i.step])[eyebrow,title,subtitle]=podcasts[i.step];
@@ -44,13 +44,14 @@ export class Chapter7Investigation{
   const logo=node('ch7PodcastLogo');logo.hidden=!logos[identity];
   if(logos[identity]&&logo.dataset.identity!==identity){logo.innerHTML='<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">'+logos[identity]+'</svg>';logo.dataset.identity=identity;}
   if(logos[identity]){eyebrow=title;title='PODCAST: '+identity;subtitle='';}
-  if(i.testMode)eyebrow='HOST TEST MODE · '+eyebrow;
+  if(i.testMode&&i.election)eyebrow='HOST TEST MODE · '+eyebrow;
   const voting=['theory-vote','vote-fade'].includes(i.step);
   if(voting){title='CHOOSE YOUR THEORY';subtitle='Your decision determines the direction of the investigation.';for(const [,name,description] of theories){const card=this.document.createElement('article'),h=this.document.createElement('h2'),p=this.document.createElement('p');h.textContent=name;p.textContent=description;card.append(h,p);node('ch7Options').appendChild(card);}node('ch7Progress').textContent=i.election?i.election.voteCount+' / '+i.election.voterCount+' VOTES RECORDED':'VOTING CLOSED';if(i.step==='vote-fade')scene.style.opacity=this.fade(elapsed,sceneDuration(i),false);}
   if(i.step==='vote-intro'){title='THE DIRECTION OF THE INVESTIGATION';subtitle='Listen carefully. Then make your choice.';}
   if(['spoken','theory-reveal','theory-fade'].includes(i.step)){eyebrow='';title='THE GROUP HAS SPOKEN.';const theory=theories.find(t=>t[0]===i.winningTheory);subtitle=i.step==='spoken'?'':theory?.[1]??'';node('ch7Subtitle').style.transform='scale('+(1+.2*((x)=>x*x*(3-2*x))(clamp((i.step==='theory-fade'?6500:elapsed)/6500)))+')';node('ch7Subtitle').style.opacity=i.step==='theory-reveal'?this.fade(elapsed,1800,true):'1';if(i.step==='theory-fade')scene.style.opacity=this.fade(elapsed,sceneDuration(i),false);}else {node('ch7Subtitle').style.opacity='1';node('ch7Subtitle').style.transform='';}
-  if(i.step==='connection'){scene.hidden=true;node('ch7Connection').hidden=false;node('ch7Connection').style.opacity=String(Math.min(smooth(elapsed/600),1-smooth((elapsed-1900)/900)));}
-  if(['interlude','silent-black','after-scare','scare','complete'].includes(i.step))scene.hidden=true;
+  if(i.step==='connection'){scene.hidden=true;const f=connectionFrame(position,!!this.audio.entry&&!this.audio.entry.audio.paused&&!this.audio.entry.ended),signal=node('ch7Connection');signal.hidden=false;signal.style.opacity=String(f.opacity);signal.style.setProperty('--signal-y',f.y+'vh');signal.style.setProperty('--signal-scale',String(f.scale));signal.style.setProperty('--signal-skew',f.skew+'deg');}
+  if(i.step==='date-reveal'){scene.hidden=true;const f=dateFrame(elapsed);node('ch7Date').hidden=false;node('ch7Date').style.opacity=String(f.opacity);node('ch7Year').style.transform='scale('+f.yearScale+')';}
+  if(['connection-black','interlude','silent-black','after-scare','scare','complete'].includes(i.step))scene.hidden=true;
   if(['incoming','message-hold','envelope-vote'].includes(i.step)){eyebrow='INCOMING MESSAGE';title='AN ENVELOPE IS WAITING.';subtitle='UNDER THE STAIRS.\n\nCHOOSE SOMEONE TO RETRIEVE IT.';}
   if(['incoming','envelope-vote'].includes(i.step)&&i.election){node('ch7Progress').textContent=i.election.voteCount+' / '+i.election.voterCount+' VOTES RECORDED';}
   if(i.step==='retriever-fallback'){title='NO ELIGIBLE RETRIEVER';subtitle='All registered candidates have retrieved earlier objects, or the voting cast is empty. The authenticated host can arrange retrieval.';}
@@ -68,8 +69,8 @@ export class Chapter7Investigation{
   node('ch7CloseVoting').hidden=!this.authenticated||!['theory-vote','envelope-vote','incoming'].includes(i.step);node('ch7CloseVoting').disabled=this.pending||!i.election?.voteCount||i.election?.closed;
   node('ch7HostRetrieve').hidden=!this.authenticated||i.step!=='retriever-fallback';node('ch7HostRetrieve').disabled=this.pending;
   node('ch7EnvelopeReturned').hidden=!this.authenticated||i.step!=='envelope-waiting';node('ch7EnvelopeReturned').disabled=this.pending;
-  node('ch7TestFill').hidden=!this.authenticated||!i.testMode||!!i.election;node('ch7TestVotes').hidden=!this.authenticated||!i.testMode||!i.election;
-  if(!this.authenticated||!i.testMode||node('ch7TestPanel').dataset.election!==i.election?.id)node('ch7TestPanel').hidden=true;
+  node('ch7TestFill').hidden=!this.authenticated||!i.testMode||!!i.election||!['complete','envelope-waiting','retriever-fallback'].includes(i.step);node('ch7TestVotes').hidden=!this.authenticated||!i.testMode||!i.election;
+  if(!this.authenticated||!i.testMode||!i.election||node('ch7TestPanel').dataset.election!==i.election?.id)node('ch7TestPanel').hidden=true;
   node('ch7Resume').hidden=!this.audio.blocked;node('ch7Resume').textContent=this.audio.message||'ENABLE AUDIO / RESUME';
  }
  fade(elapsed,duration,inward){const amount=smooth(elapsed/duration);return String(inward?amount:1-amount);}

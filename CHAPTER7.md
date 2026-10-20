@@ -1,5 +1,13 @@
 # Chapter 7 — THE THREE THEORIES & THE EVIDENCE
 
+## Supplied connection recovery and deferred date (2026-10-20)
+
+This supersedes the earlier silent recovery and date-during-narration notes below. New investigation scenes use `polishVersion: 3`. The unchanged `ch7_connection_recovery.mp3` contains 140544 samples at 44100 Hz (3186.939 ms; SHA-256 `93d13ebe50495e0c200f29a2f2b54e2cf5587f291921407682c27527c8a7c296`). A single Web Audio sample-clock source loops the decoded file exactly twice (6373.878 ms), through the existing investigation audio controller and authenticated native playback acknowledgments. Refresh reconstructs the remaining position; autoplay refusal uses the existing resume gesture. No narration or effect gains are faded.
+
+Enlarged analog interference follows the source position across both copies. Native completion enters persisted `connection-black` for at least 1000 ms with no ambience, then starts the full-volume narrator. Only the complete narrator's native end enters the separate 6500-ms `date-reveal`, with OCTOBER 31 / 1996 and a restrained year zoom; the podcast introduction follows. Existing silent connection states upgrade to the new native gate, without replaying the news. Host test controls stay hidden during cinematic scenes and remain available at voting/retrieval checkpoints.
+
+Local validation: 80/80 focused Chapter 7 tests passed, including sample-clock looping, refresh reconstruction, autoplay/retry, server phase gates, visual isolation and preserved transmission/voting behavior. One production build passed (185 static files). A native-speed isolated Chrome rehearsal passed both connection copies, synchronized interference, silent black hold, complete full-volume narrator, subsequent date reveal and hidden cinematic test controls with no runtime exceptions. Production verification is separate from these local checks.
+
 ## Investigation ambience (2026-10-20)
 
 `chapter7-ambient.js` reuses the existing cinematic Player's synchronized looping track and the TV scheduler. `INVESTIGATION_AMBIENT_VOLUME` is the single volume setting (0.10); only this background fades, over 1200 ms. One element survives investigation scene changes, seeks to the investigation clock modulo the decoded media duration after refresh, and retries blocked playback through the existing audio unlock action. A slow, blocked or failed background never gates narration or changes its volume.

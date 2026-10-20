@@ -36,7 +36,7 @@ test('supplied ambience remains byte-for-byte original and its measured loop dur
 
 test('one synchronized loop fades in and continues across eligible narrator, voting and photo scenes',async()=>{
  const h=harness();h.update();await flush();assert.equal(h.audio.volume,0);assert(h.audio.loop);assert.equal(h.audio.plays,1);h.tick(AMBIENT_FADE_MS/2);assert.equal(h.audio.volume,.05);h.tick(AMBIENT_FADE_MS);assert.equal(h.audio.volume,.1);
- h.audio.currentTime=37;for(const step of ['podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','envelope-vote','retriever-reveal','retriever-fallback','envelope-waiting','photograph','photo-hold']){h.scene(step);h.update();assert.equal(h.audio.volume,.1);}
+ h.audio.currentTime=37;for(const step of ['date-reveal','podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','envelope-vote','retriever-reveal','retriever-fallback','envelope-waiting','photograph','photo-hold']){h.scene(step);h.update();assert.equal(h.audio.volume,.1);}
  assert.equal(h.audio.plays,1);assert.equal(h.media.length,1);assert.equal(h.audio.currentTime,37);
 });
 
@@ -57,7 +57,7 @@ test('verdict fade reaches zero before fully silent black and ring; envelope vot
 });
 
 test('broadcast, connection recovery and excluded refreshes never start the background',()=>{
- for(const step of ['connection','possession','officer','prophecy','reaction','premeditation','accomplice','silent-black','incoming','complete']){const h=harness({step,offset:4000});h.update();assert.equal(h.audio.plays,0);assert.equal(h.audio.volume,0);assert(h.audio.paused);}
+ for(const step of ['connection','connection-black','possession','officer','prophecy','reaction','premeditation','accomplice','silent-black','incoming','complete']){const h=harness({step,offset:4000});h.update();assert.equal(h.audio.plays,0);assert.equal(h.audio.volume,0);assert(h.audio.paused);}
  const h=harness();delete h.state.chapter7.investigation;h.state.chapter7.step='playing';h.update();assert.equal(h.audio.plays,0);
 });
 

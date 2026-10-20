@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {fresh,CAS_SCRIPT,UNCHANGED,publicState} from '../api/_state.js';
 import {makeBroadcastTestSelector,advanceChapter7,validateChapter7} from '../api/_chapter7.js';
 import {startInvestigation,advanceInvestigation,investigationHostAction,investigationVote,touchInvestigationPresence,envelopeCandidates,previousRetrievers,investigationProgress,recoverSimulatedSession} from '../api/_chapter7-story.js';
-import {storyRecordings,storyRecording,narrationOrder,timedScenes,PHOTO_ENHANCED_MS,PHOTO_ATTENTION_MS,narrationDuration,TRANSMISSION_MS,PROPHECY_AT_MS,transitionFrame,narratorFrame,cameraCue,CONNECTION_MS,sceneDuration,storyProgressDue} from '../chapter7-story-timing.js';
+import {storyRecordings,storyRecording,narrationOrder,timedScenes,PHOTO_ENHANCED_MS,PHOTO_ATTENTION_MS,narrationDuration,TRANSMISSION_MS,PROPHECY_AT_MS,transitionFrame,narratorFrame,cameraCue,CONNECTION_MS,sceneDuration,storyProgressDue,connectionCue,CONNECTION_BLACK_MS,DATE_REVEAL_MS,dateFrame} from '../chapter7-story-timing.js';
 import {photographFrame} from '../chapter7-story.js';
 import {finalNarrationFixture} from './chapter7-fixture.js';
 import {wavMetadata} from './wav-metadata.js';import {mp3Metadata} from './mp3-metadata.js';
@@ -13,7 +13,7 @@ import progress from '../api/progress.js';import host from '../api/host.js';impo
 let now,raw,realDate,realFetch;
 beforeEach(()=>{now=10000000;raw=null;realDate=Date.now;realFetch=global.fetch;Date.now=()=>now;process.env.HOST_KEY='story-host';process.env.KV_REST_API_URL='https://redis.invalid';process.env.KV_REST_API_TOKEN='test';global.fetch=async(_url,options)=>{const a=JSON.parse(options.body);let result;if(a[0]==='GET')result=raw;else{assert.equal(a[0],'EVAL');assert.equal(a[1],CAS_SCRIPT);result=(raw??'')===a[4]?1:0;if(result)raw=a[5];}return {ok:true,json:async()=>({result})};};});
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
-function fixture(real=4,simulated=false){const s=finalNarrationFixture(now);s.players.forEach((p,i)=>p.simulated=i>=real);if(!simulated)s.players=s.players.slice(0,real);makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);now+=CONNECTION_MS;advanceInvestigation(s);return s;}
+function fixture(real=4,simulated=false){const s=finalNarrationFixture(now);s.players.forEach((p,i)=>p.simulated=i>=real);if(!simulated)s.players=s.players.slice(0,real);makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);endAudio(s);advance(s);return s;}
 const inv=s=>s.chapter7.investigation;
 const body=(s,action,extra={})=>({action,generation:s.generation,broadcastId:s.chapter7.id,investigationId:inv(s).id,sequence:inv(s).sequence,...extra});
 function jump(s,checkpoint,extra={}){makeBroadcastTestSelector(checkpoint,extra)(s);validateChapter7(s);}
@@ -28,7 +28,7 @@ test('all supplied recordings and reused effects match measured metadata and pre
  assert.equal(storyRecordings.filter(r=>r.src.startsWith('/assets/chapter7/')).length,10);
 });
 test('broadcast ending is preserved and its completed fade enters narrator without replaying media',()=>{
- const s=fixture();delete s.chapter7.investigation;s.chapter7.step='fading';s.chapter7.completedAt=null;s.chapter7.endedAt=now-799;assert.equal(advanceChapter7(s),UNCHANGED);now++;advanceChapter7(s);assert.equal(s.chapter7.step,'waiting');assert.equal(inv(s).step,'connection');assert.equal(s.chapter7.playbackStartedAt,now-CONNECTION_MS-1-51202-800);validateChapter7(s);
+ const s=fixture();delete s.chapter7.investigation;s.chapter7.step='fading';s.chapter7.completedAt=null;s.chapter7.endedAt=now-799;assert.equal(advanceChapter7(s),UNCHANGED);now++;advanceChapter7(s);assert.equal(s.chapter7.step,'waiting');assert.equal(inv(s).step,'connection');assert.equal(s.chapter7.playbackStartedAt,s.chapter7.startedAt+3000);validateChapter7(s);
 });
 test('native completion drives all ten story recordings in order, including podcast introduction',()=>{
  const s=fixture(),heard=[];
@@ -38,7 +38,7 @@ test('native completion drives all ten story recordings in order, including podc
  assert.deepEqual(heard,narrationOrder.filter(s=>s!=='prophecy'));assert(inv(s).elections.theory);assert.equal(inv(s).elections.theory.voterIds.length,4);
 });
 test('loading never starts the audio clock, early completion is rejected and delayed audio retains its full gate',()=>{
- const s=fixture(),cue=storyRecording('narrator');now+=60000;assert.equal(inv(s).audioStartedAt,null);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));assert.equal(inv(s).audioStartedAt,now);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));now+=Math.ceil(cue.durationMs);investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));assert.equal(inv(s).step,'interlude');
+ const s=fixture(),cue=storyRecording('narrator');now+=60000;assert.equal(inv(s).audioStartedAt,null);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));assert.equal(inv(s).audioStartedAt,now);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));now+=Math.ceil(cue.durationMs);investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));assert.equal(inv(s).step,'date-reveal');
 });
 test('theory ballots remain private, immutable, refresh-safe and unresolved after the first vote',()=>{
  const s=fixture();jump(s,'chapter7-theory-vote');vote(s,'p0','possession');assert.equal(inv(s).step,'theory-vote');assert.equal(inv(s).elections.theory.winnerId,null);assert.equal(vote(s,'p0','possession'),UNCHANGED);assert.throws(()=>vote(s,'p0','accomplice'));const p=publicState(s);assert(!JSON.stringify(p).includes('"votes"'));assert.equal(p.chapter7.investigation.winningTheory,null);assert.equal(investigationProgress(s,'p0').election.voted,true);assert.equal(investigationProgress(JSON.parse(JSON.stringify(s)),'p1').election.voteCount,1);vote(s,'p1','possession');vote(s,'p2','possession');assert.equal(inv(s).step,'theory-vote');vote(s,'p3','premeditation');assert.equal(inv(s).elections.theory.winnerId,'possession');assert.equal(inv(s).step,'vote-fade');
@@ -124,7 +124,7 @@ test('envelope test ballots allow an eligible simulated retriever and real voter
 });
 
 test('natural Chapter 7 entry inherits the persisted simulated cast, retains exclusions and completes both polls without checkpoint opt-in',()=>{
- const s=finalNarrationFixture(now);s.players.forEach((p,n)=>p.simulated=n>=2);makeBroadcastTestSelector('chapter7-after')(s);const history=structuredClone({players:s.players,chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6});startInvestigation(s);assert.equal(inv(s).testMode,true);assert.equal(inv(s).step,'connection');now+=CONNECTION_MS-1;assert.equal(advanceInvestigation(s),UNCHANGED);now++;advanceInvestigation(s);assert.equal(inv(s).step,'narrator');
+ const s=finalNarrationFixture(now);s.players.forEach((p,n)=>p.simulated=n>=2);makeBroadcastTestSelector('chapter7-after')(s);const history=structuredClone({players:s.players,chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6});startInvestigation(s);assert.equal(inv(s).testMode,true);assert.equal(inv(s).step,'connection');now+=90000;assert.equal(advanceInvestigation(s),UNCHANGED);endAudio(s);assert.equal(inv(s).step,'connection-black');advance(s);assert.equal(inv(s).step,'narrator');
  jump(s,'chapter7-theory-vote');const theory=inv(s).testElections.theory;assert.equal(theory.voterIds.length,12);
  investigationHostAction(s,body(s,'investigation-test-vote',{election:'theory',electionId:theory.id,votes:Object.fromEntries(s.players.filter(p=>p.simulated).map(p=>[p.id,'possession']))}));assert.equal(inv(s).step,'theory-vote');for(const id of ['p0','p1'])investigationVote(s,id,'possession',body(s,'investigation-vote',{election:'theory',electionId:theory.id}));while(inv(s).step!=='incoming')advance(s);
  const env=inv(s).testElections.envelope;assert.equal(env.voterIds.length,12);assert.deepEqual(env.candidateIds,Array.from({length:10},(_,n)=>'p'+(n+2)));endAudio(s);now+=600000;assert.equal(advanceInvestigation(s),UNCHANGED);assert.equal(inv(s).step,'envelope-vote');
@@ -136,8 +136,8 @@ test('legacy real-only envelope fallback repairs the persisted test cast without
  assert.equal(investigationProgress(s).needsRecovery,true);assert.equal(storyProgressDue(publicState(s).chapter7,now),true);advanceInvestigation(s);assert.equal(i.step,'envelope-vote');assert.equal(i.testMode,true);assert.deepEqual(i.elections,saved);assert.deepEqual(s.players,players);assert.equal(i.testElections.envelope.voterIds.length,12);assert.equal(i.testElections.envelope.candidateIds.length,10);assert.equal(investigationProgress(s).winningTheory,'possession');assert.equal(investigationProgress(s).needsRecovery,false);validateChapter7(s);
  const snapshot=JSON.stringify(s);assert.equal(advanceInvestigation(s),UNCHANGED);assert.equal(JSON.stringify(s),snapshot);
 });
-test('date reveal follows the measured first sentence and is gone before narrator screen fades in; podcast names and logo are consistent',()=>{
- assert.equal(narratorFrame(2050).date,0);assert(narratorFrame(3500).date>.9);assert.equal(narratorFrame(7400).date,0);assert.equal(narratorFrame(7400).scene,0);assert.equal(narratorFrame(9600).scene,1);assert.equal(narratorFrame(7400).yearScale,1.25);
+test('date is absent throughout narration and has a separate reveal frame; podcast identities stay consistent',()=>{
+ for(const t of [0,2050,3500,7400,9600,33400])assert.equal(narratorFrame(t).date,0);assert.equal(dateFrame(1200).opacity,1);assert.equal(dateFrame(DATE_REVEAL_MS).opacity,0);assert.equal(dateFrame(DATE_REVEAL_MS).yearScale,1.25);
  for(let t=0;t<=11000;t+=10){const f=transitionFrame(t);assert(!(f.title>0&&f.incoming>0));assert(!(f.out>0&&f.title>0));}
  const view=fs.readFileSync('chapter7-story.js','utf8'),css=fs.readFileSync('chapter7.css','utf8');assert(view.includes("title='PODCAST: '+identity"));assert(view.includes('THE MISSING PIECE'));assert(!view.includes('THE THIRTEENTH VOICE'));assert(css.includes('THE MISSING PIECE'));assert.equal(wavMetadata(fs.readFileSync('.'+cameraCue.src)).durationMs,cameraCue.durationMs);
 });
@@ -156,6 +156,14 @@ test('authenticated CLOSE VOTING resolves a simulated retrieval tie, finishes th
 });
 
 test('an active legacy transmission completes its original gate, then future scenes receive the current polish and camera behavior',()=>{
- const s=fixture();jump(s,'chapter7-police');inv(s).polishVersion=1;const oldDuration=narrationDuration(inv(s));assert.equal(oldDuration,TRANSMISSION_MS+1000);endAudio(s);assert.equal(inv(s).step,'interlude');assert.equal(inv(s).polishVersion,2);
- jump(s,'chapter7-waiting',{testMode:true,testRetrieverId:'p2'});inv(s).polishVersion=1;investigationHostAction(s,body(s,'investigation-envelope-return'));advance(s);assert.equal(inv(s).step,'photograph');assert.equal(inv(s).polishVersion,2);assert.deepEqual(investigationHostAction(s,body(s,'investigation-photo-sound')),{playSound:true});validateChapter7(s);
+ const s=fixture();jump(s,'chapter7-police');inv(s).polishVersion=1;const oldDuration=narrationDuration(inv(s));assert.equal(oldDuration,TRANSMISSION_MS+1000);endAudio(s);assert.equal(inv(s).step,'interlude');assert.equal(inv(s).polishVersion,3);
+ jump(s,'chapter7-waiting',{testMode:true,testRetrieverId:'p2'});inv(s).polishVersion=1;investigationHostAction(s,body(s,'investigation-envelope-return'));advance(s);assert.equal(inv(s).step,'photograph');assert.equal(inv(s).polishVersion,3);assert.deepEqual(investigationHostAction(s,body(s,'investigation-photo-sound')),{playSound:true});validateChapter7(s);
+});
+
+test('connection requires both native plays, then exactly one second of black, and the complete narrator precedes the standalone date',()=>{
+ const s=fixture();delete s.chapter7.investigation;startInvestigation(s);const cue=storyRecording('connection'),i=inv(s);assert.equal(i.deadline,null);assert.equal(i.polishVersion,3);now+=90000;assert.equal(advanceInvestigation(s),UNCHANGED);investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=cue.durationMs/2;assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));now+=cue.durationMs/2;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));assert.equal(i.step,'connection-black');assert.equal(i.deadline-i.phaseAt,CONNECTION_BLACK_MS);now=i.deadline-1;assert.equal(advanceInvestigation(s),UNCHANGED);now++;advanceInvestigation(s);assert.equal(i.step,'narrator');assert.equal(i.audioStartedAt,null);
+ const narrator=storyRecording('narrator');investigationHostAction(s,body(s,'investigation-audio-playing',{recording:narrator.id}));now+=narrator.durationMs-251;assert.equal(advanceInvestigation(s),UNCHANGED);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:narrator.id})));now+=251;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:narrator.id}));assert.equal(i.step,'date-reveal');assert.equal(i.deadline-i.phaseAt,DATE_REVEAL_MS);assert.equal(storyRecording(i.step),undefined);advance(s);assert.equal(i.step,'podcast-intro');validateChapter7(s);
+});
+test('stored silent connection states upgrade without replaying the news or bypassing the new audio gate',()=>{
+ const s=fixture();inv(s).polishVersion=2;inv(s).step='connection';inv(s).phaseAt=now;inv(s).deadline=now+CONNECTION_MS;const broadcast=s.chapter7.id;validateChapter7(s);assert.equal(storyProgressDue(publicState(s).chapter7,now),true);advanceInvestigation(s);assert.equal(inv(s).polishVersion,3);assert.equal(inv(s).deadline,null);assert.equal(inv(s).step,'connection');assert.equal(s.chapter7.id,broadcast);validateChapter7(s);
 });

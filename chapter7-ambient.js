@@ -4,7 +4,7 @@ export const INVESTIGATION_AMBIENT_VOLUME=.10;
 export const AMBIENT_FADE_MS=1200;
 export const AMBIENT_SRC='/assets/chapter7/audio/ch7_investigation_ambience.mp3';
 export const AMBIENT_DURATION_MS=144960;
-const scenes=new Set(['narrator','podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade']);
+const scenes=new Set(['narrator','date-reveal','podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade']);
 
 // One existing SynchronizedTrack, driven only by the TV scheduler. Its canonical
 // position follows the investigation clock even while the background is paused.
@@ -24,7 +24,7 @@ export class InvestigationAmbient{
   // Finish fading before the first podcast and before the fully silent black.
   if(i.step==='podcast-intro')cap=smooth((storyRecording(i.step).durationMs-this.positionMs)/AMBIENT_FADE_MS);
   if(['theory-fade','ending-fade'].includes(i.step))cap=smooth((i.deadline-this.state.chapter7.startedAt-this.clock.elapsedNow())/AMBIENT_FADE_MS);
-  if(['silent-black','incoming','connection','complete'].includes(i.step))cap=0;
+  if(['silent-black','incoming','connection','connection-black','complete'].includes(i.step))cap=0;
   return (this.from+(this.target-this.from)*smooth((this.clock.elapsedNow()-this.fadeAt)/AMBIENT_FADE_MS))*cap;
  }
  update(state,positionMs=0){

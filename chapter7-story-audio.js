@@ -1,11 +1,12 @@
 import {storyRecordings,storyRecording,narrationDuration,prophecyAt,cameraCue} from './chapter7-story-timing.js';
+import {ConnectionPlayback} from './chapter7-connection.js';
 import {InvestigationAmbient} from './chapter7-ambient.js';
 
 // One channel backed by the existing cinematic Player. Native media completion,
 // rather than a guessed deadline, authorizes each scene's next transition.
 export class InvestigationAudio{
- constructor(clock,{Player=globalThis.BrookwoodAudio.Player,request,onState}={}){
-  this.clock=clock;this.request=request;this.onState=onState;this.player=new Player({id:'chapter7-story',cues:[...storyRecordings,cameraCue].map(r=>({...r,at:0}))},{externallyDriven:true,elapsedNow:()=>clock.elapsedNow(),canSync:()=>!clock.recovering});
+ constructor(clock,{Player=globalThis.BrookwoodAudio.Player,request,onState,Connection=ConnectionPlayback}={}){
+  this.Connection=Connection;this.clock=clock;this.request=request;this.onState=onState;this.player=new Player({id:'chapter7-story',cues:[...storyRecordings,cameraCue].map(r=>({...r,at:0}))},{externallyDriven:true,elapsedNow:()=>clock.elapsedNow(),canSync:()=>!clock.recovering});
   this.photoClaims=new Set();this.epoch=0;this.entry=null;this.state=null;this.message='';this.blocked=false;
   this.ambient=new InvestigationAmbient(clock,{Player});
  }
@@ -16,10 +17,12 @@ export class InvestigationAudio{
  update(state){
   this.state=state;const i=state.chapter7.investigation,cue=storyRecording(i.step),key=i.id+':'+i.sequence;
   if(this.entry?.key!==key)this.release();
+  if(i.step==='connection'&&i.polishVersion<3)return;
+  if(i.step==='connection'&&!this.connection){this.connection=new this.Connection();this.player.media.set(cue.id,this.connection);}
   this.ambient.update(state,this.entry?this.position():i.offsetMs+(i.audioStartedAt===null?0:Math.max(0,this.now()-i.audioStartedAt)));
   if(!cue)return;
   if(this.entry){this.syncTransmission();if(this.entry.ended)this.ack('investigation-audio-ended');return;}
-  const audio=this.player.media.get(cue.id);if(!audio||audio.readyState<2){this.message='PREPARING AUDIO';return;}
+  const audio=this.player.media.get(cue.id);if(!audio||audio.readyState<2){this.message=audio?.failed?'CONNECTION AUDIO UNAVAILABLE - RETRY':'PREPARING AUDIO';if(audio?.failed)this.blocked=true;return;}
   const epoch=this.epoch,entry={key,cue,audio,epoch,pending:false,ended:false,failed:new Set(),acks:new Set()};this.entry=entry;
   const elapsed=i.audioStartedAt===null?0:Math.max(0,this.now()-i.audioStartedAt);
   try{audio.currentTime=Math.min(Math.max(0,(i.offsetMs+elapsed)/1000),Math.max(0,audio.duration-.15));}catch{this.release();return;}
@@ -68,7 +71,7 @@ export class InvestigationAudio{
    const audio=this.player.media.get(cameraCue.id);if(!audio)return;audio.currentTime=0;audio.volume=cameraCue.volume;audio.muted=false;Promise.resolve(audio.play()).catch(()=>{});
   }).catch(()=>{});
  }
- unlock(){this.ambient.unlock();if(!this.entry)return;this.entry.failed.clear();if(this.entry.ended)this.ack('investigation-audio-ended');else this.play();}
+ unlock(){this.connection?.unlock();this.ambient.unlock();if(!this.entry)return;this.entry.failed.clear();if(!this.entry.audio.paused)this.entry.playing();if(this.entry.ended)this.ack('investigation-audio-ended');else this.play();}
  release(){this.epoch++;if(this.entry){const e=this.entry;this.entry=null;e.audio.removeEventListener('playing',e.playing);e.audio.removeEventListener('ended',e.end);e.audio.removeEventListener('pause',e.pause);e.audio.removeEventListener('error',e.pause);e.audio.pause();if(e.secondary){e.secondary.removeEventListener('ended',e.secondaryEnd);e.secondary.removeEventListener('playing',e.playing);e.secondary.removeEventListener('pause',e.secondaryPause);e.secondary.removeEventListener('error',e.secondaryPause);e.secondary.pause();}}this.blocked=false;this.message='';}
  stop(){this.release();this.ambient.stop();this.player.stop();this.state=null;}
 }
