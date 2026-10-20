@@ -83,3 +83,9 @@ test('host unlock retries the playing acknowledgment without restarting the acti
  audio.connection={unlock(){}};audio.ambient={unlock(){}};audio.entry={failed:new Set(['investigation-audio-playing']),audio:{paused:false},playing(){playing++;},ended:false};audio.play=()=>starts++;
  audio.unlock();assert.equal(playing,1);assert.equal(audio.entry.failed.size,0);assert.equal(starts,1);
 });
+
+
+test('Theory 01 reuses the theory title view and fades into the same Unseen branding as the following introduction',()=>{
+ const h=viewHarness();h.at(104000);h.show('theory1-transition');assert.equal(h.node('ch7TransitionNumber').textContent,'THEORY 01');assert.equal(h.node('ch7TransitionTitle').textContent,'POSSESSION');assert.equal(h.node('ch7Transition').style.opacity,'1');assert.equal(h.node('ch7Scene').style.opacity,'0');assert(h.node('ch7Waveform').hidden);
+ h.at(108000);h.show('theory1-transition');assert.equal(h.node('ch7Title').textContent,'PODCAST: THE UNSEEN');assert.equal(h.node('ch7PodcastLogo').dataset.identity,'THE UNSEEN');const opacity=h.node('ch7Scene').style.opacity;h.show('theory2-transition');assert.equal(h.node('ch7Scene').style.opacity,opacity);h.show('podcast-intro');assert.equal(h.node('ch7Title').textContent,'PODCAST: THE UNSEEN');
+});

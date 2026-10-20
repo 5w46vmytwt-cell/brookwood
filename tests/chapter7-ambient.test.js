@@ -31,29 +31,29 @@ function harness({step='narrator',offset=0,deny=false,pending=false,ready=4}={})
 }
 
 test('supplied ambience remains byte-for-byte original and its measured loop duration matches the engine',()=>{
- const bytes=fs.readFileSync('.'+AMBIENT_SRC);assert.equal(createHash('sha256').update(bytes).digest('hex'),'4251eb6f0ca9892bdf86ad70f216163e145bc7bb90579ae8a0c2725e6588a1d1');assert.equal(mp3Metadata(bytes).durationMs,AMBIENT_DURATION_MS);assert.equal(INVESTIGATION_AMBIENT_VOLUME,.10);
+ const bytes=fs.readFileSync('.'+AMBIENT_SRC);assert.equal(createHash('sha256').update(bytes).digest('hex'),'4251eb6f0ca9892bdf86ad70f216163e145bc7bb90579ae8a0c2725e6588a1d1');assert.equal(mp3Metadata(bytes).durationMs,AMBIENT_DURATION_MS);assert.equal(INVESTIGATION_AMBIENT_VOLUME,.07);
 });
 
 test('one synchronized loop fades in and continues across eligible narrator, voting and photo scenes',async()=>{
- const h=harness();h.update();await flush();assert.equal(h.audio.volume,0);assert(h.audio.loop);assert.equal(h.audio.plays,1);h.tick(AMBIENT_FADE_MS/2);assert.equal(h.audio.volume,.05);h.tick(AMBIENT_FADE_MS);assert.equal(h.audio.volume,.1);
- h.audio.currentTime=37;for(const step of ['date-reveal','podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','envelope-vote','retriever-reveal','retriever-fallback','envelope-waiting','photograph','photo-hold']){h.scene(step);h.update();assert.equal(h.audio.volume,.1);}
+ const h=harness();h.update();await flush();assert.equal(h.audio.volume,0);assert(h.audio.loop);assert.equal(h.audio.plays,1);h.tick(AMBIENT_FADE_MS/2);assert.equal(h.audio.volume,.035);h.tick(AMBIENT_FADE_MS);assert.equal(h.audio.volume,.07);
+ h.audio.currentTime=37;for(const step of ['date-reveal','podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','envelope-vote','retriever-reveal','retriever-fallback','envelope-waiting','photograph','photo-hold']){h.scene(step);h.update();assert.equal(h.audio.volume,.07);}
  assert.equal(h.audio.plays,1);assert.equal(h.media.length,1);assert.equal(h.audio.currentTime,37);
 });
 
 test('podcasts fade the same loop out, radio stays silent, and narrator return restores it without duplicates',async()=>{
- const h=harness();h.update();await flush();h.tick(1200);h.scene('possession');h.update();h.tick(1800);assert.equal(h.audio.volume,.05);h.tick(2400);assert.equal(h.audio.volume,0);assert(h.audio.paused);
- for(const step of ['officer','prophecy','reaction','premeditation','accomplice','theory2-transition','theory3-transition','narrator-transition']){h.scene(step);h.update();assert.equal(h.audio.volume,0);assert(h.audio.paused);}
- h.scene('vote-intro');h.update();await flush();h.tick(3600);assert.equal(h.audio.volume,.1);assert.equal(h.audio.plays,2);assert.equal(h.media.length,1);
+ const h=harness();h.update();await flush();h.tick(1200);h.scene('possession');h.update();h.tick(1800);assert.equal(h.audio.volume,.035);h.tick(2400);assert.equal(h.audio.volume,0);assert(h.audio.paused);
+ for(const step of ['officer','prophecy','reaction','premeditation','accomplice','theory1-transition','theory2-transition','theory3-transition','narrator-transition']){h.scene(step);h.update();assert.equal(h.audio.volume,0);assert(h.audio.paused);}
+ h.scene('vote-intro');h.update();await flush();h.tick(3600);assert.equal(h.audio.volume,.07);assert.equal(h.audio.plays,2);assert.equal(h.media.length,1);
 });
 
 test('podcast introduction fades out before the podcast dialogue instead of rebounding in its interlude',async()=>{
- const h=harness({step:'podcast-intro'}),duration=storyRecording('podcast-intro').durationMs;h.update();await flush();h.tick(1200,10000);assert.equal(h.audio.volume,.1);h.update(duration-600);assert.equal(h.audio.volume,.05);h.update(duration);assert.equal(h.audio.volume,0);
+ const h=harness({step:'podcast-intro'}),duration=storyRecording('podcast-intro').durationMs;h.update();await flush();h.tick(1200,10000);assert.equal(h.audio.volume,.07);h.update(duration-600);assert.equal(h.audio.volume,.035);h.update(duration);assert.equal(h.audio.volume,0);
  h.scene('interlude');h.update();assert(h.audio.paused);h.scene('possession');h.update();assert.equal(h.audio.volume,0);assert.equal(h.audio.plays,1);
 });
 
 test('verdict fade reaches zero before fully silent black and ring; envelope voting fades the loop back in',async()=>{
- const h=harness({step:'theory-reveal'});h.update();await flush();h.tick(1200);h.scene('theory-fade');h.update();h.tick(2200);assert.equal(h.audio.volume,.05);h.tick(2800);assert.equal(h.audio.volume,0);h.scene('silent-black');h.update();assert(h.audio.paused);h.scene('incoming');h.update();assert.equal(h.audio.volume,0);assert.equal(h.audio.plays,1);
- h.scene('envelope-vote');h.update();await flush();h.tick(4000);assert.equal(h.audio.volume,.1);assert.equal(h.audio.plays,2);
+ const h=harness({step:'theory-reveal'});h.update();await flush();h.tick(1200);h.scene('theory-fade');h.update();h.tick(2200);assert.equal(h.audio.volume,.035);h.tick(2800);assert.equal(h.audio.volume,0);h.scene('silent-black');h.update();assert(h.audio.paused);h.scene('incoming');h.update();assert.equal(h.audio.volume,0);assert.equal(h.audio.plays,1);
+ h.scene('envelope-vote');h.update();await flush();h.tick(4000);assert.equal(h.audio.volume,.07);assert.equal(h.audio.plays,2);
 });
 
 test('broadcast, connection recovery and excluded refreshes never start the background',()=>{
@@ -62,16 +62,16 @@ test('broadcast, connection recovery and excluded refreshes never start the back
 });
 
 test('refresh resumes a single native loop at the canonical modulo offset and fades from zero',async()=>{
- const offset=AMBIENT_DURATION_MS*2+3500,h=harness({step:'envelope-vote',offset});h.update();await flush();assert.equal(h.audio.currentTime,3.5);assert.equal(h.audio.volume,0);h.tick(offset+1200);for(let n=0;n<20;n++)h.update();assert.equal(h.audio.plays,1);assert.equal(h.media.length,1);assert.equal(h.audio.volume,.1);
+ const offset=AMBIENT_DURATION_MS*2+3500,h=harness({step:'envelope-vote',offset});h.update();await flush();assert.equal(h.audio.currentTime,3.5);assert.equal(h.audio.volume,0);h.tick(offset+1200);for(let n=0;n<20;n++)h.update();assert.equal(h.audio.plays,1);assert.equal(h.media.length,1);assert.equal(h.audio.volume,.07);
  h.ambient.stop();assert(h.audio.paused);assert.equal(h.audio.volume,0);
 });
 
 test('autoplay refusal waits for the existing unlock gesture, then fades in on the same element',async()=>{
- const h=harness({deny:true});h.update();await flush();h.tick(1200);assert(h.ambient.needsUnlock());for(let n=0;n<10;n++)h.update();assert.equal(h.audio.plays,1);h.deny(false);h.ambient.unlock();await flush();assert.equal(h.audio.volume,0);h.tick(1800);assert.equal(h.audio.volume,.05);h.tick(2400);assert.equal(h.audio.volume,.1);assert.equal(h.audio.plays,2);assert(!h.ambient.needsUnlock());
+ const h=harness({deny:true});h.update();await flush();h.tick(1200);assert(h.ambient.needsUnlock());for(let n=0;n<10;n++)h.update();assert.equal(h.audio.plays,1);h.deny(false);h.ambient.unlock();await flush();assert.equal(h.audio.volume,0);h.tick(1800);assert.equal(h.audio.volume,.035);h.tick(2400);assert.equal(h.audio.volume,.07);assert.equal(h.audio.plays,2);assert(!h.ambient.needsUnlock());
 });
 
 test('late media readiness fades from actual playback and canonical seeking survives scheduler recovery',async()=>{
- const h=harness({ready:0});h.update();h.tick(3000);assert.equal(h.audio.plays,0);h.audio.readyState=4;h.audio.emit('canplay');await flush();assert.equal(h.audio.volume,0);assert.equal(h.audio.currentTime,3);h.tick(4200);assert.equal(h.audio.volume,.1);h.sync(false);h.tick(5000);h.sync(true);h.update();assert.equal(h.audio.plays,1);
+ const h=harness({ready:0});h.update();h.tick(3000);assert.equal(h.audio.plays,0);h.audio.readyState=4;h.audio.emit('canplay');await flush();assert.equal(h.audio.volume,0);assert.equal(h.audio.currentTime,3);h.tick(4200);assert.equal(h.audio.volume,.07);h.sync(false);h.tick(5000);h.sync(true);h.update();assert.equal(h.audio.plays,1);
 });
 
 test('ending fade and run replacement stop the old loop; pending play never creates another element',async()=>{

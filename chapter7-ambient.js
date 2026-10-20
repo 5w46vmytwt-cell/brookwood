@@ -1,6 +1,6 @@
 import {smooth,storyRecording} from './chapter7-story-timing.js';
 
-export const INVESTIGATION_AMBIENT_VOLUME=.10;
+export const INVESTIGATION_AMBIENT_VOLUME=.07;
 export const AMBIENT_FADE_MS=1200;
 export const AMBIENT_SRC='/assets/chapter7/audio/ch7_investigation_ambience.mp3';
 export const AMBIENT_DURATION_MS=144960;

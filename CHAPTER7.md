@@ -1,5 +1,9 @@
 # Chapter 7 — THE THREE THEORIES & THE EVIDENCE
 
+## Theory 01 and ambience level (2026-10-20)
+
+Investigation ambience now targets 7% through the existing single constant; fades, exclusions and foreground audio levels are unchanged. The date reveal now leads to `theory1-transition`, using the same nine-second title/fade renderer as Theories 02/03, then the preserved podcast introduction recording with THE UNSEEN branding. No recording starts during the title transition. Focused validation passed 11 ambience tests and two Theory 01 state/view tests.
+
 ## Supplied connection recovery and deferred date (2026-10-20)
 
 This supersedes the earlier silent recovery and date-during-narration notes below. New investigation scenes use `polishVersion: 3`. The unchanged `ch7_connection_recovery.mp3` contains 140544 samples at 44100 Hz (3186.939 ms; SHA-256 `93d13ebe50495e0c200f29a2f2b54e2cf5587f291921407682c27527c8a7c296`). A single Web Audio sample-clock source loops the decoded file exactly twice (6373.878 ms), through the existing investigation audio controller and authenticated native playback acknowledgments. Refresh reconstructs the remaining position; autoplay refusal uses the existing resume gesture. No narration or effect gains are faded.
@@ -10,7 +14,7 @@ Local validation: 80/80 focused Chapter 7 tests passed, including sample-clock l
 
 ## Investigation ambience (2026-10-20)
 
-`chapter7-ambient.js` reuses the existing cinematic Player's synchronized looping track and the TV scheduler. `INVESTIGATION_AMBIENT_VOLUME` is the single volume setting (0.10); only this background fades, over 1200 ms. One element survives investigation scene changes, seeks to the investigation clock modulo the decoded media duration after refresh, and retries blocked playback through the existing audio unlock action. A slow, blocked or failed background never gates narration or changes its volume.
+`chapter7-ambient.js` reuses the existing cinematic Player's synchronized looping track and the TV scheduler. `INVESTIGATION_AMBIENT_VOLUME` is the single volume setting (0.07); only this background fades, over 1200 ms. One element survives investigation scene changes, seeks to the investigation clock modulo the decoded media duration after refresh, and retries blocked playback through the existing audio unlock action. A slow, blocked or failed background never gates narration or changes its volume.
 
 The background plays during the original narrator's return/introduction, theory voting and verdict reveal, envelope voting/retrieval waiting, and both photograph views. Podcasts, their transitions, recovered radio/prophecy and connection recovery are excluded. The introduction fades the background before the first podcast; the verdict fade reaches zero before the completely silent black and phone ring. The ending fades to zero before completion. No Chapter 6 engine or soundtrack behavior changes.
 
