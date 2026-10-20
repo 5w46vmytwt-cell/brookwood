@@ -7,6 +7,6 @@ const entries=[...files.map(([step,file])=>({step,src:'/assets/chapter7/audio/'+
 const media=entries.map((e,i)=>{const b=readFileSync('.'+e.src),meta=e.src.endsWith('.wav')?wavMetadata(b):mp3Metadata(b);return {...e,id:'chapter7-story-'+e.step,number:i+1,...meta,sha256:createHash('sha256').update(b).digest('hex')};});
 if(process.argv.includes('--write')){
  writeFileSync('chapter7-story-media.json',JSON.stringify(media,null,2)+'\n');
- writeFileSync('chapter7-recordings.js','// Generated from supplied media by scripts/measure-chapter7-story.mjs --write.\nexport const storyRecordings='+JSON.stringify(media.map(({step,src,type,volume,id,number,durationMs})=>({step,src,type,volume,id,number,durationMs})),null,2)+';\n');
+ writeFileSync('chapter7-recordings.js','// Generated from supplied media by scripts/measure-chapter7-story.mjs --write.\nexport const storyRecordings='+JSON.stringify(media.filter(r=>r.step!=='scare').map(({step,src,type,volume,id,number,durationMs})=>({step,src,type,volume,id,number,durationMs})),null,2)+';\n');
 }
 for(const r of media)console.log(r.step+': '+r.durationMs.toFixed(3)+' ms — '+r.src);

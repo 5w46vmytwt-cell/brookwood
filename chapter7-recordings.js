@@ -91,15 +91,6 @@ export const storyRecordings=[
     "durationMs": 41575
   },
   {
-    "step": "scare",
-    "src": "/assets/chapter6/audio/ch6_sfx_scream.mp3",
-    "type": "sfx",
-    "volume": 0.75,
-    "id": "chapter7-story-scare",
-    "number": 11,
-    "durationMs": 3312
-  },
-  {
     "step": "incoming",
     "src": "/assets/chapter3/audio/private-message-vibration.wav",
     "type": "sfx",

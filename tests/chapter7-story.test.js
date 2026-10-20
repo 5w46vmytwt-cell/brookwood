@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {fresh,CAS_SCRIPT,UNCHANGED,publicState} from '../api/_state.js';
 import {makeBroadcastTestSelector,advanceChapter7,validateChapter7} from '../api/_chapter7.js';
 import {startInvestigation,advanceInvestigation,investigationHostAction,investigationVote,touchInvestigationPresence,envelopeCandidates,previousRetrievers,investigationProgress} from '../api/_chapter7-story.js';
-import {storyRecordings,storyRecording,narrationOrder,timedScenes,PHOTO_ENHANCED_MS,PHOTO_ATTENTION_MS} from '../chapter7-story-timing.js';
+import {storyRecordings,storyRecording,narrationOrder,timedScenes,PHOTO_ENHANCED_MS,PHOTO_ATTENTION_MS,narrationDuration,TRANSMISSION_MS,PROPHECY_AT_MS,transitionFrame} from '../chapter7-story-timing.js';
 import {photographFrame} from '../chapter7-story.js';
 import {finalNarrationFixture} from './chapter7-fixture.js';
 import {wavMetadata} from './wav-metadata.js';import {mp3Metadata} from './mp3-metadata.js';
@@ -17,14 +17,14 @@ function fixture(real=4){const s=finalNarrationFixture(now);s.players.forEach((p
 const inv=s=>s.chapter7.investigation;
 const body=(s,action,extra={})=>({action,generation:s.generation,broadcastId:s.chapter7.id,investigationId:inv(s).id,sequence:inv(s).sequence,...extra});
 function jump(s,checkpoint,extra={}){makeBroadcastTestSelector(checkpoint,extra)(s);validateChapter7(s);}
-function endAudio(s){const cue=storyRecording(inv(s).step);investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=Math.ceil(cue.durationMs-inv(s).offsetMs)+1;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));validateChapter7(s);}
+function endAudio(s){const cue=storyRecording(inv(s).step);investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=Math.ceil(narrationDuration(inv(s))-inv(s).offsetMs)+1;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));validateChapter7(s);}
 function advance(s){now=inv(s).deadline;advanceInvestigation(s);validateChapter7(s);}
 function vote(s,id,target,key='theory'){const e=inv(s).elections[key];return investigationVote(s,id,target,body(s,'investigation-vote',{election:key,electionId:e.id}),now);}
 async function call(handler,b={},cookie=''){let status,data;const headers={};await handler({method:'POST',body:b,headers:{cookie}},{status(n){status=n;return this;},setHeader(k,v){headers[k]=v;},json(j){data=j;}});return {status,data,headers};}
 
 test('all supplied recordings and reused effects match measured metadata and preserved hashes',()=>{
  const media=JSON.parse(fs.readFileSync('chapter7-story-media.json'));assert.equal(media.length,12);
- for(const item of media){const b=fs.readFileSync('.'+item.src),measured=item.src.endsWith('.wav')?wavMetadata(b):mp3Metadata(b);assert.equal(measured.durationMs,item.durationMs);assert.equal(createHash('sha256').update(b).digest('hex'),item.sha256);assert.equal(storyRecording(item.step).durationMs,item.durationMs);}
+ for(const item of media){const b=fs.readFileSync('.'+item.src),measured=item.src.endsWith('.wav')?wavMetadata(b):mp3Metadata(b);assert.equal(measured.durationMs,item.durationMs);assert.equal(createHash('sha256').update(b).digest('hex'),item.sha256);if(item.step!=='scare')assert.equal(storyRecording(item.step).durationMs,item.durationMs);}
  assert.equal(storyRecordings.filter(r=>r.src.startsWith('/assets/chapter7/')).length,10);
 });
 test('broadcast ending is preserved and its completed fade enters narrator without replaying media',()=>{
@@ -35,7 +35,7 @@ test('native completion drives all ten story recordings in order, including podc
  while(inv(s).step!=='theory-vote'){
   const i=inv(s);if(storyRecording(i.step)){heard.push(i.step);const snapshot=JSON.stringify(s);now+=90000;assert.equal(advanceInvestigation(s),UNCHANGED);assert.equal(JSON.stringify(s),snapshot);endAudio(s);}else advance(s);
  }
- assert.deepEqual(heard,narrationOrder);assert(inv(s).elections.theory);assert.equal(inv(s).elections.theory.voterIds.length,4);
+ assert.deepEqual(heard,narrationOrder.filter(s=>s!=='prophecy'));assert(inv(s).elections.theory);assert.equal(inv(s).elections.theory.voterIds.length,4);
 });
 test('loading never starts the audio clock, early completion is rejected and delayed audio retains its full gate',()=>{
  const s=fixture(),cue=storyRecording('narrator');now+=60000;assert.equal(inv(s).audioStartedAt,null);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));assert.equal(inv(s).audioStartedAt,now);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));now+=Math.ceil(cue.durationMs);investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));assert.equal(inv(s).step,'interlude');
@@ -54,10 +54,12 @@ test('real phones observed in the investigation establish the connected electora
 });
 test('group-spoken reveal is exclusive: 3-second headline, 1.5-second reveal plus 5-second hold, fade, silent black',()=>{
  assert.match(fs.readFileSync('chapter7.css','utf8'),/#chapter7Investigation\{[^}]*background:#000;/);
- const s=fixture();jump(s,'chapter7-theory-vote');vote(s,'p0','possession');investigationHostAction(s,body(s,'investigation-close-voting'));advance(s);assert.equal(inv(s).step,'spoken');assert.equal(investigationProgress(s).winningTheory,null);assert.equal(inv(s).deadline-inv(s).phaseAt,3000);advance(s);assert.equal(inv(s).step,'theory-reveal');assert.equal(investigationProgress(s).winningTheory,'possession');assert.equal(inv(s).deadline-inv(s).phaseAt,6500);advance(s);assert.equal(inv(s).step,'theory-fade');advance(s);assert.equal(inv(s).step,'silent-black');assert.equal(inv(s).deadline-inv(s).phaseAt,3500);assert(!storyRecording(inv(s).step));advance(s);assert.equal(inv(s).step,'scare');
+ const s=fixture();jump(s,'chapter7-theory-vote');vote(s,'p0','possession');investigationHostAction(s,body(s,'investigation-close-voting'));advance(s);assert.equal(inv(s).step,'spoken');assert.equal(investigationProgress(s).winningTheory,null);assert.equal(inv(s).deadline-inv(s).phaseAt,3000);advance(s);assert.equal(inv(s).step,'theory-reveal');assert.equal(investigationProgress(s).winningTheory,'possession');assert.equal(inv(s).deadline-inv(s).phaseAt,6500);advance(s);assert.equal(inv(s).step,'theory-fade');advance(s);assert.equal(inv(s).step,'silent-black');assert.equal(inv(s).deadline-inv(s).phaseAt,3500);assert(!storyRecording(inv(s).step));advance(s);assert.equal(inv(s).step,'incoming');
 });
-test('jump scare finishes its unchanged effect before black pause and existing phone vibration message',()=>{
- const s=fixture();jump(s,'chapter7-spoken',{testMode:true,testTheory:'possession'});while(inv(s).step!=='scare')advance(s);assert.equal(storyRecording('scare').src,'/assets/chapter6/audio/ch6_sfx_scream.mp3');endAudio(s);assert.equal(inv(s).step,'after-scare');assert.equal(inv(s).deadline-inv(s).phaseAt,1000);advance(s);assert.equal(inv(s).step,'incoming');assert.equal(storyRecording('incoming').src,'/assets/chapter3/audio/private-message-vibration.wav');endAudio(s);assert.equal(inv(s).step,'message-hold');advance(s);assert.equal(inv(s).step,'envelope-vote');
+test('verdict omits scare and opens a persistent private envelope poll during the incoming ring',()=>{
+ const s=fixture();jump(s,'chapter7-spoken',{testMode:true,testTheory:'possession'});while(inv(s).step!=='incoming')advance(s);
+ assert.equal(storyRecording('scare'),undefined);assert(inv(s).testElections.envelope);assert.equal(investigationProgress(s,'p0').election.key,'envelope');
+ endAudio(s);assert.equal(inv(s).step,'envelope-vote');now+=900000;assert.equal(advanceInvestigation(s),UNCHANGED);assert.equal(inv(s).deadline,null);
 });
 test('all recorded retrieval identities are excluded as candidates, including generic retrieval history',()=>{
  const s=fixture(6);s.physicalRetrievals=[{playerId:'p2',task:'other'}];s.chapter2Retrieval={retrieverPlayerId:'p3'};assert.deepEqual([...previousRetrievers(s)].sort(),['p0','p1','p2','p3']);assert.deepEqual(envelopeCandidates(s).map(p=>p.id),['p4','p5']);jump(s,'chapter7-envelope-vote');assert.deepEqual(investigationProgress(s,'p0').election.candidates.map(p=>p.id),['p4','p5']);assert.throws(()=>vote(s,'p0','p1','envelope'));vote(s,'p0','p4','envelope');vote(s,'p1','p4','envelope');assert.equal(inv(s).step,'envelope-vote');assert.equal(inv(s).elections.envelope.votes.p0,'p4');
@@ -78,11 +80,45 @@ test('checkpoints never fabricate real results: missing prerequisites require ex
  const s=fixture(),history=structuredClone({players:s.players,chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6});assert.throws(()=>jump(s,'chapter7-spoken'));assert.throws(()=>jump(s,'chapter7-photo'));jump(s,'chapter7-spoken',{testMode:true,testTheory:'premeditation'});assert.equal(inv(s).elections.theory,undefined);assert.equal(inv(s).testSetup.theoryId,'premeditation');jump(s,'chapter7-window',{testMode:true,testRetrieverId:'p2'});assert.equal(inv(s).offsetMs,34300);assert.equal(inv(s).elections.envelope,undefined);assert.deepEqual({players:s.players,chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6},history);
 });
 test('navigating completed real votes preserves ballots and outcomes; explicit test ballots use separate storage',()=>{
- const s=fixture();jump(s,'chapter7-theory-vote');vote(s,'p0','accomplice');investigationHostAction(s,body(s,'investigation-close-voting'));const saved=structuredClone(inv(s).elections);jump(s,'chapter7-spoken');assert.deepEqual(inv(s).elections,saved);assert.throws(()=>jump(s,'chapter7-theory-vote'));jump(s,'chapter7-theory-vote',{testMode:true});const e=inv(s).testElections.theory;for(const id of ['p0','p1','p2','p3'])investigationVote(s,id,'possession',body(s,'investigation-vote',{election:'theory',electionId:e.id}));assert.equal(inv(s).testElections.theory.winnerId,'possession');assert.deepEqual(inv(s).elections,saved);
+ const s=fixture();jump(s,'chapter7-theory-vote');vote(s,'p0','accomplice');investigationHostAction(s,body(s,'investigation-close-voting'));const saved=structuredClone(inv(s).elections);jump(s,'chapter7-spoken');assert.deepEqual(inv(s).elections,saved);assert.throws(()=>jump(s,'chapter7-theory-vote'));jump(s,'chapter7-theory-vote',{testMode:true});const e=inv(s).testElections.theory;for(const id of ['p0','p1','p2','p3'])investigationVote(s,id,'possession',body(s,'investigation-vote',{election:'theory',electionId:e.id}));investigationHostAction(s,body(s,'investigation-close-voting'));assert.equal(inv(s).testElections.theory.winnerId,'possession');assert.deepEqual(inv(s).elections,saved);
 });
 test('player credentials, generation, election ID and scene sequence fence stale votes and media events',async()=>{
  const s=fixture();jump(s,'chapter7-theory-vote');const b=body(s,'investigation-vote',{election:'theory',electionId:inv(s).elections.theory.id,targetId:'possession'});raw=JSON.stringify(s);assert.equal((await call(player,{...b,id:'p0',token:'wrong'})).status,401);assert.equal((await call(player,{...b,id:'p0',token:'t0',generation:'stale'})).status,409);assert.equal((await call(player,{...b,id:'p0',token:'t0',sequence:b.sequence-1})).status,409);assert.equal((await call(player,{...b,id:'p0',token:'t0'})).status,200);const p=await call(me,{id:'p0',token:'t0'});assert.equal(p.data.chapter7.investigation.election.voted,true);assert(!JSON.stringify(p.data).includes('"votes"'));jump(s,'chapter7-narrator');assert.throws(()=>investigationHostAction(s,{...body(s,'investigation-audio-playing',{recording:storyRecording('narrator').id}),sequence:0}));
 });
 test('checkpoint API requires host authorization and reuses the existing cookie without another PIN',async()=>{
  const s=fixture();raw=JSON.stringify(s);assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter7-narrator'})).status,403);const auth=await call(host,{action:'maze-login',code:'story-host'}),cookie=auth.headers['Set-Cookie'].split(';')[0];assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter7-narrator'},cookie)).status,200);const options=await call(host,{action:'investigation-checkpoint-options'},cookie);assert.equal(options.status,200);assert.deepEqual(options.data.candidates.map(p=>p.id),['p2','p3']);assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter7-waiting'},cookie)).status,409);
+});
+
+test('podcast transitions hold a full title, keep narration silent and enter the next native recording only at the deadline',()=>{
+ const s=fixture();for(const [checkpoint,transition,next] of [['chapter7-second','theory3-transition','accomplice'],['chapter7-third','narrator-transition','vote-intro']]){
+  jump(s,checkpoint);endAudio(s);assert.equal(inv(s).step,transition);assert.equal(inv(s).deadline-inv(s).phaseAt,transition==='narrator-transition'?10000:8000);assert.equal(inv(s).audioStartedAt,null);
+  now=inv(s).deadline-1;assert.equal(advanceInvestigation(s),UNCHANGED);advance(s);assert.equal(inv(s).step,next);assert.equal(inv(s).audioStartedAt,null);
+ }
+ assert.equal(transitionFrame(3000).title,1);assert.equal(transitionFrame(5500).title,1);assert.equal(transitionFrame(1500).title,0);assert.equal(transitionFrame(8000).incoming,1);
+});
+test('combined transmission rejects officer-only completion and advances directly to reaction after prophecy',()=>{
+ const s=fixture();jump(s,'chapter7-police');const cue=storyRecording('officer');investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=Math.ceil(cue.durationMs);assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));assert.equal(PROPHECY_AT_MS,cue.durationMs-900);now+=Math.ceil(TRANSMISSION_MS-cue.durationMs);investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));assert.equal(inv(s).next,'reaction');advance(s);assert.equal(inv(s).step,'reaction');
+});
+test('host simulated assignments are isolated test data, preserve real ballots, support ties and fence stale polls',async()=>{
+ const s=fixture(2);jump(s,'chapter7-theory-vote',{testMode:true});const e=inv(s).testElections.theory;assert.equal(e.voterIds.length,12);assert.equal(inv(s).elections.theory,undefined);
+ const rb=body(s,'investigation-vote',{election:'theory',electionId:e.id});investigationVote(s,'p0','possession',rb);const assignments=Object.fromEntries(s.players.filter(p=>p.simulated).map((p,n)=>[p.id,n<5?'possession':'premeditation']));
+ const b=body(s,'investigation-test-vote',{election:'theory',electionId:e.id,votes:assignments});raw=JSON.stringify(s);assert.equal((await call(host,b)).status,403);
+ const login=await call(host,{action:'maze-login',code:'story-host'}),cookie=login.headers['Set-Cookie'].split(';')[0];assert.equal((await call(host,b,cookie)).status,200);const voted=JSON.parse(raw);assert.equal(inv(voted).step,'theory-vote');assert.equal(inv(voted).testElections.theory.votes.p0,'possession');assert.equal(investigationProgress(voted).election.simulatedVoteCount,10);
+ assert.equal((await call(host,{...b,votes:{p0:'accomplice'}},cookie)).status,403);assert.equal((await call(host,{...b,electionId:'stale'},cookie)).status,409);
+ investigationVote(voted,'p1','premeditation',body(voted,'investigation-vote',{election:'theory',electionId:e.id}));assert.equal(inv(voted).step,'vote-fade');assert.deepEqual(inv(voted).elections,{});
+ jump(voted,'chapter7-envelope-vote',{testMode:true});const env=inv(voted).testElections.envelope;assert.equal(env.voterIds.length,12);assert(!env.candidateIds.includes('p0'));assert(!env.candidateIds.includes('p1'));assert(env.candidateIds.includes('p2'));assert.equal(investigationProgress(voted,'p0').election.canVote,true);
+ assert.throws(()=>investigationHostAction(voted,body(voted,'investigation-test-vote',{election:'envelope',electionId:env.id,votes:{p2:'p0'}})));
+ validateChapter7(voted);
+});
+test('Chapter 7 test fill reuses authenticated controls without rewriting historical selections',async()=>{
+ const s=fixture(2);s.players=s.players.slice(0,2);jump(s,'chapter7-narrator',{testMode:true});raw=JSON.stringify(s);const history=structuredClone({chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6});const b=body(s,'investigation-test-fill');assert.equal((await call(host,b)).status,403);assert.equal((await call(host,{...b,code:'story-host'})).status,200);const filled=JSON.parse(raw);assert.equal(filled.players.length,12);assert.equal(filled.players.filter(p=>p.simulated).length,10);assert.deepEqual({chapter4:filled.chapter4,chapter5:filled.chapter5,chapter6:filled.chapter6},history);
+});
+
+test('host test actions are unavailable during normal gameplay and legacy scare state recovers silently',async()=>{
+ const s=fixture();jump(s,'chapter7-theory-vote');raw=JSON.stringify(s);const b=body(s,'investigation-test-vote',{election:'theory',electionId:inv(s).elections.theory.id,votes:{p4:'possession'},code:'story-host'});assert.equal((await call(host,b)).status,403);assert.equal((await call(host,{action:'investigation-test-options',code:'story-host'})).status,403);assert.equal((await call(host,body(s,'investigation-test-fill',{code:'story-host'}))).status,409);
+ inv(s).step='scare';inv(s).deadline=null;advanceInvestigation(s);assert.equal(inv(s).step,'silent-black');assert(!storyRecording('scare'));validateChapter7(s);
+});
+test('envelope test ballots allow an eligible simulated retriever and real voters can vote during ringing',()=>{
+ const s=fixture(2);jump(s,'chapter7-message',{testMode:true});const e=inv(s).testElections.envelope;investigationVote(s,'p0','p2',body(s,'investigation-vote',{election:'envelope',electionId:e.id}));assert.equal(inv(s).step,'incoming');
+ investigationHostAction(s,body(s,'investigation-test-vote',{election:'envelope',electionId:e.id,votes:Object.fromEntries(s.players.filter(p=>p.simulated).map(p=>[p.id,'p2']))}));assert.equal(inv(s).step,'incoming');investigationVote(s,'p1','p2',body(s,'investigation-vote',{election:'envelope',electionId:e.id}));assert.equal(inv(s).step,'retriever-reveal');assert.equal(inv(s).testElections.envelope.winnerId,'p2');assert.equal(inv(s).elections.envelope,undefined);jump(s,'chapter7-photo',{testMode:true,testRetrieverId:'p2'});assert.equal(inv(s).step,'photograph');validateChapter7(s);
 });

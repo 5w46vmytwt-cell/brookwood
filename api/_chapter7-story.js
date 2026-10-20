@@ -1,10 +1,10 @@
 import {randomUUID} from 'node:crypto';
 import {LobbyError,UNCHANGED} from './_state.js';
 import {tokenVoteWinner} from './_chapter6.js';
-import {narrationOrder,theories,storyRecording,timedScenes,storyCheckpoints,PHOTO_ENHANCED_MS} from '../chapter7-story-timing.js';
+import {narrationOrder,theories,storyRecording,timedScenes,storyCheckpoints,PHOTO_ENHANCED_MS,narrationDuration} from '../chapter7-story-timing.js';
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
 const theoryIds=theories.map(t=>t[0]);
-const validSteps=[...narrationOrder,'interlude','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','silent-black','scare','after-scare','incoming','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade','complete'];
+const validSteps=['theory2-transition','theory3-transition','narrator-transition',...narrationOrder,'interlude','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','silent-black','scare','after-scare','incoming','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade','complete'];
 export function previousRetrievers(s){
  const ids=new Set();
  function visit(value,path=''){
@@ -22,7 +22,7 @@ export function previousRetrievers(s){
 export const envelopeCandidates=s=>realPlayers(s).filter(p=>!previousRetrievers(s).has(p.id));
 export function startInvestigation(s,now=Date.now()){
  const c=s.chapter7;if(s.phase!=='chapter7'||c.step!=='waiting'||c.investigation)return UNCHANGED;
- c.investigation={id:randomUUID(),startedAt:now,sequence:0,step:'narrator',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:false,testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
+ c.investigation={polishVersion:1,id:randomUUID(),startedAt:now,sequence:0,step:'narrator',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:false,testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
 }
 function enter(s,step,now,extra={}){
  const i=s.chapter7.investigation;i.step=step;i.phaseAt=now;i.deadline=timedScenes[step]===undefined?null:now+timedScenes[step];i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
@@ -30,11 +30,11 @@ function enter(s,step,now,extra={}){
 function interlude(s,next,now){enter(s,'interlude',now,{next});}
 const electionKey=i=>i.step==='theory-vote'?'theory':'envelope';
 function election(i,key){return i.testMode?i.testElections?.[key]:i.elections[key];}
-function connectedVoters(s,now){const i=s.chapter7.investigation,seen=realPlayers(s).filter(p=>Number.isFinite(i.presence[p.id])&&now-i.presence[p.id]<=120000);return (seen.length?seen:realPlayers(s)).map(p=>p.id);}
+function connectedVoters(s,now){const i=s.chapter7.investigation,seen=realPlayers(s).filter(p=>Number.isFinite(i.presence[p.id])&&now-i.presence[p.id]<=120000);return [...(i.testMode?realPlayers(s):seen.length?seen:realPlayers(s)),...(i.testMode?s.players.filter(p=>p.simulated===true):[])].map(p=>p.id);}
 function openElection(s,key,now){
  const i=s.chapter7.investigation,store=i.testMode?(i.testElections??={}):i.elections;
  if(store[key])return;
- store[key]={id:randomUUID(),openedAt:now,voterIds:connectedVoters(s,now),candidateIds:key==='theory'?[...theoryIds]:envelopeCandidates(s).map(p=>p.id),votes:{},closedAt:null,winnerId:null};
+ store[key]={id:randomUUID(),openedAt:now,voterIds:connectedVoters(s,now),candidateIds:key==='theory'?[...theoryIds]:(i.testMode?s.players.filter(p=>!previousRetrievers(s).has(p.id)):envelopeCandidates(s)).map(p=>p.id),votes:{},closedAt:null,winnerId:null};
 }
 function beginVote(s,key,now){openElection(s,key,now);const i=s.chapter7.investigation,e=election(i,key);if(e.closedAt!==null){if(key==='envelope'&&i.envelopeReturnedAt!==null)interlude(s,'photograph',now);else enter(s,key==='theory'?'vote-fade':'retriever-reveal',now);return;}enter(s,key==='envelope'&&(!e.candidateIds.length||!e.voterIds.length)?'retriever-fallback':key+'-vote',now);}
 function winner(s,e){return tokenVoteWinner({...s,chapter6:{startedAt:e.openedAt,votes:e.votes}});}
@@ -58,7 +58,7 @@ export function investigationVote(s,id,target,b,now=Date.now()){
  if(!['theory','envelope'].includes(key)||!realPlayers(s).some(p=>p.id===id))throw new LobbyError(403,'Only real participants can vote.');
  const e=election(i,key);if(!e||e.id!==b.electionId)throw new LobbyError(409,'The vote changed.');
  if(Object.hasOwn(e.votes,id)){if(e.votes[id]===target)return UNCHANGED;throw new LobbyError(409,'Your vote is already recorded.');}
- if(i.step!==key+'-vote'||e.closedAt!==null||b.sequence!==i.sequence)throw new LobbyError(409,'Voting is not active.');
+ if(!(i.step===key+'-vote'||key==='envelope'&&i.step==='incoming')||e.closedAt!==null||b.sequence!==i.sequence)throw new LobbyError(409,'Voting is not active.');
  if(!e.voterIds.includes(id))throw new LobbyError(403,'You were not in the connected voting group when voting opened.');
  if(!e.candidateIds.includes(target))throw new LobbyError(400,'Choose an eligible option.');
  e.votes[id]=target;
@@ -66,17 +66,34 @@ export function investigationVote(s,id,target,b,now=Date.now()){
 }
 export function advanceInvestigation(s,now=Date.now()){
  const i=s.chapter7?.investigation;if(!i)return startInvestigation(s,now);
+ if(i.step==='scare'){enter(s,'silent-black',now);return;}
  if(i.deadline===null||now<i.deadline)return UNCHANGED;
- const next={'vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'scare','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete'}[i.step];
+ const next={'vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
  if(i.step==='interlude'){if(i.next==='theory-vote')beginVote(s,'theory',now);else enter(s,i.next,now);return;}
  if(i.step==='message-hold'){beginVote(s,'envelope',now);return;}
  if(!next)return UNCHANGED;
- enter(s,next,now);if(next==='complete')i.completedAt=now;
+ enter(s,next,now);if(next==='incoming')openElection(s,'envelope',now);if(next==='complete')i.completedAt=now;
 }
 export function investigationHostAction(s,b,now=Date.now()){
  const i=checkInvestigation(s,b);
  if(b.action==='investigation-envelope-return'&&i.envelopeReturnedAt!==null&&i.step!=='envelope-waiting')return UNCHANGED;
  if(b.sequence!==i.sequence)throw new LobbyError(409,'The investigation scene changed.');
+ if(b.action==='investigation-test-vote'){
+  if(!i.testMode)throw new LobbyError(403,'Enable an explicit Chapter 7 test checkpoint first.');
+  if(!['theory-vote','envelope-vote','incoming'].includes(i.step))throw new LobbyError(409,'Voting is not active.');
+  const key=electionKey(i),e=election(i,key);
+  if(!e||e.id!==b.electionId||b.election!==key)throw new LobbyError(409,'The test vote changed.');
+  if(!b.votes||Array.isArray(b.votes)||typeof b.votes!=='object'||!Object.keys(b.votes).length)throw new LobbyError(400,'Assign simulated test votes.');
+  for(const [id,target] of Object.entries(b.votes)){
+   if(!s.players.some(p=>p.id===id&&p.simulated===true)||!e.voterIds.includes(id))throw new LobbyError(403,'Only simulated voters can be controlled here.');
+   if(!e.candidateIds.includes(target))throw new LobbyError(400,'Choose an eligible option.');
+   if(Object.hasOwn(e.votes,id)&&e.votes[id]!==target)throw new LobbyError(409,'A simulated vote is already recorded.');
+  }
+  let changed=false;for(const [id,target] of Object.entries(b.votes))if(!Object.hasOwn(e.votes,id)){e.votes[id]=target;changed=true;}
+  if(!changed)return UNCHANGED;
+  if(Object.keys(e.votes).length===e.voterIds.length)closeElection(s,key,now,'all');
+  return;
+ }
  const cue=storyRecording(i.step);
  if(b.action==='investigation-audio-playing'){
   if(!cue||b.recording!==cue.id)throw new LobbyError(409,'No recording belongs to this scene.');
@@ -84,14 +101,16 @@ export function investigationHostAction(s,b,now=Date.now()){
   i.audioStartedAt=now;return;
  }
  if(b.action==='investigation-audio-ended'){
-  if(!cue||b.recording!==cue.id||i.audioStartedAt===null||now<i.audioStartedAt+cue.durationMs-i.offsetMs-250)throw new LobbyError(409,'The recording has not finished.');
+  if(!cue||b.recording!==cue.id||i.audioStartedAt===null||now<i.audioStartedAt+narrationDuration(i)-i.offsetMs-250)throw new LobbyError(409,'The recording has not finished.');
   if(i.step==='photograph'){enter(s,'photo-hold',now);return;}
-  if(i.step==='scare'){enter(s,'after-scare',now);return;}
-  if(i.step==='incoming'){enter(s,'message-hold',now);return;}
+  if(i.step==='incoming'){beginVote(s,'envelope',now);return;}
+  if(i.polishVersion===1&&i.step==='officer'){interlude(s,'reaction',now);return;}
+  const transition={reaction:'theory2-transition',premeditation:'theory3-transition',accomplice:'narrator-transition'}[i.step];
+  if(transition){enter(s,transition,now);return;}
   const index=narrationOrder.indexOf(i.step);interlude(s,narrationOrder[index+1]??'theory-vote',now);return;
  }
  if(b.action==='investigation-close-voting'){
-  if(!['theory-vote','envelope-vote'].includes(i.step))throw new LobbyError(409,'Voting is not active.');
+  if(!['theory-vote','envelope-vote','incoming'].includes(i.step))throw new LobbyError(409,'Voting is not active.');
   return closeElection(s,electionKey(i),now,'host');
  }
  if(b.action==='investigation-host-retrieval'){
@@ -107,14 +126,14 @@ export function investigationHostAction(s,b,now=Date.now()){
 }
 export function investigationProgress(s,playerId){
  const i=s.chapter7?.investigation;if(!i)return null;
- const active=['theory-vote','envelope-vote'].includes(i.step)?election(i,electionKey(i)):null;
+ const active=['theory-vote','envelope-vote','incoming'].includes(i.step)?election(i,electionKey(i)):null;
  const theory=election(i,'theory')?.winnerId??i.testSetup?.theoryId??null;
  const retriever=election(i,'envelope')?.winnerId??i.testSetup?.retrieverId??null;
  const p=s.players.find(p=>p.id===retriever);
- return {id:i.id,startedAt:i.startedAt,sequence:i.sequence,step:i.step,phaseAt:i.phaseAt,deadline:i.deadline,audioStartedAt:i.audioStartedAt,offsetMs:i.offsetMs,testMode:i.testMode,completedAt:i.completedAt,hostRetriever:i.hostRetriever,
+ return {polishVersion:i.polishVersion??0,id:i.id,startedAt:i.startedAt,sequence:i.sequence,step:i.step,phaseAt:i.phaseAt,deadline:i.deadline,audioStartedAt:i.audioStartedAt,offsetMs:i.offsetMs,testMode:i.testMode,completedAt:i.completedAt,hostRetriever:i.hostRetriever,
   winningTheory:['theory-vote','vote-fade','spoken'].includes(i.step)?null:theory,
   selectedPlayer:p?{id:p.id,name:p.name}:null,
-  election:active?{id:active.id,key:electionKey(i),voteCount:Object.keys(active.votes).length,voterCount:active.voterIds.length,...(playerId?{voted:Object.hasOwn(active.votes,playerId),canVote:active.voterIds.includes(playerId),candidates:active.candidateIds.map(id=>active===election(i,'theory')?{id,name:theories.find(t=>t[0]===id)?.[1],description:theories.find(t=>t[0]===id)?.[2]}:{id,name:s.players.find(p=>p.id===id)?.name??''})}:{})}:null};
+  election:active?{id:active.id,key:electionKey(i),voteCount:Object.keys(active.votes).length,voterCount:active.voterIds.length,testData:i.testMode,simulatedVoteCount:Object.keys(active.votes).filter(id=>s.players.some(p=>p.id===id&&p.simulated)).length,...(playerId?{voted:Object.hasOwn(active.votes,playerId),canVote:active.voterIds.includes(playerId),candidates:active.candidateIds.map(id=>active===election(i,'theory')?{id,name:theories.find(t=>t[0]===id)?.[1],description:theories.find(t=>t[0]===id)?.[2]}:{id,name:s.players.find(p=>p.id===id)?.name??''})}:{})}:null};
 }
 export function validateInvestigation(s){
  const i=s.chapter7.investigation;if(!i)return;
@@ -130,14 +149,14 @@ export function selectInvestigationCheckpoint(s,checkpoint,b,now=Date.now()){
  const target=storyCheckpoints.find(c=>c[0]===checkpoint)?.[2];if(!target)throw new LobbyError(400,'Unknown investigation checkpoint.');
  startInvestigation(s,now);const i=s.chapter7.investigation;
  if(!i)throw new LobbyError(409,'Finish or explicitly skip the broadcast first.');
- i.testMode=b.testMode===true;i.testSetup=null;i.hostRetriever=false;
+ i.polishVersion=1;i.testMode=b.testMode===true;i.testSetup=null;i.hostRetriever=false;
  const theory=election(i,'theory')?.winnerId,retriever=election(i,'envelope')?.winnerId;
  if(['envelope-waiting','photograph'].includes(target)&&Number.isFinite(i.hostRetrievalAt)&&!b.testRetrieverId)i.hostRetriever=true;
  const needsTheory=['spoken','theory-reveal'].includes(target),needsRetriever=['envelope-waiting','photograph'].includes(target)&&!i.hostRetriever;
  if(needsTheory&&!theory||needsRetriever&&!retriever){
   if(!i.testMode)throw new LobbyError(409,'This checkpoint needs a saved result. Explicitly enable test mode and choose a test outcome. Saved votes will remain unchanged.');
   if(needsTheory&&!theory&&!theoryIds.includes(b.testTheory))throw new LobbyError(400,'Choose a test theory.');
-  if(needsRetriever&&!retriever&&!envelopeCandidates(s).some(p=>p.id===b.testRetrieverId))throw new LobbyError(400,'Choose an eligible test retriever.');
+  if(needsRetriever&&!retriever&&!(i.testMode?s.players.filter(p=>!previousRetrievers(s).has(p.id)):envelopeCandidates(s)).some(p=>p.id===b.testRetrieverId))throw new LobbyError(400,'Choose an eligible test retriever.');
   i.testSetup={theoryId:theory??b.testTheory??null,retrieverId:retriever??b.testRetrieverId??null};
  }
  if(target==='theory-vote'||target==='envelope-vote'){
@@ -145,6 +164,6 @@ export function selectInvestigationCheckpoint(s,checkpoint,b,now=Date.now()){
   if(i.testMode&&election(i,key)?.closedAt!==null&&election(i,key)){(i.testHistory??=[]).push({key,...structuredClone(election(i,key))});delete i.testElections[key];}
   if(election(i,key)?.closedAt!==null&&election(i,key))throw new LobbyError(409,'This vote is already final. Enable a separate test vote to rehearse it.');
   beginVote(s,key,now);
- }else enter(s,target,now);
+ }else {enter(s,target,now);if(target==='incoming')openElection(s,'envelope',now);}
  if(checkpoint==='chapter7-window')i.offsetMs=PHOTO_ENHANCED_MS;
 }
