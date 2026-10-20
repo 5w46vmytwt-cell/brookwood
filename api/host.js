@@ -20,7 +20,7 @@ function fillSimulatedPlayers(s){
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
   const broadcastCheckpoint=req.body?.action==='chapter-select'&&['chapter7','chapter7-after',...storyCheckpoints.map(c=>c[0])].includes(req.body?.checkpoint);
-  const investigationAction=['investigation-audio-playing','investigation-audio-ended','investigation-close-voting','investigation-envelope-return','investigation-host-retrieval','investigation-test-vote'].includes(req.body?.action);
+  const investigationAction=['investigation-audio-playing','investigation-audio-ended','investigation-close-voting','investigation-envelope-return','investigation-host-retrieval','investigation-test-vote','investigation-photo-sound'].includes(req.body?.action);
   const sessionAction=req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
   const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
   if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
@@ -43,7 +43,7 @@ export default async function handler(req,res){
     }
     if(req.body.action==='investigation-checkpoint-options'){const s=await getState();return send(res,200,{candidates:(s.chapter7?.investigation?.testMode?s.players.filter(p=>!previousRetrievers(s).has(p.id)):envelopeCandidates(s)).map(p=>({id:p.id,name:p.name}))});}
     if(['maze-login','maze-session'].includes(req.body.action))return send(res,200,{ok:true,authenticated:true});
-    if(investigationAction){let state;await updateState(withinBroadcastRun(s=>{const result=investigationHostAction(s,req.body);state=publicState(s);return result;}));return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
+    if(investigationAction){let state,playSound=false;await updateState(withinBroadcastRun(s=>{const result=investigationHostAction(s,req.body);playSound=result?.playSound===true;state=publicState(s);return result;}));return send(res,200,{ok:true,playSound,state:{...state,serverNow:Date.now()}});}
     if(['broadcast-playing','broadcast-ended'].includes(req.body.action)){let state;await updateState(withinBroadcastRun(s=>{const result=broadcastHostAction(s,req.body);state=publicState(s);return result;}));return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
     if(['maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body.action)){

@@ -24,8 +24,8 @@ body.chapter7-active>#chapterSelectPanel{z-index:90}
 @keyframes ch7-voice{from{height:12%;opacity:.45}to{height:85%;opacity:1}}
 #chapter7Investigation[data-voice="THE UNSEEN"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#142624,#0b1111 55%,#020303)}
 #chapter7Investigation[data-voice="COLD EVIDENCE"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#14202a,#060a0e 55%,#020304)}
-#chapter7Investigation[data-voice="THE THIRTEENTH VOICE"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#27171e,#100a0e 55%,#030202)}
-#chapter7Investigation[data-voice="THE THIRTEENTH VOICE"] #ch7Waveform i{background:#bb9e92}
+#chapter7Investigation[data-voice="THE MISSING PIECE"] #ch7Scene{background:radial-gradient(ellipse at 50% 48%,#27171e,#100a0e 55%,#030202)}
+#chapter7Investigation[data-voice="THE MISSING PIECE"] #ch7Waveform i{background:#bb9e92}
 #chapter7Investigation[data-scene="officer"] #ch7Title,#chapter7Investigation[data-scene="prophecy"] #ch7Title{font-family:monospace;letter-spacing:.16em}
 #ch7PhotoStage{position:absolute;inset:3vh 3vw;overflow:hidden;background:#000}
 #ch7PhotoStage img{position:absolute;width:100%;height:100%;object-fit:contain;inset:0;transform-origin:66% 19%;will-change:transform,opacity}
@@ -41,10 +41,10 @@ body.chapter7-active>#chapterSelectPanel{z-index:90}
 #ch7PodcastLogo{width:clamp(80px,10vw,165px);height:clamp(80px,10vw,165px);margin-bottom:3vh;color:#7da9a4}
 #ch7PodcastLogo svg{width:100%;height:100%}
 #chapter7Investigation[data-voice="COLD EVIDENCE"] #ch7PodcastLogo{color:#92a8ba}
-#chapter7Investigation[data-voice="THE THIRTEENTH VOICE"] #ch7PodcastLogo{color:#a07888}
+#chapter7Investigation[data-voice="THE MISSING PIECE"] #ch7PodcastLogo{color:#a07888}
 #chapter7Investigation[data-voice="THE UNSEEN"] #ch7Waveform i{background:#7da9a4}
 #chapter7Investigation[data-voice="COLD EVIDENCE"] #ch7Waveform i{background:#92a8ba}
-#chapter7Investigation[data-voice="THE THIRTEENTH VOICE"] #ch7Waveform i{background:#a07888}
+#chapter7Investigation[data-voice="THE MISSING PIECE"] #ch7Waveform i{background:#a07888}
 #ch7Transition{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;pointer-events:none}
 #ch7Transition p{font:20px Arial,sans-serif;letter-spacing:.35em;color:#87958f}
 #ch7Transition h1{font:normal clamp(30px,5vw,80px) Georgia,serif;letter-spacing:.1em;max-width:85vw}
@@ -52,3 +52,11 @@ body.chapter7-active>#chapterSelectPanel{z-index:90}
 #chapter7Investigation[data-scene="theory-reveal"] #ch7Title,#chapter7Investigation[data-scene="theory-fade"] #ch7Title{font:20px Arial,sans-serif;letter-spacing:.2em}
 #ch7TestPanel{position:absolute;bottom:65px;right:0;background:#101715;padding:20px;max-height:70vh;overflow:auto;width:360px;border:1px solid #647364}
 #ch7TestPanel label{display:flex;justify-content:space-between;margin:8px 0}#ch7TestPanel select{max-width:210px}
+
+#ch7Date{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#000;pointer-events:none}
+#ch7Date p{font:normal clamp(28px,4vw,70px) Georgia,serif;letter-spacing:.25em;color:#b4b9b3;margin:0 0 4vh}
+#ch7Year{display:block;font:normal clamp(100px,18vw,310px) Georgia,serif;letter-spacing:.06em;line-height:1;will-change:transform}
+#ch7Connection{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#ch7Connection i{display:block;width:24vw;height:1px;background:linear-gradient(90deg,transparent,#7a87816b,transparent);box-shadow:0 0 9px #77868024;animation:ch7-signal 1.1s steps(3) infinite}
+@keyframes ch7-signal{0%,100%{opacity:.25;transform:scaleX(.7)}45%{opacity:.7;transform:scaleX(1)}70%{opacity:.35;transform:scaleX(.9)}}
+#chapter7Investigation[data-voice="THE UNSEEN"] #ch7Title,#chapter7Investigation[data-voice="COLD EVIDENCE"] #ch7Title,#chapter7Investigation[data-voice="THE MISSING PIECE"] #ch7Title{font-size:clamp(30px,4.5vw,80px)}

@@ -3,19 +3,26 @@ export {storyRecordings};
 export const narrationOrder=['narrator','podcast-intro','possession','officer','prophecy','reaction','premeditation','accomplice','vote-intro'];
 export const theories=[['possession','POSSESSION','Something supernatural controlled Daniel.'],['premeditation','PREMEDITATION','Daniel planned the murders.'],['accomplice','ACCOMPLICE','Someone else, possibly Nathan Reeve, helped him.']];
 export const storyRecording=step=>step==='scare'?undefined:storyRecordings.find(r=>r.step===step);
-// The final ~900 ms is the dying radio/static tail; keep the last intelligible call clear.
-export const POLICE_OVERLAP_MS=900;
+// Revised handoff: one second earlier, within the final damaged transmission.
+export const POLICE_OVERLAP_MS=1900;
 export const PROPHECY_AT_MS=storyRecording('officer').durationMs-POLICE_OVERLAP_MS;
 export const TRANSMISSION_MS=PROPHECY_AT_MS+storyRecording('prophecy').durationMs;
-export const narrationDuration=i=>i.step==='officer'&&i.polishVersion===1?TRANSMISSION_MS:storyRecording(i.step)?.durationMs;
+export const prophecyAt=i=>storyRecording('officer').durationMs-(i.polishVersion>=2?POLICE_OVERLAP_MS:900);
+export const narrationDuration=i=>i.step==='officer'&&i.polishVersion>=1?prophecyAt(i)+storyRecording('prophecy').durationMs:storyRecording(i.step)?.durationMs;
+export const cameraCue={id:'chapter7-camera',src:'/assets/chapter1/audio/sfx-camera-shutter.wav',type:'sfx',volume:.55,durationMs:67536/264600*1000};
+export const CONNECTION_MS=2800;
+export const smooth=x=>{const t=Math.min(1,Math.max(0,x));return t*t*(3-2*t);};
+// First sentence measured at 230-2050 ms in the unchanged narrator WAV.
+export function narratorFrame(position){return {date:smooth((position-2200)/1100)*(1-smooth((position-6000)/1400)),yearScale:1+.25*smooth((position-2200)/5200),scene:smooth((position-7800)/1800)};}
+export function sceneDuration(i,step=i.step){if(i.polishVersion>=2){if(step==='theory2-transition'||step==='theory3-transition')return 9000;if(step==='narrator-transition')return 11000;if(step==='vote-fade')return 1000;if(step==='theory-fade'||step==='ending-fade')return 1600;}return timedScenes[step];}
 export const TRANSITION_MS=8000;
-export function transitionFrame(elapsed,narrator=false){const delay=narrator?2000:0;return {out:Math.max(0,1-elapsed/1200),title:Math.min(1,Math.max(0,(elapsed-delay-2000)/700),Math.max(0,(6300+delay-elapsed)/700)),incoming:Math.min(1,Math.max(0,(elapsed-delay-6500)/1500))};}
+export function transitionFrame(elapsed,narrator=false,version=2){const delay=narrator?2000:0;if(version<2)return {out:1-smooth(elapsed/1200),title:smooth((elapsed-delay-2000)/700)*(1-smooth((elapsed-delay-5600)/700)),incoming:smooth((elapsed-delay-6500)/1500)};return {out:1-smooth(elapsed/1600),title:smooth((elapsed-delay-2300)/900)*(1-smooth((elapsed-delay-6200)/900)),incoming:smooth((elapsed-delay-7300)/1700)};}
 // Located in the supplied WAV using local recognition and audio-envelope alignment.
 // Farmhouse sentence: 29.730–31.770 s. Upstairs-window sentence: 32.530–34.090 s.
 export const PHOTO_ATTENTION_MS=29730;
 export const PHOTO_ENHANCED_MS=34300;
 export const PHOTO_HOLD_MS=12000;
 export const SCARE_IMAGE_MS=900;
-export const timedScenes={'theory2-transition':TRANSITION_MS,'theory3-transition':TRANSITION_MS,'narrator-transition':TRANSITION_MS+2000,interlude:900,'vote-fade':800,spoken:3000,'theory-reveal':6500,'theory-fade':1200,'silent-black':3500,'after-scare':1000,'message-hold':3000,'retriever-reveal':4500,'photo-hold':PHOTO_HOLD_MS,'ending-fade':1000};
+export const timedScenes={connection:CONNECTION_MS,'theory2-transition':TRANSITION_MS,'theory3-transition':TRANSITION_MS,'narrator-transition':TRANSITION_MS+2000,interlude:900,'vote-fade':800,spoken:3000,'theory-reveal':6500,'theory-fade':1200,'silent-black':3500,'after-scare':1000,'message-hold':3000,'retriever-reveal':4500,'photo-hold':PHOTO_HOLD_MS,'ending-fade':1000};
 export const storyCheckpoints=[['chapter7-narrator','NARRATOR RETURNS','narrator'],['chapter7-podcast','FIRST PODCAST','possession'],['chapter7-police','POLICE RADIO','officer'],['chapter7-second','SECOND PODCAST','premeditation'],['chapter7-third','THIRD PODCAST','accomplice'],['chapter7-theory-vote','THEORY VOTING','theory-vote'],['chapter7-spoken','THE GROUP HAS SPOKEN','spoken'],['chapter7-message','INCOMING ENVELOPE MESSAGE','incoming'],['chapter7-envelope-vote','ENVELOPE RETRIEVAL VOTE','envelope-vote'],['chapter7-waiting','WAITING FOR SELECTED PLAYER','envelope-waiting'],['chapter7-photo','PHOTOGRAPH REVEAL','photograph'],['chapter7-window','ENHANCED WINDOW REVEAL','photograph']];
-export function storyProgressDue(c,now){const i=c.investigation;return i?i.step==='scare'||i.deadline!==null&&now>=i.deadline:c.step==='waiting';}
+export function storyProgressDue(c,now){const i=c.investigation;return i?i.needsRecovery||i.step==='scare'||i.deadline!==null&&now>=i.deadline:c.step==='waiting';}
