@@ -54,3 +54,9 @@ test('legacy transmission retains its persisted overlap while new runs start pro
 test('refresh queues prophecy safely while the native officer play/seek promise is pending',async()=>{
  const h=harness({step:'officer',startedAt:100000-PROPHECY_AT_MS-500,deferPlay:true});h.channel.update(h.state);h.channel.update(h.state);const p=h.channel.player.media.get(storyRecording('prophecy').id);assert.equal(p.plays,0);h.audio().releasePlay();await flush();h.channel.update(h.state);assert.equal(p.plays,1);assert.equal(p.paused,false);p.releasePlay();await flush();h.channel.stop();
 });
+
+
+test('second narrator refresh seeks within its supplied recording and completes once at full voice volume',async()=>{
+ const h=harness({step:'podcast-intro',startedAt:90000});h.channel.update(h.state);await flush();assert.equal(h.audio().currentTime,10);assert.equal(h.audio().src,'/assets/chapter7/audio/ch7_02_podcast_intro.wav');assert.equal(h.audio().volume,1);for(let j=0;j<10;j++)h.channel.update(h.state);assert.equal(h.audio().plays,1);assert.equal(h.calls.length,0);
+ h.at(90000+27550);h.audio().currentTime=27.55;h.audio().ended=true;h.audio().paused=true;h.audio().emit('ended');h.audio().emit('ended');await flush();assert.equal(h.calls.filter(c=>c.action==='investigation-audio-ended').length,1);assert.equal(h.audio().volume,1);h.channel.stop();
+});

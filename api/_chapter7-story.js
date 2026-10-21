@@ -95,7 +95,7 @@ export function advanceInvestigation(s,now=Date.now()){
  if(i.step==='connection'&&i.polishVersion<3){enter(s,'connection',now);return;}
  if(i.step==='scare'){enter(s,'silent-black',now);return;}
  if(i.deadline===null||now<i.deadline)return repaired?undefined:UNCHANGED;
- const next={'connection-black':'narrator','date-reveal':'theory1-transition','theory1-transition':'podcast-intro','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
+ const next={'connection-black':'narrator','date-reveal':'podcast-intro','theory1-transition':'possession','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
  if(i.step==='interlude'){if(i.next==='theory-vote')beginVote(s,'theory',now);else enter(s,i.next,now);return;}
  if(i.step==='message-hold'){beginVote(s,'envelope',now);return;}
  if(!next)return UNCHANGED;
@@ -138,7 +138,7 @@ export function investigationHostAction(s,b,now=Date.now()){
   if(i.step==='photograph'){enter(s,'photo-hold',now);return;}
   if(i.step==='incoming'){beginVote(s,'envelope',now);return;}
   if(i.polishVersion>=1&&i.step==='officer'){interlude(s,'reaction',now);return;}
-  const transition={reaction:'theory2-transition',premeditation:'theory3-transition',accomplice:'narrator-transition'}[i.step];
+  const transition={'podcast-intro':'theory1-transition',reaction:'theory2-transition',premeditation:'theory3-transition',accomplice:'narrator-transition'}[i.step];
   if(transition){enter(s,transition,now);return;}
   const index=narrationOrder.indexOf(i.step);interlude(s,narrationOrder[index+1]??'theory-vote',now);return;
  }

@@ -1,5 +1,11 @@
 # Chapter 7 — THE THREE THEORIES & THE EVIDENCE
 
+## Restored second narrator sequence (2026-10-21)
+
+This supersedes the ordering and narrator branding introduced in `ea9971f`. That change placed Theory 01 before the existing second narration and assigned its scene podcast branding. Correct order: native complete narrator return ? date zoom ? complete `ch7_02_podcast_intro.wav` (27.550 s) on the original THREE THEORIES narrator scene ? Theory 01 transition ? THE UNSEEN possession recording. Native acknowledgments remain required; refresh restores the persisted scene and seeks only within its current recording.
+
+The same ambience element continues at 7% through both narrators, the date and Theory 01; only the final 1200 ms of the Theory 01 transition fades it to silence before the actual podcast. Foreground recordings, logos and later transitions remain unchanged. Focused validation: 68 Chapter 7 tests passed; one production build passed (185 static files). Native-speed isolated browser validation completed both full narrators (33.400 s and 27.550 s), date refresh recovery, Theory 01 and the first podcast, with continuous 7% ambience until its final fade and zero runtime exceptions.
+
 ## Theory 01 and ambience level (2026-10-20)
 
 Investigation ambience now targets 7% through the existing single constant; fades, exclusions and foreground audio levels are unchanged. The date reveal now leads to `theory1-transition`, using the same nine-second title/fade renderer as Theories 02/03, then the preserved podcast introduction recording with THE UNSEEN branding. No recording starts during the title transition. Focused validation passed 11 ambience tests and two Theory 01 state/view tests.

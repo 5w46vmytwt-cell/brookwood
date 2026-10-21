@@ -42,13 +42,12 @@ test('one synchronized loop fades in and continues across eligible narrator, vot
 
 test('podcasts fade the same loop out, radio stays silent, and narrator return restores it without duplicates',async()=>{
  const h=harness();h.update();await flush();h.tick(1200);h.scene('possession');h.update();h.tick(1800);assert.equal(h.audio.volume,.035);h.tick(2400);assert.equal(h.audio.volume,0);assert(h.audio.paused);
- for(const step of ['officer','prophecy','reaction','premeditation','accomplice','theory1-transition','theory2-transition','theory3-transition','narrator-transition']){h.scene(step);h.update();assert.equal(h.audio.volume,0);assert(h.audio.paused);}
+ for(const step of ['officer','prophecy','reaction','premeditation','accomplice','theory2-transition','theory3-transition','narrator-transition']){h.scene(step);h.update();assert.equal(h.audio.volume,0);assert(h.audio.paused);}
  h.scene('vote-intro');h.update();await flush();h.tick(3600);assert.equal(h.audio.volume,.07);assert.equal(h.audio.plays,2);assert.equal(h.media.length,1);
 });
 
-test('podcast introduction fades out before the podcast dialogue instead of rebounding in its interlude',async()=>{
- const h=harness({step:'podcast-intro'}),duration=storyRecording('podcast-intro').durationMs;h.update();await flush();h.tick(1200,10000);assert.equal(h.audio.volume,.07);h.update(duration-600);assert.equal(h.audio.volume,.035);h.update(duration);assert.equal(h.audio.volume,0);
- h.scene('interlude');h.update();assert(h.audio.paused);h.scene('possession');h.update();assert.equal(h.audio.volume,0);assert.equal(h.audio.plays,1);
+test('ambience stays continuous through date and full second narrator, fading only at the actual podcast transition',async()=>{
+ const h=harness();h.update();await flush();h.tick(1200);h.audio.currentTime=37;for(const step of ['date-reveal','podcast-intro']){h.scene(step);h.update(storyRecording('podcast-intro').durationMs);assert.equal(h.audio.volume,.07);assert.equal(h.audio.plays,1);assert.equal(h.audio.currentTime,37);assert(!h.audio.paused);}h.scene('theory1-transition',{deadline:110200});h.update();h.tick(9000);assert.equal(h.audio.volume,.07);h.tick(9600);assert.equal(h.audio.volume,.035);h.tick(10200);assert.equal(h.audio.volume,0);h.scene('possession');h.update();assert(h.audio.paused);assert.equal(h.audio.plays,1);
 });
 
 test('verdict fade reaches zero before fully silent black and ring; envelope voting fades the loop back in',async()=>{

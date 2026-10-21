@@ -1,10 +1,10 @@
-import {smooth,storyRecording} from './chapter7-story-timing.js';
+import {smooth} from './chapter7-story-timing.js';
 
 export const INVESTIGATION_AMBIENT_VOLUME=.07;
 export const AMBIENT_FADE_MS=1200;
 export const AMBIENT_SRC='/assets/chapter7/audio/ch7_investigation_ambience.mp3';
 export const AMBIENT_DURATION_MS=144960;
-const scenes=new Set(['narrator','date-reveal','podcast-intro','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade']);
+const scenes=new Set(['narrator','date-reveal','podcast-intro','theory1-transition','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade']);
 
 // One existing SynchronizedTrack, driven only by the TV scheduler. Its canonical
 // position follows the investigation clock even while the background is paused.
@@ -22,7 +22,7 @@ export class InvestigationAmbient{
   let cap=1;const i=this.state?.chapter7.investigation;
   if(!i)return 0;
   // Finish fading before the first podcast and before the fully silent black.
-  if(i.step==='podcast-intro')cap=smooth((storyRecording(i.step).durationMs-this.positionMs)/AMBIENT_FADE_MS);
+  if(i.step==='theory1-transition')cap=smooth((i.deadline-this.state.chapter7.startedAt-this.clock.elapsedNow())/AMBIENT_FADE_MS);
   if(['theory-fade','ending-fade'].includes(i.step))cap=smooth((i.deadline-this.state.chapter7.startedAt-this.clock.elapsedNow())/AMBIENT_FADE_MS);
   if(['silent-black','incoming','connection','connection-black','complete'].includes(i.step))cap=0;
   return (this.from+(this.target-this.from)*smooth((this.clock.elapsedNow()-this.fadeAt)/AMBIENT_FADE_MS))*cap;
@@ -35,7 +35,7 @@ export class InvestigationAmbient{
    const run=state.generation+':'+state.chapter7.id+':'+i.id;
    if(this.run!==run){this.stop();this.run=run;}
    const current=this.level();this.state=state;this.positionMs=positionMs;
-   const eligible=scenes.has(i.step)||i.step==='interlude'&&scenes.has(this.previousScene)&&this.previousScene!=='podcast-intro';
+   const eligible=scenes.has(i.step)||i.step==='interlude'&&scenes.has(this.previousScene);
    const target=eligible?INVESTIGATION_AMBIENT_VOLUME:0;
    if(target!==this.target){this.from=current;this.target=target;this.fadeAt=this.clock.elapsedNow();}
    if(i.step!=='interlude')this.previousScene=i.step;
