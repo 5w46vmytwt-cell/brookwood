@@ -4,7 +4,7 @@ export const INVESTIGATION_AMBIENT_VOLUME=.07;
 export const AMBIENT_FADE_MS=1200;
 export const AMBIENT_SRC='/assets/chapter7/audio/ch7_investigation_ambience.mp3';
 export const AMBIENT_DURATION_MS=144960;
-const scenes=new Set(['narrator','date-reveal','podcast-intro','theory1-transition','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade']);
+const scenes=new Set(['narrator','date-reveal','podcast-intro','theory1-transition','vote-intro','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','envelope-instructions','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photo-appearance','photo-delay','photograph','photo-hold','ending-fade']);
 
 // One existing SynchronizedTrack, driven only by the TV scheduler. Its canonical
 // position follows the investigation clock even while the background is paused.
@@ -24,7 +24,7 @@ export class InvestigationAmbient{
   // Finish fading before the first podcast and before the fully silent black.
   if(i.step==='theory1-transition')cap=smooth((i.deadline-this.state.chapter7.startedAt-this.clock.elapsedNow())/AMBIENT_FADE_MS);
   if(['theory-fade','ending-fade'].includes(i.step))cap=smooth((i.deadline-this.state.chapter7.startedAt-this.clock.elapsedNow())/AMBIENT_FADE_MS);
-  if(['silent-black','incoming','connection','connection-black','complete'].includes(i.step))cap=0;
+  if(['silent-black','incoming','ring-gap','incoming-second','connection','connection-black','complete'].includes(i.step))cap=0;
   return (this.from+(this.target-this.from)*smooth((this.clock.elapsedNow()-this.fadeAt)/AMBIENT_FADE_MS))*cap;
  }
  update(state,positionMs=0){
@@ -36,7 +36,7 @@ export class InvestigationAmbient{
    if(this.run!==run){this.stop();this.run=run;}
    const current=this.level();this.state=state;this.positionMs=positionMs;
    const eligible=scenes.has(i.step)||i.step==='interlude'&&scenes.has(this.previousScene);
-   const target=eligible?INVESTIGATION_AMBIENT_VOLUME:0;
+   const target=eligible?(i.step==='vote-intro'?.06:INVESTIGATION_AMBIENT_VOLUME):0;
    if(target!==this.target){this.from=current;this.target=target;this.fadeAt=this.clock.elapsedNow();}
    if(i.step!=='interlude')this.previousScene=i.step;
    if(target>0||this.level()>0){

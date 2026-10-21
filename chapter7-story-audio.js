@@ -14,13 +14,13 @@ export class InvestigationAudio{
  set blocked(value){this.narrationBlocked=value;}
  now(){return this.state.chapter7.startedAt+this.clock.elapsedNow();}
  position(){const e=this.entry;return e?.secondary?prophecyAt(this.state.chapter7.investigation)+e.secondary.currentTime*1000:e?.audio.currentTime*1000??0;}
- update(state){
+ update(state,{photoReady=true}={}){
   this.state=state;const i=state.chapter7.investigation,cue=storyRecording(i.step),key=i.id+':'+i.sequence;
   if(this.entry?.key!==key)this.release();
   if(i.step==='connection'&&i.polishVersion<3)return;
   if(i.step==='connection'&&!this.connection){this.connection=new this.Connection();this.player.media.set(cue.id,this.connection);}
   this.ambient.update(state,this.entry?this.position():i.offsetMs+(i.audioStartedAt===null?0:Math.max(0,this.now()-i.audioStartedAt)));
-  if(!cue)return;
+  if(!cue||i.step==='photo-appearance'&&!photoReady)return;
   if(this.entry){this.syncTransmission();if(this.entry.ended)this.ack('investigation-audio-ended');return;}
   const audio=this.player.media.get(cue.id);if(!audio||audio.readyState<2){this.message=audio?.failed?'CONNECTION AUDIO UNAVAILABLE - RETRY':'PREPARING AUDIO';if(audio?.failed)this.blocked=true;return;}
   const epoch=this.epoch,entry={key,cue,audio,epoch,pending:false,ended:false,failed:new Set(),acks:new Set()};this.entry=entry;
@@ -32,7 +32,7 @@ export class InvestigationAudio{
   entry.pause=()=>{if(this.entry===entry&&!entry.ended&&!entry.officerEnded&&!audio.ended){this.blocked=true;this.message='ENABLE AUDIO / RESUME';}};
   audio.addEventListener('playing',entry.playing);audio.addEventListener('ended',entry.end);audio.addEventListener('pause',entry.pause);audio.addEventListener('error',entry.pause);
   // An expired reconstructed effect is consumed silently, never replayed.
-  if(cue.type==='sfx'&&i.audioStartedAt!==null&&elapsed>=cue.durationMs){entry.ended=true;this.ack('investigation-audio-ended');return;}
+  if(cue.type==='sfx'&&i.audioStartedAt!==null&&(i.step==='photo-appearance'||elapsed>=cue.durationMs)){entry.ended=true;this.ack('investigation-audio-ended');return;}
   if(i.step==='officer'&&i.polishVersion>=1&&elapsed>=cue.durationMs){entry.officerEnded=true;this.syncTransmission(elapsed);return;}
   this.play();
  }

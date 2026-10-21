@@ -91,12 +91,21 @@ export const storyRecordings=[
     "durationMs": 41575
   },
   {
+    "step": "envelope-instructions",
+    "src": "/assets/chapter7/audio/ch7_10_envelope_instructions.wav",
+    "type": "narration",
+    "volume": 1,
+    "id": "chapter7-story-envelope-instructions",
+    "number": 11,
+    "durationMs": 22450
+  },
+  {
     "step": "incoming",
     "src": "/assets/chapter3/audio/private-message-vibration.wav",
     "type": "sfx",
     "volume": 1,
     "id": "chapter7-story-incoming",
-    "number": 12,
+    "number": 13,
     "durationMs": 2450
   }
 ];

@@ -22,7 +22,8 @@ export class Chapter7Investigation{
   this.state=state;const c=state.chapter7,i=c.investigation;
   if(this.id!==i.id){this.id=i.id;this.epoch++;this.recoverHost();}
   if(this.clock.canSync?.()===false)return;
-  this.audio.update(state);
+  if(i.step==='photo-appearance'&&!this.node('ch7Original').getAttribute('src'))this.node('ch7Original').src='/assets/chapter7/ch7_group_photo_1996.png';
+  this.audio.update(state,{photoReady:!!(this.node('ch7Original').complete&&this.node('ch7Original').naturalWidth>0)});
   const now=c.startedAt+this.clock.elapsedNow(),elapsed=Math.max(0,now-i.phaseAt),cue=storyRecording(i.step),position=this.audio.entry?this.audio.position():i.offsetMs+(i.audioStartedAt===null?0:Math.max(0,now-i.audioStartedAt));
   const node=this.node,scene=node('ch7Scene'),stage=node('ch7PhotoStage');
   node('chapter7Investigation').hidden=false;scene.hidden=false;scene.style.opacity='1';stage.hidden=true;stage.style.opacity='1';node('ch7Transition').hidden=true;node('ch7Date').hidden=true;node('ch7Connection').hidden=true;node('ch7Curtain').style.opacity='0';
@@ -52,13 +53,15 @@ export class Chapter7Investigation{
   if(i.step==='connection'){scene.hidden=true;const f=connectionFrame(position,!!this.audio.entry&&!this.audio.entry.audio.paused&&!this.audio.entry.ended),signal=node('ch7Connection');signal.hidden=false;signal.style.opacity=String(f.opacity);signal.style.setProperty('--signal-y',f.y+'vh');signal.style.setProperty('--signal-scale',String(f.scale));signal.style.setProperty('--signal-skew',f.skew+'deg');}
   if(i.step==='date-reveal'){scene.hidden=true;const f=dateFrame(elapsed);node('ch7Date').hidden=false;node('ch7Date').style.opacity=String(f.opacity);node('ch7Year').style.transform='scale('+f.yearScale+')';}
   if(['connection-black','interlude','silent-black','after-scare','scare','complete'].includes(i.step))scene.hidden=true;
-  if(['incoming','message-hold','envelope-vote'].includes(i.step)){eyebrow='INCOMING MESSAGE';title='AN ENVELOPE IS WAITING.';subtitle='UNDER THE STAIRS.\n\nCHOOSE SOMEONE TO RETRIEVE IT.';}
+  if(i.polishVersion>=4&&['incoming','ring-gap','incoming-second'].includes(i.step)){eyebrow='';title='INCOMING MESSAGE!';subtitle='';}
+  if(['envelope-instructions','message-hold','envelope-vote'].includes(i.step)||i.step==='incoming'&&i.polishVersion<4){eyebrow='INCOMING MESSAGE';title='AN ENVELOPE IS WAITING.';subtitle='UNDER THE STAIRS.\n\nCHOOSE SOMEONE TO RETRIEVE IT.';}
+  if(i.step==='envelope-instructions')subtitle='UNDER THE STAIRS.';
   if(['incoming','envelope-vote'].includes(i.step)&&i.election){node('ch7Progress').textContent=i.election.voteCount+' / '+i.election.voterCount+' VOTES RECORDED';}
   if(i.step==='retriever-fallback'){title='NO ELIGIBLE RETRIEVER';subtitle='All registered candidates have retrieved earlier objects, or the voting cast is empty. The authenticated host can arrange retrieval.';}
   if(i.step==='retriever-reveal'){eyebrow='THE ENVELOPE';title=i.selectedPlayer?.name??'';subtitle='THE GROUP HAS CHOSEN.';scene.style.opacity=this.fade(elapsed,1500,true);}
   if(i.step==='envelope-waiting'){eyebrow='UNDER THE STAIRS';title=i.hostRetriever?'WAITING FOR THE HOST TO RETURN.':'WAITING FOR '+(i.selectedPlayer?.name??'THE SELECTED PLAYER')+' TO RETURN.';subtitle='';}
-  if(['photograph','photo-hold','ending-fade'].includes(i.step)){
-   scene.hidden=true;stage.hidden=false;const original=node('ch7Original'),enhanced=node('ch7Enhanced'),frame=photographFrame(i.step==='photograph'?position:PHOTO_ENHANCED_MS+15000);
+  if(['photo-appearance','photo-delay','photograph','photo-hold','ending-fade'].includes(i.step)){
+   scene.hidden=true;stage.hidden=false;const original=node('ch7Original'),enhanced=node('ch7Enhanced'),frame=photographFrame(['photo-appearance','photo-delay'].includes(i.step)?0:i.step==='photograph'?position:PHOTO_ENHANCED_MS+15000);
    if(!original.getAttribute('src'))original.src='/assets/chapter7/ch7_group_photo_1996.png';
    original.hidden=false;if(i.step==='photograph'&&original.complete&&original.naturalWidth>0)this.audio.photoAppearance();original.style.opacity=String(1-frame.mix);original.style.transform='scale('+(1+.15*frame.attention)+')';
    enhanced.hidden=!frame.enhanced;if(frame.enhanced){if(!enhanced.getAttribute('src'))enhanced.src='/assets/chapter7/ch7_window_enhanced.png';enhanced.style.opacity=String(frame.mix);enhanced.style.transform='scale('+(1+.035*clamp((position-PHOTO_ENHANCED_MS)/15000))+')';}
@@ -66,7 +69,7 @@ export class Chapter7Investigation{
   }
   if(i.testMode&&i.election)node('ch7Progress').textContent+=' / TEST DATA: '+i.election.simulatedVoteCount+' SIMULATED';
   node('ch7Eyebrow').textContent=eyebrow;node('ch7Title').textContent=title;node('ch7Subtitle').textContent=subtitle;
-  node('ch7CloseVoting').hidden=!this.authenticated||!['theory-vote','envelope-vote','incoming'].includes(i.step);node('ch7CloseVoting').disabled=this.pending||!i.election?.voteCount||i.election?.closed;
+  node('ch7CloseVoting').hidden=!this.authenticated||!i.election||!['theory-vote','envelope-vote','incoming'].includes(i.step);node('ch7CloseVoting').disabled=this.pending||!i.election?.voteCount||i.election?.closed;
   node('ch7HostRetrieve').hidden=!this.authenticated||i.step!=='retriever-fallback';node('ch7HostRetrieve').disabled=this.pending;
   node('ch7EnvelopeReturned').hidden=!this.authenticated||i.step!=='envelope-waiting';node('ch7EnvelopeReturned').disabled=this.pending;
   node('ch7TestFill').hidden=!this.authenticated||!i.testMode||!!i.election||!['complete','envelope-waiting','retriever-fallback'].includes(i.step);node('ch7TestVotes').hidden=!this.authenticated||!i.testMode||!i.election;

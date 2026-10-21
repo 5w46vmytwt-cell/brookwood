@@ -60,3 +60,11 @@ test('second narrator refresh seeks within its supplied recording and completes 
  const h=harness({step:'podcast-intro',startedAt:90000});h.channel.update(h.state);await flush();assert.equal(h.audio().currentTime,10);assert.equal(h.audio().src,'/assets/chapter7/audio/ch7_02_podcast_intro.wav');assert.equal(h.audio().volume,1);for(let j=0;j<10;j++)h.channel.update(h.state);assert.equal(h.audio().plays,1);assert.equal(h.calls.length,0);
  h.at(90000+27550);h.audio().currentTime=27.55;h.audio().ended=true;h.audio().paused=true;h.audio().emit('ended');h.audio().emit('ended');await flush();assert.equal(h.calls.filter(c=>c.action==='investigation-audio-ended').length,1);assert.equal(h.audio().volume,1);h.channel.stop();
 });
+
+
+test('refresh during second ring resumes that ring; completed camera never replays and photo readiness gates its first start',async()=>{
+ const ring=harness({step:'incoming-second',startedAt:99000});ring.channel.update(ring.state);await flush();assert.equal(ring.audio().currentTime,1);assert.equal(ring.audio().plays,1);assert.equal(ring.audio().volume,1);
+ const photo=harness({step:'photo-appearance'});photo.channel.update(photo.state,{photoReady:false});await flush();assert.equal(photo.audio().plays,0);photo.channel.update(photo.state,{photoReady:true});await flush();assert.equal(photo.audio().plays,1);assert.equal(photo.audio().volume,cameraCue.volume);
+ const refreshed=harness({step:'photo-appearance',startedAt:95000});refreshed.channel.update(refreshed.state);await flush();assert.equal(refreshed.audio().plays,0);assert.equal(refreshed.calls[0].action,'investigation-audio-ended');
+ const narration=harness({step:'envelope-instructions',startedAt:90000});narration.channel.update(narration.state);await flush();assert.equal(narration.audio().currentTime,10);assert.equal(narration.audio().volume,1);assert.equal(narration.audio().plays,1);
+});

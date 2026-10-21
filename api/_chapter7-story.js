@@ -1,10 +1,10 @@
 import {randomUUID} from 'node:crypto';
 import {LobbyError,UNCHANGED} from './_state.js';
 import {tokenVoteWinner} from './_chapter6.js';
-import {narrationOrder,theories,storyRecording,timedScenes,storyCheckpoints,PHOTO_ENHANCED_MS,narrationDuration,sceneDuration} from '../chapter7-story-timing.js';
+import {narrationOrder,theories,storyRecording,timedScenes,storyCheckpoints,PHOTO_ENHANCED_MS,narrationDuration,sceneDuration,PHOTO_AUDIO_DELAY_MS,cameraCue} from '../chapter7-story-timing.js';
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
 const theoryIds=theories.map(t=>t[0]);
-const validSteps=['connection-black','date-reveal','connection','theory1-transition','theory2-transition','theory3-transition','narrator-transition',...narrationOrder,'interlude','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','silent-black','scare','after-scare','incoming','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade','complete'];
+const validSteps=['ring-gap','incoming-second','envelope-instructions','photo-appearance','photo-delay','connection-black','date-reveal','connection','theory1-transition','theory2-transition','theory3-transition','narrator-transition',...narrationOrder,'interlude','theory-vote','vote-fade','spoken','theory-reveal','theory-fade','silent-black','scare','after-scare','incoming','message-hold','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting','photograph','photo-hold','ending-fade','complete'];
 export function previousRetrievers(s){
  const ids=new Set();
  function visit(value,path=''){
@@ -22,10 +22,12 @@ export function previousRetrievers(s){
 export const envelopeCandidates=s=>realPlayers(s).filter(p=>!previousRetrievers(s).has(p.id));
 export function startInvestigation(s,now=Date.now()){
  const c=s.chapter7;if(s.phase!=='chapter7'||c.step!=='waiting'||c.investigation)return UNCHANGED;
- c.investigation={polishVersion:3,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
+ c.investigation={polishVersion:4,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
 }
+// Anchor the visible-photo delay to the persisted native camera start, including refreshes before its end.
+function phaseDeadline(i){if(i.step==='photo-delay')return Math.max(i.phaseAt,i.photoSoundPlayedAt+Math.max(PHOTO_AUDIO_DELAY_MS,cameraCue.durationMs));const duration=sceneDuration(i);return duration===undefined?null:i.phaseAt+duration;}
 function enter(s,step,now,extra={}){
- const i=s.chapter7.investigation;i.polishVersion=3;i.step=step;i.phaseAt=now;i.deadline=sceneDuration(i,step)===undefined?null:now+sceneDuration(i,step);i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
+ const i=s.chapter7.investigation;i.polishVersion=4;i.step=step;i.phaseAt=now;i.deadline=phaseDeadline(i);i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
 }
 function interlude(s,next,now){enter(s,'interlude',now,{next});}
 const electionKey=i=>i.step==='theory-vote'?'theory':'envelope';
@@ -66,7 +68,7 @@ function closeElection(s,key,now,reason){
  if(!Object.keys(e.votes).length)throw new LobbyError(409,'At least one vote is required before closing voting.');
  e.winnerId=winner(s,e);e.closedAt=now;e.closeReason=reason;
  // Finish the single native ring before showing an early completed result.
- if(key==='envelope'&&i.step==='incoming')return;
+ if(key==='envelope'&&i.step==='incoming'&&!(i.polishVersion>=4))return;
  enter(s,key==='theory'?'vote-fade':'retriever-reveal',now);
 }
 export function touchInvestigationPresence(s,id,now=Date.now()){
@@ -83,7 +85,7 @@ export function investigationVote(s,id,target,b,now=Date.now()){
  if(!['theory','envelope'].includes(key)||!realPlayers(s).some(p=>p.id===id))throw new LobbyError(403,'Only real participants can vote.');
  const e=election(i,key);if(!e||e.id!==b.electionId)throw new LobbyError(409,'The vote changed.');
  if(Object.hasOwn(e.votes,id)){if(e.votes[id]===target)return UNCHANGED;throw new LobbyError(409,'Your vote is already recorded.');}
- if(!(i.step===key+'-vote'||key==='envelope'&&i.step==='incoming')||e.closedAt!==null||b.sequence!==i.sequence)throw new LobbyError(409,'Voting is not active.');
+ if(!(i.step===key+'-vote'||key==='envelope'&&i.step==='incoming'&&!(i.polishVersion>=4))||e.closedAt!==null||b.sequence!==i.sequence)throw new LobbyError(409,'Voting is not active.');
  if(!e.voterIds.includes(id))throw new LobbyError(403,'You were not in the connected voting group when voting opened.');
  if(!e.candidateIds.includes(target))throw new LobbyError(400,'Choose an eligible option.');
  e.votes[id]=target;
@@ -95,11 +97,11 @@ export function advanceInvestigation(s,now=Date.now()){
  if(i.step==='connection'&&i.polishVersion<3){enter(s,'connection',now);return;}
  if(i.step==='scare'){enter(s,'silent-black',now);return;}
  if(i.deadline===null||now<i.deadline)return repaired?undefined:UNCHANGED;
- const next={'connection-black':'narrator','date-reveal':'podcast-intro','theory1-transition':'possession','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
+ const next={'ring-gap':'incoming-second','photo-delay':'photograph','connection-black':'narrator','date-reveal':'podcast-intro','theory1-transition':'possession','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
  if(i.step==='interlude'){if(i.next==='theory-vote')beginVote(s,'theory',now);else enter(s,i.next,now);return;}
  if(i.step==='message-hold'){beginVote(s,'envelope',now);return;}
  if(!next)return UNCHANGED;
- enter(s,next,now);if(next==='incoming')openElection(s,'envelope',now);if(next==='complete')i.completedAt=now;
+ enter(s,next,now);if(next==='incoming'&&!(i.polishVersion>=4))openElection(s,'envelope',now);if(next==='complete')i.completedAt=now;
 }
 export function investigationHostAction(s,b,now=Date.now()){
  const i=checkInvestigation(s,b);
@@ -107,7 +109,7 @@ export function investigationHostAction(s,b,now=Date.now()){
  if(b.sequence!==i.sequence)throw new LobbyError(409,'The investigation scene changed.');
  if(b.action==='investigation-test-vote'){
   if(!i.testMode)throw new LobbyError(403,'Enable an explicit Chapter 7 test checkpoint first.');
-  if(!['theory-vote','envelope-vote','incoming'].includes(i.step))throw new LobbyError(409,'Voting is not active.');
+  if(!(['theory-vote','envelope-vote'].includes(i.step)||i.step==='incoming'&&!(i.polishVersion>=4)))throw new LobbyError(409,'Voting is not active.');
   const key=electionKey(i),e=election(i,key);
   if(!e||e.id!==b.electionId||b.election!==key)throw new LobbyError(409,'The test vote changed.');
   if(!b.votes||Array.isArray(b.votes)||typeof b.votes!=='object'||!Object.keys(b.votes).length)throw new LobbyError(400,'Assign simulated test votes.');
@@ -129,21 +131,24 @@ export function investigationHostAction(s,b,now=Date.now()){
  if(b.action==='investigation-audio-playing'){
   if(!cue||b.recording!==cue.id)throw new LobbyError(409,'No recording belongs to this scene.');
   if(i.audioStartedAt!==null)return UNCHANGED;
-  i.audioStartedAt=now;return;
+  i.audioStartedAt=now;if(i.step==='photo-appearance')i.photoSoundPlayedAt??=now;return;
  }
  if(b.action==='investigation-audio-ended'){
   if(!cue||b.recording!==cue.id||i.audioStartedAt===null||now<i.audioStartedAt+narrationDuration(i)-i.offsetMs-250)throw new LobbyError(409,'The recording has not finished.');
   if(i.step==='connection'){enter(s,'connection-black',now);return;}
   if(i.step==='narrator'){enter(s,'date-reveal',now);return;}
   if(i.step==='photograph'){enter(s,'photo-hold',now);return;}
-  if(i.step==='incoming'){beginVote(s,'envelope',now);return;}
+  if(i.step==='photo-appearance'){enter(s,'photo-delay',now);return;}
+  if(i.step==='incoming'){if(i.polishVersion>=4)enter(s,'ring-gap',now);else beginVote(s,'envelope',now);return;}
+  if(i.step==='incoming-second'){enter(s,'envelope-instructions',now);return;}
+  if(i.step==='envelope-instructions'){beginVote(s,'envelope',now);return;}
   if(i.polishVersion>=1&&i.step==='officer'){interlude(s,'reaction',now);return;}
   const transition={'podcast-intro':'theory1-transition',reaction:'theory2-transition',premeditation:'theory3-transition',accomplice:'narrator-transition'}[i.step];
   if(transition){enter(s,transition,now);return;}
   const index=narrationOrder.indexOf(i.step);interlude(s,narrationOrder[index+1]??'theory-vote',now);return;
  }
  if(b.action==='investigation-close-voting'){
-  if(!['theory-vote','envelope-vote','incoming'].includes(i.step))throw new LobbyError(409,'Voting is not active.');
+  if(!(['theory-vote','envelope-vote'].includes(i.step)||i.step==='incoming'&&!(i.polishVersion>=4)))throw new LobbyError(409,'Voting is not active.');
   return closeElection(s,electionKey(i),now,'host');
  }
  if(b.action==='investigation-host-retrieval'){
@@ -153,13 +158,13 @@ export function investigationHostAction(s,b,now=Date.now()){
  }
  if(b.action==='investigation-envelope-return'){
   if(i.step!=='envelope-waiting')throw new LobbyError(409,'Wait for the envelope retriever.');
-  i.envelopeReturnedAt??=now;interlude(s,'photograph',now);return;
+  i.envelopeReturnedAt??=now;interlude(s,'photo-appearance',now);return;
  }
  throw new LobbyError(400,'Unknown investigation action.');
 }
 export function investigationProgress(s,playerId){
  const i=s.chapter7?.investigation;if(!i)return null;
- const active=['theory-vote','envelope-vote','incoming'].includes(i.step)?election(i,electionKey(i)):null;
+ const active=(['theory-vote','envelope-vote'].includes(i.step)||i.step==='incoming'&&!(i.polishVersion>=4))?election(i,electionKey(i)):null;
  const theory=election(i,'theory')?.winnerId??i.testSetup?.theoryId??null;
  const retriever=election(i,'envelope')?.winnerId??i.testSetup?.retrieverId??null;
  const p=s.players.find(p=>p.id===retriever);
@@ -171,8 +176,8 @@ export function investigationProgress(s,playerId){
 export function validateInvestigation(s){
  const i=s.chapter7.investigation;if(!i)return;
  if(typeof i.id!=='string'||!i.id||!Number.isFinite(i.startedAt)||!validSteps.includes(i.step)||!Number.isInteger(i.sequence)||i.sequence<0||!Number.isFinite(i.phaseAt)||!Number.isFinite(i.offsetMs)||i.offsetMs<0||i.audioStartedAt!==null&&!Number.isFinite(i.audioStartedAt)||typeof i.testMode!=='boolean'||!i.presence||!i.elections)throw Error('Invalid Chapter 7 investigation.');
- if(i.polishVersion!==undefined&&![1,2,3].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
- if(sceneDuration(i)===undefined?i.deadline!==null:i.deadline!==i.phaseAt+sceneDuration(i))throw Error('Invalid investigation clock.');
+ if(i.polishVersion!==undefined&&![1,2,3,4].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
+ if(i.deadline!==phaseDeadline(i))throw Error('Invalid investigation clock.');
  const players=new Set(s.players.map(p=>p.id));
  for(const store of [i.elections,i.testElections??{}])for(const [key,e] of Object.entries(store)){
   if(!['theory','envelope'].includes(key)||typeof e.id!=='string'||!Array.isArray(e.voterIds)||new Set(e.voterIds).size!==e.voterIds.length||e.voterIds.some(id=>!players.has(id))||!Array.isArray(e.candidateIds)||new Set(e.candidateIds).size!==e.candidateIds.length||e.candidateIds.some(id=>key==='theory'?!theoryIds.includes(id):!players.has(id))||!e.votes||Object.entries(e.votes).some(([id,target])=>!e.voterIds.includes(id)||!e.candidateIds.includes(target))||!Number.isFinite(e.openedAt))throw Error('Invalid investigation ballot.');
@@ -183,7 +188,7 @@ export function selectInvestigationCheckpoint(s,checkpoint,b,now=Date.now()){
  const target=storyCheckpoints.find(c=>c[0]===checkpoint)?.[2];if(!target)throw new LobbyError(400,'Unknown investigation checkpoint.');
  startInvestigation(s,now);const i=s.chapter7.investigation;
  if(!i)throw new LobbyError(409,'Finish or explicitly skip the broadcast first.');
- i.polishVersion=2;i.testMode=b.testMode===true||s.players.some(p=>p.simulated===true);i.testSetup=null;i.hostRetriever=false;
+ i.polishVersion=4;i.testMode=b.testMode===true||s.players.some(p=>p.simulated===true);i.testSetup=null;i.hostRetriever=false;
  const theory=election(i,'theory')?.winnerId,retriever=election(i,'envelope')?.winnerId;
  if(['envelope-waiting','photograph'].includes(target)&&Number.isFinite(i.hostRetrievalAt)&&!b.testRetrieverId)i.hostRetriever=true;
  const needsTheory=['spoken','theory-reveal'].includes(target),needsRetriever=['envelope-waiting','photograph'].includes(target)&&!i.hostRetriever;
@@ -198,7 +203,7 @@ export function selectInvestigationCheckpoint(s,checkpoint,b,now=Date.now()){
   if(i.testMode&&election(i,key)?.closedAt!==null&&election(i,key)){(i.testHistory??=[]).push({key,...structuredClone(election(i,key))});delete i.testElections[key];}
   if(election(i,key)?.closedAt!==null&&election(i,key))throw new LobbyError(409,'This vote is already final. Enable a separate test vote to rehearse it.');
   beginVote(s,key,now);
- }else {enter(s,target,now);if(target==='incoming')openElection(s,'envelope',now);}
+ }else {enter(s,checkpoint==='chapter7-photo'?'photo-appearance':target,now);if(target==='incoming'&&!(i.polishVersion>=4))openElection(s,'envelope',now);}
  if(target==='photograph'){delete i.photoSoundPlayedAt;}
  if(checkpoint==='chapter7-window'){i.offsetMs=PHOTO_ENHANCED_MS;i.photoSoundPlayedAt=now;}
 }

@@ -43,7 +43,7 @@ test('one synchronized loop fades in and continues across eligible narrator, vot
 test('podcasts fade the same loop out, radio stays silent, and narrator return restores it without duplicates',async()=>{
  const h=harness();h.update();await flush();h.tick(1200);h.scene('possession');h.update();h.tick(1800);assert.equal(h.audio.volume,.035);h.tick(2400);assert.equal(h.audio.volume,0);assert(h.audio.paused);
  for(const step of ['officer','prophecy','reaction','premeditation','accomplice','theory2-transition','theory3-transition','narrator-transition']){h.scene(step);h.update();assert.equal(h.audio.volume,0);assert(h.audio.paused);}
- h.scene('vote-intro');h.update();await flush();h.tick(3600);assert.equal(h.audio.volume,.07);assert.equal(h.audio.plays,2);assert.equal(h.media.length,1);
+ h.scene('vote-intro');h.update();await flush();h.tick(3600);assert.equal(h.audio.volume,.06);assert.equal(h.audio.plays,2);assert.equal(h.media.length,1);
 });
 
 test('ambience stays continuous through date and full second narrator, fading only at the actual podcast transition',async()=>{
@@ -82,4 +82,9 @@ test('a pending or blocked ambience never delays narration, changes its level, o
  for(const options of [{pending:true},{deny:true}]){
   const h=harness(options),channel=new InvestigationAudio(h.clock,{Player:h.Player,request:async(_path,b)=>{h.calls.push(b);return {state:h.state};},onState(){}});channel.update(h.state);await flush();const narration=channel.player.media.get(storyRecording('narrator').id);assert.equal(narration.volume,1);assert.equal(narration.plays,1);assert(!narration.paused);assert(h.calls.some(b=>b.action==='investigation-audio-playing'));channel.stop();assert(narration.paused);
  }
+});
+
+
+test('only voting introduction targets six percent and restores seven smoothly on the same loop',async()=>{
+ const h=harness({step:'vote-intro'});h.update();await flush();h.tick(1200);assert.equal(h.audio.volume,.06);h.audio.currentTime=45;h.scene('interlude');h.update();assert.equal(h.audio.volume,.06);h.tick(1800);assert.equal(h.audio.volume,.065);h.tick(2400);assert.equal(h.audio.volume,.07);h.scene('theory-vote');h.update();assert.equal(h.audio.volume,.07);assert.equal(h.audio.currentTime,45);assert.equal(h.audio.plays,1);assert.equal(h.media.length,1);
 });

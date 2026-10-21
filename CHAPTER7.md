@@ -1,5 +1,13 @@
 # Chapter 7 — THE THREE THEORIES & THE EVIDENCE
 
+## Envelope audio and photo separation (2026-10-21)
+
+New scenes use `polishVersion: 4`; an already active legacy incoming poll retains its prior completion contract. Only `vote-intro` targets 6% ambience, returning smoothly to the usual 7% afterward on the same loop. Narration remains at full supplied volume.
+
+After the preserved verdict blackout, `incoming` plays the existing 2450-ms ring, `ring-gap` holds 450 ms, and `incoming-second` plays it again. These phases show only INCOMING MESSAGE! and expose no active retrieval ballot. Native completion then enters `envelope-instructions`, playing unchanged `ch7_10_envelope_instructions.wav` in full (22.450 s; 538800 float PCM samples at 24 kHz; SHA-256 `48a6d289b755ed2e77e08ff005b987adfa0da298347271e361b7a5768a3954ad`). Only its native completion opens the persistent retrieval poll. Existing cast identities, prior retriever exclusions and host authorization remain intact. Refresh seeks the current ring or narration, without replaying earlier phases.
+
+After authenticated return, `photo-appearance` waits for the original image to load, plays the existing 255.238-ms camera effect at its existing volume and persists its native start. `photo-delay` remains visible until at least that start plus 1500 ms, including refresh before the effect ends. Then the unchanged photo narration starts at offset zero. Refresh skips an already-started camera effect; the enhanced-window cue remains relative to narration at 34300 ms. Focused validation: 74 Chapter 7 tests passed, one production build passed (186 static files), and a built-TV/two-phone rehearsal completed both twelve-player polls with ten host-assigned simulated votes, native double ringing, full instructions, refreshes during instructions/voting/photo delay, one camera effect and the full synchronized photo reveal. No runtime exceptions occurred.
+
 ## Restored second narrator sequence (2026-10-21)
 
 This supersedes the ordering and narrator branding introduced in `ea9971f`. That change placed Theory 01 before the existing second narration and assigned its scene podcast branding. Correct order: native complete narrator return ? date zoom ? complete `ch7_02_podcast_intro.wav` (27.550 s) on the original THREE THEORIES narrator scene ? Theory 01 transition ? THE UNSEEN possession recording. Native acknowledgments remain required; refresh restores the persisted scene and seeks only within its current recording.
