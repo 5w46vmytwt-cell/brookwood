@@ -4,15 +4,15 @@ import {narrationCues,narrationFor,ambientCue,AMBIENT_VOLUME,AMBIENT_FADE_MS,PUZ
 export class Chapter8Audio{
  constructor(clock,{Player=globalThis.BrookwoodAudio.Player,request,onState}={}){
   this.clock=clock;this.request=request;this.onState=onState;this.state=null;this.entry=null;this.run=null;this.running=false;this.fadeInAt=null;this.blocked=false;this.message='';
-  this.player=new Player({id:'chapter8',cues:narrationCues},{externallyDriven:true,elapsedNow:()=>this.now()-(this.state?.chapter8.puzzleStartedAt??this.now()),canSync:()=>this.running&&clock.canSync?.()!==false,audioExtension:{tracks:[{...ambientCue,at:0,volumeAt:()=>this.volume()}]}});
+  this.player=new Player({id:'chapter8',cues:narrationCues},{externallyDriven:true,elapsedNow:()=>this.now()-(this.state?.chapter8.startedAt??this.now()),canSync:()=>this.running&&clock.canSync?.()!==false,audioExtension:{tracks:[{...ambientCue,at:0,volumeAt:()=>this.volume()}]}});
   this.track=this.player.tracks?.[0];this.track?.audio?.addEventListener('playing',()=>{if(this.fadeInAt===null)this.fadeInAt=this.clock.elapsedNow();});
  }
  now(){return (this.state?.chapter8.startedAt??0)+this.clock.elapsedNow();}
  volume(){const c=this.state?.chapter8;if(!c||!this.running)return 0;return AMBIENT_VOLUME*(this.fadeInAt===null?0:smooth((this.clock.elapsedNow()-this.fadeInAt)/AMBIENT_FADE_MS))*(c.step==='leaving'?smooth((c.deadline-this.now())/PUZZLE_FADE_MS):1);}
  update(state){
   const c=state.chapter8,run=state.generation+':'+c.id;if(this.run!==run){this.stop();this.run=run;}this.state=state;
-  this.running=['puzzle','leaving'].includes(c.step);
-  if(this.track){if(this.running){this.track.reset(c.puzzleStartedAt);this.track.sync();}else {this.track.audio.volume=0;this.track.reset(null);this.fadeInAt=null;}}
+  this.running=['unexpected-evidence','coded-message','puzzle','leaving'].includes(c.step);
+  if(this.track){if(this.running){this.track.reset(c.startedAt);this.track.sync();}else {this.track.audio.volume=0;this.track.reset(null);this.fadeInAt=null;}}
   const key=c.id+':'+c.sequence,cue=narrationFor(c.step);if(this.entry?.key!==key)this.release();if(!cue)return;
   if(this.entry){if(this.entry.ended)this.ack('chapter8-audio-ended');return;}
   const audio=this.player.media.get(cue.id);if(!audio||audio.readyState<2){this.message='PREPARING AUDIO';return;}

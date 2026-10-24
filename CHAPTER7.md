@@ -1,5 +1,11 @@
 # Chapter 7 — THE THREE THEORIES & THE EVIDENCE
 
+## Final window handoff — local, pending review
+
+New scene entries use `polishVersion: 5`. After the complete photograph narration, the final static hold changes from 12000 ms to 10500 ms (1500 ms shorter). The following smooth visual fade changes from 1600 ms to 1500 ms. The photograph/window zoom formulas, enhanced-window cue at narration offset 34300 ms and supplied narration are unchanged. Persisted legacy scenes retain their stored deadlines; no active phase is shortened mid-refresh.
+
+After the fade completes, the same server-authoritative progress transaction marks Chapter 7 complete and enters (or resumes) Chapter 8. No host click, player reset, vote change or environment change is involved. Refresh/multiple TVs cannot create duplicate Chapter 8 runs. The existing final-window checkpoint is labelled FINAL WINDOW ZOOM; AFTER FINAL WINDOW ZOOM enters the post-narration hold using the same host authentication and explicit test-outcome safeguards. The user approved release through the existing feature branch ? main ? Vercel workflow. Preserve live Redis, environment variables, host authentication and media; production verification must be read-only.
+
 ## Envelope audio and photo separation (2026-10-21)
 
 New scenes use `polishVersion: 4`; an already active legacy incoming poll retains its prior completion contract. Only `vote-intro` targets 6% ambience, returning smoothly to the usual 7% afterward on the same loop. Narration remains at full supplied volume.

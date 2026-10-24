@@ -8,7 +8,8 @@ import {clues,narrationFor,PUZZLE_FADE_MS} from '../chapter8-puzzle.js';
 import host from '../api/host.js';import me from '../api/me.js';import progress from '../api/progress.js';
 import {finalNarrationFixture} from './chapter7-fixture.js';
 import {makeBroadcastTestSelector} from '../api/_chapter7.js';
-import {startInvestigation} from '../api/_chapter7-story.js';
+import {startInvestigation,investigationHostAction} from '../api/_chapter7-story.js';
+import {storyRecording,sceneDuration,storyProgressDue,PHOTO_HOLD_MS,FINAL_WINDOW_HOLD_MS,FINAL_WINDOW_FADE_MS,PHOTO_ENHANCED_MS} from '../chapter7-story-timing.js';
 import {wavMetadata} from './wav-metadata.js';import {mp3Metadata} from './mp3-metadata.js';
 let now,raw,realNow,realFetch,env;
 beforeEach(()=>{now=10000000;raw=null;realNow=Date.now;realFetch=global.fetch;env={...process.env};Date.now=()=>now;process.env.HOST_KEY='chapter8-local-test';process.env.KV_REST_API_URL='https://redis.invalid';process.env.KV_REST_API_TOKEN='test';global.fetch=async(_url,options)=>{const a=JSON.parse(options.body);let result;if(a[0]==='GET')result=raw;else {assert.equal(a[0],'EVAL');assert.equal(a[1],CAS_SCRIPT);result=(raw??'')===a[4]?1:0;if(result)raw=a[5];}return {ok:true,json:async()=>({result})};};});
@@ -56,4 +57,20 @@ test('existing authenticated checkpoint preserves Chapters 1–7, cast and revea
 
 test('normal Chapter 8 entry requires completed Chapter 7 and preserves its exact stored state',()=>{
  const s=finalNarrationFixture(now);assert.throws(()=>makeChapter8Starter({generation:s.generation})(s));makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);assert.throws(()=>makeChapter8Starter({generation:s.generation,chapter7Id:s.chapter7.id})(s));Object.assign(s.chapter7.investigation,{step:'complete',deadline:null,completedAt:now});const previous=structuredClone(s.chapter7);makeChapter8Starter({generation:s.generation,chapter7Id:s.chapter7.id})(s);assert.equal(s.chapter8.step,'unexpected-evidence');assert.deepEqual(s.chapter7,previous);validateChapter8(s);
+});
+
+test('window narration completes before the shorter hold and fade; concurrent public progress enters Chapter 8 exactly once',async()=>{
+ const s=fixture();delete s.chapter8;makeBroadcastTestSelector('chapter7-window',{testMode:true,testRetrieverId:'p2'})(s);const i=s.chapter7.investigation,cue=storyRecording('photograph'),b=action=>({action,generation:s.generation,broadcastId:s.chapter7.id,investigationId:i.id,sequence:i.sequence,recording:cue.id});
+ const history=structuredClone({players:s.players,chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6});assert.equal(i.offsetMs,PHOTO_ENHANCED_MS);assert.equal(PHOTO_HOLD_MS,12000);assert.equal(FINAL_WINDOW_HOLD_MS,10500);assert.equal(FINAL_WINDOW_FADE_MS,1500);assert.equal(sceneDuration({polishVersion:4,step:'photo-hold'}),12000);assert.equal(sceneDuration({polishVersion:4,step:'ending-fade'}),1600);
+ investigationHostAction(s,b('investigation-audio-playing'));now+=cue.durationMs-i.offsetMs;raw=JSON.stringify(s);await call(progress);assert.equal(JSON.parse(raw).chapter7.investigation.step,'photograph');investigationHostAction(s,b('investigation-audio-ended'));assert.equal(i.step,'photo-hold');assert.equal(i.deadline-i.phaseAt,10500);raw=JSON.stringify(s);
+ now=i.deadline-1;await call(progress);assert.equal(JSON.parse(raw).phase,'chapter7');assert.equal(JSON.parse(raw).chapter7.investigation.step,'photo-hold');now++;await call(progress);let stored=JSON.parse(raw);assert.equal(stored.chapter7.investigation.step,'ending-fade');assert.equal(stored.chapter7.investigation.deadline-stored.chapter7.investigation.phaseAt,1500);
+ now=stored.chapter7.investigation.deadline-1;await call(progress);assert.equal(JSON.parse(raw).phase,'chapter7');now++;const responses=await Promise.all([call(progress),call(progress),call(progress,{phase:'chapter8',step:'puzzle'})]);assert(responses.every(r=>r.status===200));stored=JSON.parse(raw);assert.equal(stored.phase,'chapter8');assert.equal(stored.chapter8.step,'unexpected-evidence');assert.equal(stored.chapter7.investigation.step,'complete');assert.equal(new Set(responses.map(r=>r.data.state.chapter8.id)).size,1);assert.deepEqual({players:stored.players,chapter4:stored.chapter4,chapter5:stored.chapter5,chapter6:stored.chapter6},history);const saved=raw;now+=5000;await call(progress);assert.equal(raw,saved);assert.equal(storyProgressDue({investigation:{step:'complete'}},now),true);
+});
+
+test('automatic completion refresh resumes an existing Chapter 8 run without resetting any revealed clues',async()=>{
+ const s=fixture();chapter8HostAction(s,body(s,'chapter8-reveal',{clueId:13}));const saved=structuredClone(s.chapter8);makeBroadcastTestSelector('chapter7-window-end',{testMode:true,testRetrieverId:'p2'})(s);assert.equal(s.chapter7.investigation.step,'photo-hold');Object.assign(s.chapter7.investigation,{step:'complete',deadline:null,completedAt:now});raw=JSON.stringify(s);await call(progress);assert.equal(JSON.parse(raw).phase,'chapter8');assert.deepEqual(JSON.parse(raw).chapter8,saved);
+});
+
+test('both final-window shortcuts and Chapter 8 shortcuts require the existing host session and preserve game history',async()=>{
+ const s=fixture();raw=JSON.stringify(s);const history=structuredClone(s.players);assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter7-window-end'})).status,403);const auth=await call(host,{action:'maze-login',code:'chapter8-local-test'}),cookie=auth.headers['Set-Cookie'].split(';')[0];for(const checkpoint of ['chapter7-window','chapter7-window-end','chapter8','chapter8-puzzle']){const r=await call(host,{action:'chapter-select',checkpoint,testMode:true,testRetrieverId:'p2'},cookie);assert.equal(r.status,200);assert.deepEqual(JSON.parse(raw).players,history);}assert.equal(JSON.parse(raw).chapter8.step,'puzzle');
 });

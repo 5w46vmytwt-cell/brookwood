@@ -20,6 +20,9 @@ export function makeChapter8Starter(body={},checkpoint=null){
   s.phase='chapter8';
  };
 }
+// A public progress request can only cross the already-completed Chapter 7 boundary.
+// The starter is prepared once per request and CAS retries resume an existing run.
+export function makeAutomaticChapter8Starter(){const body={},start=makeChapter8Starter(body);return s=>{if(isChapter8(s)||s.phase!=='chapter7'||s.chapter7?.investigation?.step!=='complete')return UNCHANGED;if(s.chapter8){s.phase='chapter8';return;}body.generation=s.generation;body.chapter7Id=s.chapter7.id;return start(s);};}
 export function withinChapter8Run(change){let seen=false,id;return s=>{if(seen&&(!isChapter8(s)||s.chapter8?.id!==id))throw new LobbyError(409,'Chapter 8 changed.');seen=true;id=s.chapter8?.id;return change(s);};}
 export function chapter8HostAction(s,b,now=Date.now()){
  const c=s.chapter8;if(!isChapter8(s)||!c||b.generation!==s.generation||b.chapter8Id!==c.id)throw new LobbyError(409,'Chapter 8 changed. Refresh the TV.');

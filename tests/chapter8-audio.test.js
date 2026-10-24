@@ -23,8 +23,16 @@ test('autoplay failures wait for the existing gesture without starting a second 
  const h=harness('puzzle',{deny:true});h.update();await flush();assert(h.audio.needsUnlock());for(let n=0;n<10;n++)h.update();assert.equal(h.track().plays,1);h.deny(false);h.audio.unlock();await flush();assert(!h.track().paused);assert.equal(h.track().plays,2);assert.equal(h.audios.filter(a=>a.src===ambientCue.src).length,1);
 });
 test('native narration completion and refresh use the current recording, never a second voice or puzzle timer',async()=>{
- const h=harness('coded-message',{offset:7000});h.state.chapter8.audioStartedAt=100000;h.update();await flush();assert.equal(h.voice().currentTime,7);assert.equal(h.voice().volume,1);for(let n=0;n<10;n++)h.update();assert.equal(h.voice().plays,1);assert.equal(h.requests.length,0);assert(h.track().paused);h.at(23150);h.voice().ended=true;h.voice().paused=true;h.voice().emit('ended');h.voice().emit('ended');await flush();assert.equal(h.requests.filter(b=>b.action==='chapter8-audio-ended').length,1);h.audio.stop();assert(h.audios.every(a=>a.paused));
+ const h=harness('coded-message',{offset:7000});h.state.chapter8.audioStartedAt=100000;h.update();await flush();assert.equal(h.voice().currentTime,7);assert.equal(h.voice().volume,1);for(let n=0;n<10;n++)h.update();assert.equal(h.voice().plays,1);assert.equal(h.requests.length,0);assert(!h.track().paused);h.at(23150);h.voice().ended=true;h.voice().paused=true;h.voice().emit('ended');h.voice().emit('ended');await flush();assert.equal(h.requests.filter(b=>b.action==='chapter8-audio-ended').length,1);h.audio.stop();assert(h.audios.every(a=>a.paused));
 });
 test('late narration media starts at the first word and normal native playing sets its clock only once',async()=>{
  const h=harness('unexpected-evidence',{ready:0});h.update();assert.equal(h.voice().plays,0);h.at(9000);h.voice().readyState=4;h.update();await flush();assert.equal(h.voice().currentTime,0);assert.equal(h.voice().volume,1);assert.equal(h.requests.filter(b=>b.action==='chapter8-audio-playing').length,1);
+});
+
+test('ambience starts under both introductions and retains one element, position and fade through puzzle entry',async()=>{
+ const h=harness('unexpected-evidence');h.state.chapter8.puzzleStartedAt=null;h.update();await flush();assert.equal(h.track().plays,1);assert.equal(h.voice().plays,1);assert.equal(h.voice().volume,1);h.at(1600);h.update();assert.equal(h.track().volume,.07);h.track().currentTime=13.45;h.state.chapter8.step='coded-message';h.state.chapter8.sequence++;h.state.chapter8.audioStartedAt=null;h.at(13450);h.update();await flush();assert.equal(h.track().plays,1);assert.equal(h.track().currentTime,13.45);assert.equal(h.track().volume,.07);assert.equal(h.voice().volume,1);h.state.chapter8.step='puzzle';h.state.chapter8.sequence++;h.state.chapter8.puzzleStartedAt=136600;h.at(36600);h.update();assert.equal(h.track().plays,1);assert.equal(h.track().currentTime,13.45);assert.equal(h.track().volume,.07);
+});
+
+test('refresh during either introduction reconstructs the ambient chapter clock, never a zeroed puzzle clock',async()=>{
+ for(const [step,offset] of [['unexpected-evidence',5000],['coded-message',20000],['puzzle',40000]]){const h=harness(step,{offset});h.state.chapter8.puzzleStartedAt=step==='puzzle'?136600:null;h.update();await flush();assert.equal(h.track().currentTime,offset/1000);assert.equal(h.track().plays,1);h.at(offset+1600);h.update();assert.equal(h.track().volume,.07);h.audio.stop();}
 });

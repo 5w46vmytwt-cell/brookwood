@@ -1,4 +1,4 @@
-import {isChapter8,withinChapter8Run,advanceChapter8} from './_chapter8.js';
+import {isChapter8,withinChapter8Run,advanceChapter8,makeAutomaticChapter8Starter} from './_chapter8.js';
 import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail,isChapter4,withinChapter4Run,activateDoorVoting,makeChapter4Starter,publicState} from './_state.js';
 import {isChapter7,advanceChapter7,withinBroadcastRun} from './_chapter7.js';
 import {PHOTO_CHECKPOINT_MS} from '../cinematic-timeline.js';
@@ -12,8 +12,9 @@ export default async function handler(req,res){
   try{
     let outcome;
     const startChapter4=makeChapter4Starter();
+    const startChapter8=makeAutomaticChapter8Starter();
     const chapter8Change=withinChapter8Run(s=>{const result=advanceChapter8(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
-    const broadcastChange=withinBroadcastRun(s=>{const result=advanceChapter7(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
+    const broadcastChange=withinBroadcastRun(s=>{let result=advanceChapter7(s);if(s.phase==='chapter7'&&s.chapter7?.investigation?.step==='complete')result=startChapter8(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const mazeChange=withinMazeRun(s=>{const result=advanceChapter6(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const castingChange=withinCastingRun(s=>{const result=advanceCasting(s);outcome={ok:true,phase:s.phase,state:publicState(s)};return result;});
     const doorChange=withinChapter4Run(s=>{const result=activateDoorVoting(s);outcome={ok:true,eligible:s.phase!=='chapter4-opening',phase:s.phase};return result;});

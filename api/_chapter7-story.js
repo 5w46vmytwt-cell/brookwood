@@ -22,12 +22,12 @@ export function previousRetrievers(s){
 export const envelopeCandidates=s=>realPlayers(s).filter(p=>!previousRetrievers(s).has(p.id));
 export function startInvestigation(s,now=Date.now()){
  const c=s.chapter7;if(s.phase!=='chapter7'||c.step!=='waiting'||c.investigation)return UNCHANGED;
- c.investigation={polishVersion:4,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
+ c.investigation={polishVersion:5,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
 }
 // Anchor the visible-photo delay to the persisted native camera start, including refreshes before its end.
 function phaseDeadline(i){if(i.step==='photo-delay')return Math.max(i.phaseAt,i.photoSoundPlayedAt+Math.max(PHOTO_AUDIO_DELAY_MS,cameraCue.durationMs));const duration=sceneDuration(i);return duration===undefined?null:i.phaseAt+duration;}
 function enter(s,step,now,extra={}){
- const i=s.chapter7.investigation;i.polishVersion=4;i.step=step;i.phaseAt=now;i.deadline=phaseDeadline(i);i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
+ const i=s.chapter7.investigation;i.polishVersion=5;i.step=step;i.phaseAt=now;i.deadline=phaseDeadline(i);i.audioStartedAt=null;i.offsetMs=0;delete i.next;Object.assign(i,extra);i.sequence++;s.chapter7.sequence++;
 }
 function interlude(s,next,now){enter(s,'interlude',now,{next});}
 const electionKey=i=>i.step==='theory-vote'?'theory':'envelope';
@@ -176,7 +176,7 @@ export function investigationProgress(s,playerId){
 export function validateInvestigation(s){
  const i=s.chapter7.investigation;if(!i)return;
  if(typeof i.id!=='string'||!i.id||!Number.isFinite(i.startedAt)||!validSteps.includes(i.step)||!Number.isInteger(i.sequence)||i.sequence<0||!Number.isFinite(i.phaseAt)||!Number.isFinite(i.offsetMs)||i.offsetMs<0||i.audioStartedAt!==null&&!Number.isFinite(i.audioStartedAt)||typeof i.testMode!=='boolean'||!i.presence||!i.elections)throw Error('Invalid Chapter 7 investigation.');
- if(i.polishVersion!==undefined&&![1,2,3,4].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
+ if(i.polishVersion!==undefined&&![1,2,3,4,5].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
  if(i.deadline!==phaseDeadline(i))throw Error('Invalid investigation clock.');
  const players=new Set(s.players.map(p=>p.id));
  for(const store of [i.elections,i.testElections??{}])for(const [key,e] of Object.entries(store)){
@@ -188,10 +188,10 @@ export function selectInvestigationCheckpoint(s,checkpoint,b,now=Date.now()){
  const target=storyCheckpoints.find(c=>c[0]===checkpoint)?.[2];if(!target)throw new LobbyError(400,'Unknown investigation checkpoint.');
  startInvestigation(s,now);const i=s.chapter7.investigation;
  if(!i)throw new LobbyError(409,'Finish or explicitly skip the broadcast first.');
- i.polishVersion=4;i.testMode=b.testMode===true||s.players.some(p=>p.simulated===true);i.testSetup=null;i.hostRetriever=false;
+ i.polishVersion=5;i.testMode=b.testMode===true||s.players.some(p=>p.simulated===true);i.testSetup=null;i.hostRetriever=false;
  const theory=election(i,'theory')?.winnerId,retriever=election(i,'envelope')?.winnerId;
- if(['envelope-waiting','photograph'].includes(target)&&Number.isFinite(i.hostRetrievalAt)&&!b.testRetrieverId)i.hostRetriever=true;
- const needsTheory=['spoken','theory-reveal'].includes(target),needsRetriever=['envelope-waiting','photograph'].includes(target)&&!i.hostRetriever;
+ if(['envelope-waiting','photograph','photo-hold'].includes(target)&&Number.isFinite(i.hostRetrievalAt)&&!b.testRetrieverId)i.hostRetriever=true;
+ const needsTheory=['spoken','theory-reveal'].includes(target),needsRetriever=['envelope-waiting','photograph','photo-hold'].includes(target)&&!i.hostRetriever;
  if(needsTheory&&!theory||needsRetriever&&!retriever){
   if(!i.testMode)throw new LobbyError(409,'This checkpoint needs a saved result. Explicitly enable test mode and choose a test outcome. Saved votes will remain unchanged.');
   if(needsTheory&&!theory&&!theoryIds.includes(b.testTheory))throw new LobbyError(400,'Choose a test theory.');

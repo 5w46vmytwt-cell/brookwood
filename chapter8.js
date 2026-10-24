@@ -26,10 +26,8 @@ export class Chapter8View{
   this.node('chapter8Continue').onclick=()=>this.submit('chapter8-continue');this.node('chapter8Resume').onclick=async()=>{await this.authenticate();this.audio.unlock();};
  }
  update(state){
-  const previous=this.state;this.state=state;const c=state.chapter8,ready=state.phase==='chapter7'&&state.chapter7?.investigation?.step==='complete';
-  const start=this.node('chapter8Start');if(!start)return;
-  if((c&&!previous?.chapter8||ready&&!this.ready)||c&&previous?.chapter8?.id!==c.id)this.authenticate();this.ready=ready;
-  start.hidden=!ready||!this.authenticated||!this.node('chapterSelectPanel')?.hidden;start.disabled=this.pending;start.onclick=()=>this.submit('chapter8-start');
+  const previous=this.state;this.state=state;const c=state.chapter8;
+  if(c&&(!previous?.chapter8||previous.chapter8.id!==c.id))this.authenticate();
   if(!c){this.node('chapter8TV').hidden=true;this.audio?.stop();return;}
   this.setup();this.node('chapter8TV').hidden=false;if(this.clock.canSync?.()===false)return;this.audio.update(state);
   const puzzle=['puzzle','leaving'].includes(c.step);this.node('chapter8Canvas').hidden=!puzzle;this.node('chapter8Canvas').style.opacity=String(c.step==='leaving'?smooth((c.deadline-c.startedAt-this.clock.elapsedNow())/PUZZLE_FADE_MS):1);
@@ -50,5 +48,5 @@ export class Chapter8View{
   finally{if(isReveal)this.revealing.delete(extra.clueId);else this.pending=false;}
  }
  progressDue(now){const c=this.state?.chapter8;return c?.step==='leaving'&&now>=c.deadline;}
- stop(){this.epoch++;this.pointer=null;this.audio?.stop();this.state=null;this.ready=false;this.authenticated=false;const root=this.node('chapter8TV'),start=this.node('chapter8Start');if(root)root.hidden=true;if(start)start.hidden=true;}
+ stop(){this.epoch++;this.pointer=null;this.audio?.stop();this.state=null;this.ready=false;this.authenticated=false;const root=this.node('chapter8TV');if(root)root.hidden=true;}
 }
