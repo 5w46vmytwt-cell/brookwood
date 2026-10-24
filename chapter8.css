@@ -1,0 +1,25 @@
+#chapter8TV{position:fixed;inset:0;z-index:75;background:#000;color:#d3c4a4;display:grid;place-items:center;overflow:hidden}
+#chapter8TV[hidden],#chapter8TV [hidden],#chapter8Start[hidden]{display:none!important}
+#chapter8Canvas{position:relative;width:min(100vw,150vh);aspect-ratio:3/2;max-height:100vh;container-type:inline-size}
+#chapter8Artwork{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.ch8-clue{position:absolute;padding:0;margin:0;border:0;border-radius:0;background:transparent;touch-action:manipulation;color:#241b11;font-family:Georgia,'Times New Roman',serif;font-size:clamp(25px,5.5cqw,100px);font-weight:bold;display:grid;place-items:center;line-height:1;pointer-events:none;user-select:none}
+.ch8-clue[data-interactive=true]{pointer-events:auto;cursor:pointer}
+.ch8-clue:disabled{opacity:1}
+.ch8-clue[data-interactive=true]:focus-visible{outline:2px dashed #5e3215;outline-offset:3px}
+.ch8-clue[data-revealed=true]{background-image:url('/assets/chapter8/ch8_puzzle_clues.png');clip-path:polygon(var(--notch,45%) 0,100% 0,100% 100%,0 100%,0 12%);text-shadow:1px 1px 0 #d8c2a1}
+#chapter8Narrator{max-width:80vw;text-align:center;font-family:Georgia,serif}
+#chapter8Narrator h1{font-size:clamp(30px,5vw,80px);font-weight:normal;letter-spacing:.1em}
+#chapter8Narrator p{letter-spacing:.3em;font-size:13px}
+#chapter8Narrator .ch8-wave{display:flex;justify-content:center;align-items:center;height:70px;gap:5px;margin-top:40px}
+#chapter8Narrator .ch8-wave i{width:2px;height:12px;background:#a49b89;opacity:.5}
+#chapter8Narrator .ch8-wave.speaking i{animation:ch8-wave 1.1s ease-in-out infinite alternate}
+#chapter8Narrator .ch8-wave i:nth-child(3n){animation-delay:-.4s;height:28px}#chapter8Narrator .ch8-wave i:nth-child(4n){animation-delay:-.8s;height:45px}
+@keyframes ch8-wave{to{transform:scaleY(.35);opacity:.3}}
+#chapter8Controls{position:absolute;right:18px;bottom:12px;display:flex;align-items:center;gap:12px;max-width:90vw;font:12px Arial,sans-serif}
+#chapter8TV button:not(.ch8-clue),#chapter8Start{width:auto;margin:0;padding:10px 16px;color:#d3c4a4;background:#12100ce8;border:1px solid #77664c;cursor:pointer;touch-action:manipulation}
+#chapter8TV button:not(.ch8-clue):disabled{opacity:.45;cursor:default}#chapter8Error{color:#c6a18c}
+#chapter8Start{position:fixed;right:18px;bottom:18px;z-index:76}
+body.chapter8-active #chapterSelectPanel{z-index:90}
+
+.ch8-clue[data-clue^='1']:not([data-clue='1']){--notch:35%}
+.ch8-number-tab{position:absolute;z-index:1;pointer-events:none;background-image:url('/assets/chapter8/ch8_puzzle_clues.png');clip-path:polygon(0 20%,82% 0,100% 85%,10% 100%)}

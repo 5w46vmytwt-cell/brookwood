@@ -1,3 +1,4 @@
+import {chapter8Checkpoints,makeChapter8Starter,withinChapter8Run,chapter8HostAction} from './_chapter8.js';
 import {isChapter7,withinBroadcastRun,broadcastHostAction,makeBroadcastTestSelector} from './_chapter7.js';
 import {envelopeCandidates,previousRetrievers,investigationHostAction} from './_chapter7-story.js';
 import {storyCheckpoints} from '../chapter7-story-timing.js';
@@ -19,13 +20,16 @@ function fillSimulatedPlayers(s){
 }
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
+  const chapter8Checkpoint=req.body?.action==='chapter-select'&&chapter8Checkpoints.includes(req.body?.checkpoint);
+  const chapter8Action=['chapter8-start','chapter8-reveal','chapter8-continue','chapter8-audio-playing','chapter8-audio-ended'].includes(req.body?.action);
   const broadcastCheckpoint=req.body?.action==='chapter-select'&&['chapter7','chapter7-after',...storyCheckpoints.map(c=>c[0])].includes(req.body?.checkpoint);
   const investigationAction=['investigation-audio-playing','investigation-audio-ended','investigation-close-voting','investigation-envelope-return','investigation-host-retrieval','investigation-test-vote','investigation-photo-sound'].includes(req.body?.action);
-  const sessionAction=req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
+  const sessionAction=chapter8Checkpoint||chapter8Action||req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
   const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
   if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
   if(pinValid)issueHostSession(req,res);
   try{
+    if(chapter8Action||chapter8Checkpoint){let state;const change=chapter8Checkpoint?makeChapter8Starter(req.body,req.body.checkpoint):req.body.action==='chapter8-start'?makeChapter8Starter(req.body):withinChapter8Run(s=>chapter8HostAction(s,req.body));await updateState(s=>{const result=change(s);state=publicState(s);return result;});return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
     if(req.body.action==='investigation-test-options'){
       const s=await getState(),i=s.chapter7?.investigation;
       if(s.phase!=='chapter7'||!i?.testMode)throw new LobbyError(403,'Enable an explicit Chapter 7 test checkpoint first.');

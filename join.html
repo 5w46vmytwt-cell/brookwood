@@ -38,6 +38,7 @@ let messagePending=null,revealUntil=0,acknowledgedRun=null;
 const privateRuntime=new BrookwoodPrivatePhone.Runtime({onState:renderPrivate});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)privateRuntime.suspend()});
 function render(j,timing){
+  if(j.chapter8){if(me?.chapter8?.id===j.chapter8.id&&me.generation===j.generation&&j.chapter8.sequence<me.chapter8.sequence)return;privateRuntime.acceptState({phase:'lobby'});me=j;show('maze');document.getElementById('opening').classList.remove('show');for(const id of ['mazePhoneLives','mazePhoneTarget','mazePhoneVote','mazePhoneCount','mazePhoneError'])document.getElementById(id).hidden=true;document.getElementById('mazePhoneTitle').textContent='THE INVESTIGATION CONTINUES';document.getElementById('mazePhoneCopy').textContent='Watch the TV.';return;}
   const oldVote=me?.chapter7?.investigation?.election,newVote=j.chapter7?.investigation?.election;if(me?.chapter7?.id===j.chapter7?.id&&oldVote?.id&&oldVote.id===newVote?.id&&(newVote.voteCount<oldVote.voteCount||oldVote.voted&&!newVote.voted))return;
   if(me?.chapter7&&j.generation===me.generation&&(j.chapter7?.id===me.chapter7.id?j.chapter7.sequence<me.chapter7.sequence:!j.chapter7))return;
   if(j.chapter7){privateRuntime.acceptState({phase:'lobby'});me=j;show('maze');document.getElementById('opening').classList.remove('show');const chapter7Session=auth;BrookwoodInvestigationPhone.render(j,{document,auth,request:lobbyRequest,onState:render,onInvalid:clearSession,isCurrent:()=>auth===chapter7Session});return;}

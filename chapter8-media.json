@@ -1,0 +1,57 @@
+[
+  {
+    "src": "/assets/chapter8/ch8_puzzle_clues.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "c9362b88cc35905b41dcc8a871a7c6be5c5e835059bd5ba96e038e8fd3447a96"
+  },
+  {
+    "src": "/assets/chapter8/audio/ch8_01_unexpected_evidence.wav",
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 1291200,
+    "durationMs": 13450,
+    "sha256": "4d133739a63a4c7b0079a8cf7d332793ea4dbc3f20495d337b4102d143fcc6b4"
+  },
+  {
+    "src": "/assets/chapter8/audio/ch8_02_coded_message.wav",
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 2222400,
+    "durationMs": 23150,
+    "sha256": "5c2cfdd9b93949e4f9b152aa63b00059e7d817b73fe8879ef89721e9440de5c8"
+  },
+  {
+    "src": "/assets/chapter8/audio/ch8_03_message_reaction.wav",
+    "encoding": 3,
+    "channels": 1,
+    "sampleRate": 24000,
+    "byteRate": 96000,
+    "blockAlign": 4,
+    "bits": 32,
+    "dataSize": 1382400,
+    "durationMs": 14400,
+    "sha256": "9d32ccf296f36991ea037abd5cfc03a301f4c2b2a3b9d2ea549d237854b7c660"
+  },
+  {
+    "src": "/assets/chapter8/audio/ch8_puzzle_ambient_loop.mp3",
+    "encoding": "MPEG Layer III",
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitrates": [
+      256
+    ],
+    "frames": 6035,
+    "samples": 6952320,
+    "durationMs": 144840,
+    "sha256": "88a6a1f46da4c06ef8e721b4a94b8e290eee0c2c7f368e1fed0005ff2d1080b8"
+  }
+]
