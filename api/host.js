@@ -21,7 +21,7 @@ function fillSimulatedPlayers(s){
 export default async function handler(req,res){
   if(req.method!=="POST")return send(res,405,{error:"Method not allowed"});
   const chapter8Checkpoint=req.body?.action==='chapter-select'&&chapter8Checkpoints.includes(req.body?.checkpoint);
-  const chapter8Action=['chapter8-start','chapter8-reveal','chapter8-continue','chapter8-audio-playing','chapter8-audio-ended'].includes(req.body?.action);
+  const chapter8Action=['chapter8-start','chapter8-photo-sent','chapter8-reveal','chapter8-continue','chapter8-audio-playing','chapter8-audio-ended'].includes(req.body?.action);
   const broadcastCheckpoint=req.body?.action==='chapter-select'&&['chapter7','chapter7-after',...storyCheckpoints.map(c=>c[0])].includes(req.body?.checkpoint);
   const investigationAction=['investigation-audio-playing','investigation-audio-ended','investigation-close-voting','investigation-envelope-return','investigation-host-retrieval','investigation-test-vote','investigation-photo-sound'].includes(req.body?.action);
   const sessionAction=chapter8Checkpoint||chapter8Action||req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);

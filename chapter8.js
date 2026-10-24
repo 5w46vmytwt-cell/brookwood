@@ -1,4 +1,4 @@
-import {clues,PUZZLE_SRC,PUZZLE_FADE_MS,smooth} from './chapter8-puzzle.js';
+import {clues,PUZZLE_SRC,PUZZLE_FADE_MS,smooth,narrationFor} from './chapter8-puzzle.js';
 import {Chapter8Audio} from './chapter8-audio.js';
 
 export class Chapter8View{
@@ -23,6 +23,7 @@ export class Chapter8View{
    const tab=this.document.createElement('span'),tx=c.x-.5,ty=c.id<=9?13:c.id<=13?42:65.5,tw=c.id<=9?5.0:5.5,th=6.5;
    tab.className='ch8-number-tab';tab.hidden=true;tab.setAttribute('aria-hidden','true');tab.style.left=tx+'%';tab.style.top=ty+'%';tab.style.width=tw+'%';tab.style.height=th+'%';tab.style.backgroundSize=(10000/tw)+'% '+(10000/th)+'%';tab.style.backgroundPosition=(tx/(100-tw)*100)+'% '+(ty/(100-th)*100)+'%';canvas.appendChild(tab);this.tabs.set(c.id,tab);
   }
+  this.node('chapter8PhotoSent').onclick=()=>this.submit('chapter8-photo-sent');
   this.node('chapter8Continue').onclick=()=>this.submit('chapter8-continue');this.node('chapter8Resume').onclick=async()=>{await this.authenticate();this.audio.unlock();};
  }
  update(state){
@@ -31,12 +32,14 @@ export class Chapter8View{
   if(!c){this.node('chapter8TV').hidden=true;this.audio?.stop();return;}
   this.setup();this.node('chapter8TV').hidden=false;if(this.clock.canSync?.()===false)return;this.audio.update(state);
   const puzzle=['puzzle','leaving'].includes(c.step);this.node('chapter8Canvas').hidden=!puzzle;this.node('chapter8Canvas').style.opacity=String(c.step==='leaving'?smooth((c.deadline-c.startedAt-this.clock.elapsedNow())/PUZZLE_FADE_MS):1);
-  this.node('chapter8Narrator').hidden=puzzle||c.step==='complete';this.node('chapter8Heading').textContent=({'unexpected-evidence':'UNEXPECTED EVIDENCE','coded-message':'A CODED MESSAGE',reaction:'THE MESSAGE'})[c.step]??'';
+  this.node('chapter8Narrator').hidden=puzzle||c.step==='complete';this.node('chapter8Narrator').style.opacity=String(smooth((c.startedAt+this.clock.elapsedNow()-c.phaseAt)/1600));this.node('chapter8Heading').textContent=({'unexpected-evidence':'UNEXPECTED EVIDENCE','photo-waiting':'TAKE A PHOTOGRAPH OF THE NOTE.','coded-message':'A CODED MESSAGE',reaction:'THE MESSAGE'})[c.step]??'';
+  this.node('chapter8Copy').hidden=c.step!=='photo-waiting';this.node('chapter8Copy').textContent=c.step==='photo-waiting'?'Send the photograph. Then confirm once it has been sent.':'';this.node('chapter8Wave').hidden=!narrationFor(c.step);
   this.node('chapter8Wave').classList.toggle('speaking',!!this.audio.entry&&!this.audio.entry.audio.paused&&!this.audio.entry.ended);
   const nav=this.node('chapterSelectPanel'),navigating=nav&&!nav.hidden;if(navigating)this.pointer=null;
   for(const clue of clues){const button=this.buttons.get(clue.id),revealed=c.revealedClues.includes(clue.id),interactive=this.authenticated&&c.step==='puzzle'&&!revealed&&!this.pending&&!this.revealing.has(clue.id)&&!navigating;
    button.textContent=revealed?clue.letter:'';button.dataset.revealed=String(revealed);button.dataset.interactive=String(interactive);button.disabled=!interactive;button.tabIndex=interactive?0:-1;button.setAttribute('aria-label',revealed?'Clue '+clue.id+': '+clue.letter:'Reveal clue '+clue.id);this.tabs.get(clue.id).hidden=!revealed;
   }
+  this.node('chapter8PhotoSent').hidden=!this.authenticated||c.step!=='photo-waiting';this.node('chapter8PhotoSent').disabled=this.pending||navigating;
   this.node('chapter8Continue').hidden=!this.authenticated||c.step!=='puzzle'||c.revealedClues.length!==17;this.node('chapter8Continue').disabled=this.pending||navigating;
   this.node('chapter8Resume').hidden=!this.authenticated||!this.audio.needsUnlock();this.node('chapter8Resume').textContent=this.audio.message||'ENABLE AUDIO';
  }

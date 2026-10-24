@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
+import {clues} from '../chapter8-puzzle.js';
+function rule(css,selector){const start=css.indexOf(selector+'{');assert(start>=0,selector);return Object.fromEntries(css.slice(start+selector.length+1,css.indexOf('}',start)).split(';').filter(Boolean).map(p=>{const i=p.indexOf(':');return [p.slice(0,i).trim(),p.slice(i+1).trim()];}));}
+test('shared Chapter 8 scene, text, waveform and host controls retain the actual Chapter 7 design declarations',()=>{
+ const original=fs.readFileSync('chapter7.css','utf8'),shared=fs.readFileSync('investigation-ui.css','utf8');for(const [before,after] of [['#ch7Scene','.investigation-scene'],['#ch7Eyebrow','.investigation-eyebrow'],['#ch7Title','.investigation-title'],['#ch7Subtitle','.investigation-copy'],['#ch7Waveform','.investigation-wave'],['#ch7Waveform i','.investigation-wave i'],['#ch7Waveform.speaking i','.investigation-wave.speaking i'],['#ch7Host','.investigation-host'],['#ch7Host button','.investigation-host button']])for(const [key,value] of Object.entries(rule(original,before)))assert.equal(rule(shared,after)[key],value,before+' '+key);
+ const html=fs.readFileSync('tv.html','utf8');for(const name of ['investigation-scene','investigation-title','investigation-host','investigation-wave'])assert(html.includes(name));assert(html.includes('BROOKWOOD FARM &middot; CASE FILE 1996'));assert(html.includes('id="chapter8PhotoSent" hidden>PHOTO SENT'));assert(!html.includes('type="file"'));
+});
+test('only revealed HIDE letters select dark red; puzzle artwork, first thirteen letters and paper masks remain intact',()=>{
+ const css=fs.readFileSync('chapter8.css','utf8');assert.equal(rule(css,'.ch8-clue').color,'#241b11');const selectors=[14,15,16,17].map(id=>`.ch8-clue[data-revealed=true][data-clue='${id}']`).join(',');assert.deepEqual(rule(css,selectors),{color:'#792b2b'});assert.equal(clues.slice(13).map(c=>c.letter).join(''),'HIDE');assert(css.includes("background-image:url('/assets/chapter8/ch8_puzzle_clues.png')"));
+});

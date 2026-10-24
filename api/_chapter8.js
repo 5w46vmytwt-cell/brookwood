@@ -15,7 +15,7 @@ export function makeChapter8Starter(body={},checkpoint=null){
    if(s.phase!=='chapter7'||s.chapter7?.id!==body.chapter7Id||s.chapter7?.investigation?.step!=='complete')throw new LobbyError(409,'Finish Chapter 7 before continuing.');
   }
   const target=checkpoint==='chapter8-puzzle'?'puzzle':'unexpected-evidence';
-  if(!s.chapter8)s.chapter8={id,startedAt:now,step:target,phaseAt:now,audioStartedAt:null,deadline:null,sequence:0,revealedClues:[],puzzleStartedAt:target==='puzzle'?now:null,completedAt:null};
+  if(!s.chapter8)s.chapter8={id,startedAt:now,step:target,phaseAt:now,audioStartedAt:null,deadline:null,sequence:0,revealedClues:[],photoSentAt:null,puzzleStartedAt:target==='puzzle'?now:null,completedAt:null};
   else {if(isChapter8(s)&&s.chapter8.step===target)return UNCHANGED;enter(s,target,now);if(target==='puzzle')s.chapter8.puzzleStartedAt??=now;s.chapter8.completedAt=null;}
   s.phase='chapter8';
  };
@@ -32,7 +32,9 @@ export function chapter8HostAction(s,b,now=Date.now()){
   if(c.revealedClues.includes(b.clueId))return UNCHANGED;
   c.revealedClues.push(b.clueId);c.revealedClues.sort((a,b)=>a-b);c.sequence++;return;
  }
+ if(b.action==='chapter8-photo-sent'&&c.photoSentAt!=null&&c.step!=='photo-waiting')return UNCHANGED;
  if(b.sequence!==c.sequence)throw new LobbyError(409,'The Chapter 8 scene changed.');
+ if(b.action==='chapter8-photo-sent'){if(c.step!=='photo-waiting')throw new LobbyError(409,'Wait for the photograph request.');c.photoSentAt??=now;enter(s,'coded-message',now);return;}
  if(b.action==='chapter8-continue'){
   if(c.step!=='puzzle'||c.revealedClues.length!==CLUE_IDS.length)throw new LobbyError(409,'Reveal all 17 clues before continuing.');
   enter(s,'leaving',now);return;
@@ -42,7 +44,7 @@ export function chapter8HostAction(s,b,now=Date.now()){
  if(b.action==='chapter8-audio-playing'){if(c.audioStartedAt!==null)return UNCHANGED;c.audioStartedAt=now;return;}
  if(b.action==='chapter8-audio-ended'){
   if(c.audioStartedAt===null||now<c.audioStartedAt+cue.durationMs-250)throw new LobbyError(409,'Let the recording finish.');
-  const next={'unexpected-evidence':'coded-message','coded-message':'puzzle',reaction:'complete'}[c.step];enter(s,next,now);
+  const next={'unexpected-evidence':'photo-waiting','coded-message':'puzzle',reaction:'complete'}[c.step];enter(s,next,now);
   if(next==='puzzle')c.puzzleStartedAt??=now;if(next==='complete')c.completedAt=now;return;
  }
  throw new LobbyError(400,'Unknown Chapter 8 action.');
@@ -54,7 +56,8 @@ export function advanceChapter8(s,now=Date.now()){
 export function chapter8Progress(s){return isChapter8(s)?structuredClone(s.chapter8):null;}
 export function validateChapter8(s){
  const c=s.chapter8,time=n=>Number.isFinite(n)&&n>0;
- if(!c||typeof c.id!=='string'||!c.id||!time(c.startedAt)||!time(c.phaseAt)||!['unexpected-evidence','coded-message','puzzle','leaving','reaction','complete'].includes(c.step)||!Number.isInteger(c.sequence)||c.sequence<0||!Array.isArray(c.revealedClues)||new Set(c.revealedClues).size!==c.revealedClues.length||c.revealedClues.some(id=>!Number.isInteger(id)||!CLUE_IDS.includes(id)))throw Error('Invalid Chapter 8 state.');
+ if(!c||typeof c.id!=='string'||!c.id||!time(c.startedAt)||!time(c.phaseAt)||!['unexpected-evidence','photo-waiting','coded-message','puzzle','leaving','reaction','complete'].includes(c.step)||!Number.isInteger(c.sequence)||c.sequence<0||!Array.isArray(c.revealedClues)||new Set(c.revealedClues).size!==c.revealedClues.length||c.revealedClues.some(id=>!Number.isInteger(id)||!CLUE_IDS.includes(id)))throw Error('Invalid Chapter 8 state.');
+ if(c.photoSentAt!=null&&!time(c.photoSentAt))throw Error('Invalid Chapter 8 photo confirmation.');
  if(c.audioStartedAt!==null&&(!narrationFor(c.step)||!time(c.audioStartedAt)||c.audioStartedAt<c.phaseAt)||c.puzzleStartedAt!==null&&!time(c.puzzleStartedAt)||c.completedAt!==null&&!time(c.completedAt)||c.deadline!==(c.step==='leaving'?c.phaseAt+PUZZLE_FADE_MS:null))throw Error('Invalid Chapter 8 clock.');
  if(['puzzle','leaving','reaction','complete'].includes(c.step)&&!time(c.puzzleStartedAt)||['leaving','reaction','complete'].includes(c.step)&&c.revealedClues.length!==17||(c.step==='complete'?!time(c.completedAt):c.completedAt!==null))throw Error('Invalid Chapter 8 progression.');
 }
