@@ -41,3 +41,10 @@ test('waiting and reaction refreshes seek the chapter loop, while an expired com
  for(const step of ['photo-waiting','reaction']){const h=harness(step,{offset:70000});h.update();await flush();assert.equal(h.track().currentTime,70);assert.equal(h.track().plays,1);h.at(71600);h.update();assert.equal(h.track().volume,.07);h.audio.stop();}
  const h=harness('complete',{offset:70000});h.state.chapter8.completedAt=160000;h.update();await flush();assert.equal(h.track().plays,0);assert(h.track().paused);assert.equal(h.track().volume,0);
 });
+
+test('reaction ambience fades only through the finale handoff, never under CCTV, silence, news or the terminal state',async()=>{
+ const h=harness('reaction');h.update();await flush();h.at(1600);h.update();assert.equal(h.track().volume,.07);const plays=h.track().plays;
+ h.state.chapter8.step='finale';h.state.chapter8.finale={index:0,phaseAt:102000};h.state.chapter8.sequence++;h.at(2000);h.update();assert.equal(h.track().volume,.07);assert(h.audios.filter(a=>a!==h.track()).every(a=>a.paused));h.at(2800);h.update();assert.equal(h.track().volume,.035);assert.equal(h.track().plays,plays);h.at(3600);h.update();assert(h.track().paused);assert.equal(h.track().volume,0);
+ for(const index of [1,19,20,29,31]){h.state.chapter8.finale.index=index;h.update();assert(h.track().paused);assert.equal(h.track().plays,plays);}
+ h.state.chapter8.step='complete';h.state.chapter8.completedAt=104000;h.at(4000);h.update();assert(h.track().paused);assert.equal(h.track().plays,plays);
+});

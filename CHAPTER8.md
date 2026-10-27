@@ -1,6 +1,10 @@
 # Chapter 8 — interactive picture clues
 
-## Approved refinement release
+## Chapter 8 finale extension (release approved)
+
+The supplied wife/security-camera/news finale is now appended automatically after the existing complete puzzle reaction. See [CHAPTER8-FINALE.md](CHAPTER8-FINALE.md) for exact measured cues, assets, persistence, preview shortcuts and validation. The completed finale and sound integration are approved for release through the existing GitHub/main/Vercel workflow; deployment status is verified separately. The prior deployed puzzle/refinement behavior below is retained except for its terminal reaction-to-complete handoff, which now enters the automatic finale. Existing persisted complete runs remain complete.
+
+## Prior approved refinement release
 
 Baseline: `bf36dd4`. The user authorized this focused Chapter 8 refinement, local validation, commit/push on the feature branch and the existing GitHub → main → Vercel production workflow. Never start/reset the production game, mutate production Redis or change environment variables. Production smoke checks are read-only. Chapters 1–7, supplied media and the existing host-session authentication remain unchanged.
 
@@ -10,7 +14,7 @@ Chapter 7's completed final fade still automatically enters Chapter 8 through th
 
 PHOTO SENT is a story confirmation only: there is no camera access, image upload, file input or external messaging. The existing host endpoint persists `photoSentAt`, then enters `coded-message`. Concurrent/duplicate confirmation requests cannot replay the recording, change its clock or overwrite the saved confirmation. Generation, run and phase protections remain in force. Refresh restores the saved phase; already active legacy narration/puzzle states without the optional new field remain valid.
 
-The complete 23.150-second `ch8_02_coded_message.wav` then enters the puzzle. All 17 host-controlled reveals remain unordered, atomic, repeat-safe and persistent across sessions. No typed answers or automatic answer validation exist. Completion remains visible indefinitely, until the authenticated host presses Continue. Continue fades the puzzle visually over 1600 ms, then starts the full 14.400-second `ch8_03_message_reaction.wav`. No security-camera or later-chapter scenes are implemented.
+The complete 23.150-second `ch8_02_coded_message.wav` then enters the puzzle. All 17 host-controlled reveals remain unordered, atomic, repeat-safe and persistent across sessions. No typed answers or automatic answer validation exist. Completion remains visible indefinitely, until the authenticated host presses Continue. Continue fades the puzzle visually over 1600 ms, then starts the full 14.400-second `ch8_03_message_reaction.wav`. That deployed release stopped here. The local finale extension described above now follows the full reaction.
 
 ## Chapter 7 visual language
 

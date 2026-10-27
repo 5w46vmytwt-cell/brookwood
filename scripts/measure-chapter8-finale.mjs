@@ -1,0 +1,11 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {wavMetadata} from '../tests/wav-metadata.js';
+import {soundLayers} from '../chapter8-sound-design.js';
+import {mp3Metadata} from '../tests/mp3-metadata.js';
+import {mp4Metadata} from '../tests/mp4-metadata.js';
+import {finaleCues,cameras} from '../chapter8-finale-timing.js';
+const paths=[...new Set([...Object.values(cameras),...[...finaleCues,...soundLayers].filter(c=>c.src).map(c=>c.src)])];
+const media=paths.map(src=>{const b=readFileSync('.'+src);return {src,bytes:b.length,...(src.endsWith('.mp3')?mp3Metadata(b):src.endsWith('.wav')?wavMetadata(b):src.endsWith('.mp4')?mp4Metadata(b):{width:b.readUInt32BE(16),height:b.readUInt32BE(20)}),sha256:createHash('sha256').update(b).digest('hex')};});
+if(process.argv.includes('--write'))writeFileSync('chapter8-finale-media.json',JSON.stringify(media,null,2)+'\n');
+console.log(JSON.stringify(media,null,2));

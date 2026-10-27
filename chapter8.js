@@ -1,3 +1,4 @@
+import {Chapter8Finale} from './chapter8-finale.js';
 import {clues,PUZZLE_SRC,PUZZLE_FADE_MS,smooth,narrationFor} from './chapter8-puzzle.js';
 import {Chapter8Audio} from './chapter8-audio.js';
 
@@ -24,15 +25,17 @@ export class Chapter8View{
    tab.className='ch8-number-tab';tab.hidden=true;tab.setAttribute('aria-hidden','true');tab.style.left=tx+'%';tab.style.top=ty+'%';tab.style.width=tw+'%';tab.style.height=th+'%';tab.style.backgroundSize=(10000/tw)+'% '+(10000/th)+'%';tab.style.backgroundPosition=(tx/(100-tw)*100)+'% '+(ty/(100-th)*100)+'%';canvas.appendChild(tab);this.tabs.set(c.id,tab);
   }
   this.node('chapter8PhotoSent').onclick=()=>this.submit('chapter8-photo-sent');
-  this.node('chapter8Continue').onclick=()=>this.submit('chapter8-continue');this.node('chapter8Resume').onclick=async()=>{await this.authenticate();this.audio.unlock();};
+  this.node('chapter8Continue').onclick=()=>this.submit('chapter8-continue');this.node('chapter8Resume').onclick=async()=>{await this.authenticate();this.audio.unlock();this.finale?.unlock();};
  }
  update(state){
   const previous=this.state;this.state=state;const c=state.chapter8;
   if(c&&(!previous?.chapter8||previous.chapter8.id!==c.id))this.authenticate();
-  if(!c){this.node('chapter8TV').hidden=true;this.audio?.stop();return;}
+  if(!c){this.node('chapter8TV').hidden=true;this.audio?.stop();this.finale?.stop();this.finale=null;return;}
   this.setup();this.node('chapter8TV').hidden=false;if(this.clock.canSync?.()===false)return;this.audio.update(state);
+  if(c.step==='finale'&&!this.finale)this.finale=new Chapter8Finale(this.document,this.clock,{Player:this.Player,request:this.request,onState:this.onState});
+  this.finale?.update(state,this.authenticated);
   const puzzle=['puzzle','leaving'].includes(c.step);this.node('chapter8Canvas').hidden=!puzzle;this.node('chapter8Canvas').style.opacity=String(c.step==='leaving'?smooth((c.deadline-c.startedAt-this.clock.elapsedNow())/PUZZLE_FADE_MS):1);
-  this.node('chapter8Narrator').hidden=puzzle||c.step==='complete';this.node('chapter8Narrator').style.opacity=String(smooth((c.startedAt+this.clock.elapsedNow()-c.phaseAt)/1600));this.node('chapter8Heading').textContent=({'unexpected-evidence':'UNEXPECTED EVIDENCE','photo-waiting':'TAKE A PHOTOGRAPH OF THE NOTE.','coded-message':'A CODED MESSAGE',reaction:'THE MESSAGE'})[c.step]??'';
+  this.node('chapter8Narrator').hidden=puzzle||c.step==='complete'||c.step==='finale';this.node('chapter8Narrator').style.opacity=String(smooth((c.startedAt+this.clock.elapsedNow()-c.phaseAt)/1600));this.node('chapter8Heading').textContent=({'unexpected-evidence':'UNEXPECTED EVIDENCE','photo-waiting':'TAKE A PHOTOGRAPH OF THE NOTE.','coded-message':'A CODED MESSAGE',reaction:'THE MESSAGE'})[c.step]??'';
   this.node('chapter8Copy').hidden=c.step!=='photo-waiting';this.node('chapter8Copy').textContent=c.step==='photo-waiting'?'Send the photograph. Then confirm once it has been sent.':'';this.node('chapter8Wave').hidden=!narrationFor(c.step);
   this.node('chapter8Wave').classList.toggle('speaking',!!this.audio.entry&&!this.audio.entry.audio.paused&&!this.audio.entry.ended);
   const nav=this.node('chapterSelectPanel'),navigating=nav&&!nav.hidden;if(navigating)this.pointer=null;
@@ -41,7 +44,7 @@ export class Chapter8View{
   }
   this.node('chapter8PhotoSent').hidden=!this.authenticated||c.step!=='photo-waiting';this.node('chapter8PhotoSent').disabled=this.pending||navigating;
   this.node('chapter8Continue').hidden=!this.authenticated||c.step!=='puzzle'||c.revealedClues.length!==17;this.node('chapter8Continue').disabled=this.pending||navigating;
-  this.node('chapter8Resume').hidden=!this.authenticated||!this.audio.needsUnlock();this.node('chapter8Resume').textContent=this.audio.message||'ENABLE AUDIO';
+  this.node('chapter8Resume').hidden=!this.authenticated||!(this.audio.needsUnlock()||this.finale?.needsUnlock());this.node('chapter8Resume').textContent=this.finale?.message||this.audio.message||'ENABLE AUDIO';
  }
  reveal(id){const c=this.state?.chapter8;if(!this.authenticated||this.pending||this.revealing.has(id)||c?.step!=='puzzle'||c.revealedClues.includes(id)||!this.node('chapterSelectPanel')?.hidden)return;this.submit('chapter8-reveal',{clueId:id});}
  async submit(action,extra={}){
@@ -50,6 +53,6 @@ export class Chapter8View{
   catch(e){if(epoch===this.epoch){error.textContent=e.message;if(e.status===403)this.authenticated=false;}}
   finally{if(isReveal)this.revealing.delete(extra.clueId);else this.pending=false;}
  }
- progressDue(now){const c=this.state?.chapter8;return c?.step==='leaving'&&now>=c.deadline;}
- stop(){this.epoch++;this.pointer=null;this.audio?.stop();this.state=null;this.ready=false;this.authenticated=false;const root=this.node('chapter8TV');if(root)root.hidden=true;}
+ progressDue(now){const c=this.state?.chapter8;return c?.step==='leaving'&&now>=c.deadline||c?.step==='finale'&&c.finale.deadline!==null&&now>=c.finale.deadline;}
+ stop(){this.epoch++;this.pointer=null;this.audio?.stop();this.finale?.stop();this.finale=null;this.state=null;this.ready=false;this.authenticated=false;const root=this.node('chapter8TV');if(root)root.hidden=true;}
 }

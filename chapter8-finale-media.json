@@ -1,0 +1,441 @@
+[
+  {
+    "src": "/assets/chapter8/ch8_security_grid.png",
+    "bytes": 2746476,
+    "width": 1774,
+    "height": 887,
+    "sha256": "997b0c22fe8e61ef8c66afc3fe30c0ac80d2af7a4b59586d8a8598d06267116c"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam01_driveway.png",
+    "bytes": 2531218,
+    "width": 1671,
+    "height": 941,
+    "sha256": "9dcc7058a8eb29cecc4560f86bb6b2b6c8dca703ff519d50a67549c63f2bcee8"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam02_side_passage.png",
+    "bytes": 2256432,
+    "width": 1671,
+    "height": 941,
+    "sha256": "e4fe55b0980aa3ba9a0bf29fdea9533ac773ca1afc8833e5ab74f66815d6714d"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam03_backyard.png",
+    "bytes": 2597546,
+    "width": 1670,
+    "height": 942,
+    "sha256": "b615647415a899f51be73e78b91174aff10325937798b21a52d90ee15d0cfde1"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam04_front_porc.png",
+    "bytes": 1949796,
+    "width": 1448,
+    "height": 1086,
+    "sha256": "943f66e56ab808f45d5bae0d8d17fea1ee69c6e934a632622131a24ad1cb6dd6"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam05_garag.png",
+    "bytes": 1803057,
+    "width": 1850,
+    "height": 850,
+    "sha256": "9d0c6ddd06446d0a88fa90e49c2592a0f8e637325baaf05e5b56bf66fab36ce3"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam06_living_room_empty.png",
+    "bytes": 1789353,
+    "width": 1850,
+    "height": 850,
+    "sha256": "e5cf4548d7c314f24a336121593d2116c08def5bc9ec9417b7f9002ef7de7110"
+  },
+  {
+    "src": "/assets/chapter8/ch8_cam07_living_room_jumpscare.png",
+    "bytes": 1600881,
+    "width": 1850,
+    "height": 850,
+    "sha256": "97caf0492aec0a9b0a026b2941fe2af9c0890a5a7c789a64e9e670de006afaba"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-01.mp3",
+    "bytes": 475856,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1098,
+    "samples": 1264896,
+    "durationMs": 28682.448979591834,
+    "sha256": "ea87c4b8ea94b3e76474f2f31c8f4d48dbce2d36dc9a70f43cbe9e6d47fbd81e"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-02.mp3",
+    "bytes": 160714,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 344,
+    "samples": 396288,
+    "durationMs": 8986.122448979591,
+    "sha256": "7e565a5b40c7ca10f21f408ce3bede19681ed2a3609b105aca67aa340915ea05"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-03.mp3",
+    "bytes": 119754,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 246,
+    "samples": 283392,
+    "durationMs": 6426.122448979591,
+    "sha256": "c432f9610144495ac856e2f5508598a3f9bfb76b4e714184d8ca1c4423d3c6ef"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-04.mp3",
+    "bytes": 215885,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 476,
+    "samples": 548352,
+    "durationMs": 12434.285714285714,
+    "sha256": "5dda202a6ff8b977832a40b92f69df4870d73dfd494cbe2f98e40ab60467ed8a"
+  },
+  {
+    "src": "/assets/chapter8/audio/security-notification.wav",
+    "bytes": 501758,
+    "encoding": 1,
+    "channels": 2,
+    "sampleRate": 44100,
+    "byteRate": 264600,
+    "blockAlign": 6,
+    "bits": 24,
+    "dataSize": 501678,
+    "durationMs": 1895.9863945578231,
+    "sha256": "d6102e682ced8b5a20dffb2a50914357d62e1fe6ac704feb02c1ca1973020e63"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-05.mp3",
+    "bytes": 207108,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 455,
+    "samples": 524160,
+    "durationMs": 11885.714285714286,
+    "sha256": "04ce22c9009e47d1bd3d6e62b46ca7578ca798e7d901df61c71df47f2ebaa5b1"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-06.mp3",
+    "bytes": 277325,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 623,
+    "samples": 717696,
+    "durationMs": 16274.285714285714,
+    "sha256": "2a10abbdeb527847396e8671f359c13f85a0faa6dbfd7d29632cec3aef3ba73d"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-07.mp3",
+    "bytes": 210870,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 464,
+    "samples": 534528,
+    "durationMs": 12120.816326530612,
+    "sha256": "32a3776cef6a9f8fea3b192c4daa34bd825bceadb00944e023d354ef4524d046"
+  },
+  {
+    "src": "/assets/chapter4/audio/doorbell.mp3",
+    "bytes": 96768,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitrates": [
+      256
+    ],
+    "frames": 126,
+    "samples": 145152,
+    "durationMs": 3024,
+    "sha256": "fea0bbe478cb4adfe3056caf8917aa661b142d78588ffe2bc46a59e6b1c021ee"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-08.mp3",
+    "bytes": 192897,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 421,
+    "samples": 484992,
+    "durationMs": 10997.551020408164,
+    "sha256": "05d59bdf6906f5b6b64e7545a5b645844a819abb1069910b88da04225ac68214"
+  },
+  {
+    "src": "/assets/chapter8/audio/garage-security-voice.mp3",
+    "bytes": 90497,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 176,
+    "samples": 202752,
+    "durationMs": 4597.551020408163,
+    "sha256": "bae81718cba557e95d7aed905e03e547852db92b1760b15816559fa09240f429"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-09.mp3",
+    "bytes": 210870,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 464,
+    "samples": 534528,
+    "durationMs": 12120.816326530612,
+    "sha256": "35ee9ee113a02ba9cbc564626bccc1b09df982ecc66397a9229cb0190b0e8f60"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-10.mp3",
+    "bytes": 217139,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 479,
+    "samples": 551808,
+    "durationMs": 12512.653061224491,
+    "sha256": "80eac9ca7312a0a6d0d78b5e76090faf8e75a1c777647970cd35b3c2677dd737"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-11.mp3",
+    "bytes": 108470,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 219,
+    "samples": 252288,
+    "durationMs": 5720.816326530612,
+    "sha256": "d1f3d25b9ef9781c797ef71c17cc262a760cc56f675531fb5f957f33a8491416"
+  },
+  {
+    "src": "/assets/chapter8/audio/interior-door-open.wav",
+    "bytes": 708944,
+    "encoding": 1,
+    "channels": 2,
+    "sampleRate": 44100,
+    "byteRate": 264600,
+    "blockAlign": 6,
+    "bits": 24,
+    "dataSize": 708864,
+    "durationMs": 2679.0022675736964,
+    "sha256": "7ce4a2dc95f38ea8f2edb897236545695aaf8deb322f53a2e6a1f8a4ad3af14c"
+  },
+  {
+    "src": "/assets/chapter8/audio/intruder-whistling.wav",
+    "bytes": 1406386,
+    "encoding": 1,
+    "channels": 1,
+    "sampleRate": 44100,
+    "byteRate": 88200,
+    "blockAlign": 2,
+    "bits": 16,
+    "dataSize": 1406214,
+    "durationMs": 15943.469387755102,
+    "sha256": "ff9fa8b00a212d2763908f627a08d32dfe72c0c041b69b5d7aa21f44951b3844"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-12.mp3",
+    "bytes": 91751,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 179,
+    "samples": 206208,
+    "durationMs": 4675.918367346939,
+    "sha256": "c9316f37f2822eb84f8212248c5e5e925580ff4ca4a4042df1381eb09418ecd9"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-13.mp3",
+    "bytes": 155699,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 332,
+    "samples": 382464,
+    "durationMs": 8672.65306122449,
+    "sha256": "a7090ef871fd62f85d18f818ce23478414a31374ecb01db1221e7205ae2e50ab"
+  },
+  {
+    "src": "/assets/chapter8/audio/running-footsteps.mp3",
+    "bytes": 193933,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      256
+    ],
+    "frames": 232,
+    "samples": 267264,
+    "durationMs": 6060.408163265306,
+    "sha256": "42e3d5174df5496822492d0cd39d98b540994b6b7a112ba2e99b13b43d7a36c7"
+  },
+  {
+    "src": "/assets/chapter8/audio/door-slam.mp3",
+    "bytes": 80640,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitrates": [
+      256
+    ],
+    "frames": 105,
+    "samples": 120960,
+    "durationMs": 2520,
+    "sha256": "3035f6eca881442b3a47f0c7f367fb4d6aa31b0c3bcfe5da922e3d8f80eb379a"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-14.mp3",
+    "bytes": 127696,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 265,
+    "samples": 305280,
+    "durationMs": 6922.448979591837,
+    "sha256": "5b7359e293b59e814529a90ec1a2c12781a221b10b1d0d83257fc63fbcb17168"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-15.mp3",
+    "bytes": 109723,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 222,
+    "samples": 255744,
+    "durationMs": 5799.183673469388,
+    "sha256": "1af310e7db3e18553c1779d62e873d1476983f4200048d02994a8320c234d8be"
+  },
+  {
+    "src": "/assets/chapter8/breaking-news.mp4",
+    "bytes": 43763174,
+    "durationMs": 62480,
+    "fastStart": true,
+    "tracks": [
+      {
+        "kind": "vide",
+        "codec": "avc1.4d4028",
+        "durationSeconds": 62.48,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "kind": "soun",
+        "codec": "mp4a",
+        "durationSeconds": 62.48702083333333,
+        "channels": 2,
+        "sampleRate": 48000
+      }
+    ],
+    "sha256": "7d8bc0e006c5271a1c61c901023987a0a1e7f7726e9fb2b469c90fa4023e9d1a"
+  },
+  {
+    "src": "/assets/chapter8/audio/wife-16.mp3",
+    "bytes": 843242,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitrates": [
+      128
+    ],
+    "frames": 1977,
+    "samples": 2277504,
+    "durationMs": 51644.08163265306,
+    "sha256": "dc747664af4a27fee24fd2d162915c9779ca02953d1187a6dd3cc4cf7730600c"
+  },
+  {
+    "src": "/assets/chapter8/audio/garage-breach.wav",
+    "bytes": 866232,
+    "encoding": 1,
+    "channels": 2,
+    "sampleRate": 44100,
+    "byteRate": 176400,
+    "blockAlign": 4,
+    "bits": 16,
+    "dataSize": 866188,
+    "durationMs": 4910.362811791383,
+    "sha256": "6d12ec1f2150caab08118320c654b7bbde1c971a3e4d97dfc199dda65646352f"
+  },
+  {
+    "src": "/assets/chapter8/audio/police-sirens.mp3",
+    "bytes": 631680,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 24000,
+    "channels": 2,
+    "bitrates": [
+      160
+    ],
+    "frames": 1316,
+    "samples": 758016,
+    "durationMs": 31584,
+    "sha256": "673c2e08142ea5f8a03a1f170b950b1106b5d2e73f7ba1cd5951b18012ba2b4f"
+  },
+  {
+    "src": "/assets/chapter6/audio/ch6_sfx_scream.mp3",
+    "bytes": 105984,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitrates": [
+      256
+    ],
+    "frames": 138,
+    "samples": 158976,
+    "durationMs": 3312,
+    "sha256": "fdd41c91fff4807e99a83f7da05d4322c860c295e8afabb91e2571dd69bece90"
+  }
+]

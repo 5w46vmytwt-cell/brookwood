@@ -39,8 +39,8 @@ test('all letters persist across state and phone refresh; public progress cannot
  const phone=await call(me,{id:'p0',token:'t0'});assert.equal(phone.status,200);assert.equal(phone.data.chapter8.revealedClues.length,17);assert(!JSON.stringify(phone.data).includes('token'));assert(!phone.data.chapter7);assert.deepEqual(JSON.parse(raw).players,s.players);
 });
 
-test('Continue requires every clue and host session, fades before reaction, and stops before security scenes',async()=>{
- const s=fixture();raw=JSON.stringify(s);assert.equal((await call(host,body(s,'chapter8-continue',{code:'chapter8-local-test'}))).status,409);revealAll(s);raw=JSON.stringify(s);assert.equal((await call(host,body(s,'chapter8-continue'))).status,403);assert.equal((await call(host,body(s,'chapter8-continue',{code:'chapter8-local-test'}))).status,200);const next=JSON.parse(raw);assert.equal(next.chapter8.step,'leaving');assert.equal(next.chapter8.deadline-now,PUZZLE_FADE_MS);now+=PUZZLE_FADE_MS-1;assert.equal(advanceChapter8(next),UNCHANGED);now++;advanceChapter8(next);assert.equal(next.chapter8.step,'reaction');const cue=narrationFor('reaction');chapter8HostAction(next,body(next,'chapter8-audio-playing',{recording:cue.id}));now+=cue.durationMs;chapter8HostAction(next,body(next,'chapter8-audio-ended',{recording:cue.id}));assert.equal(next.chapter8.step,'complete');assert.equal(advanceChapter8(next),UNCHANGED);validateChapter8(next);
+test('Continue requires every clue and host session, fades before reaction, and automatically hands off to the finale',async()=>{
+ const s=fixture();raw=JSON.stringify(s);assert.equal((await call(host,body(s,'chapter8-continue',{code:'chapter8-local-test'}))).status,409);revealAll(s);raw=JSON.stringify(s);assert.equal((await call(host,body(s,'chapter8-continue'))).status,403);assert.equal((await call(host,body(s,'chapter8-continue',{code:'chapter8-local-test'}))).status,200);const next=JSON.parse(raw);assert.equal(next.chapter8.step,'leaving');assert.equal(next.chapter8.deadline-now,PUZZLE_FADE_MS);now+=PUZZLE_FADE_MS-1;assert.equal(advanceChapter8(next),UNCHANGED);now++;advanceChapter8(next);assert.equal(next.chapter8.step,'reaction');const cue=narrationFor('reaction');chapter8HostAction(next,body(next,'chapter8-audio-playing',{recording:cue.id}));now+=cue.durationMs;chapter8HostAction(next,body(next,'chapter8-audio-ended',{recording:cue.id}));assert.equal(next.chapter8.step,'finale');assert.equal(next.chapter8.finale.index,0);assert.equal(advanceChapter8(next),UNCHANGED);validateChapter8(next);
 });
 
 test('opening narration uses full native gates and refresh keeps its clock without exposing puzzle controls',()=>{
@@ -83,4 +83,15 @@ test('photo request waits indefinitely after the full first clip; only an authen
 
 test('legacy active narration and puzzle states without photoSentAt remain valid and preserve clues',()=>{
  const s=fixture();delete s.chapter8.photoSentAt;s.chapter8.revealedClues=[1,17];validateChapter8(s);assert.equal(advanceChapter8(s),UNCHANGED);s.chapter8.step='coded-message';s.chapter8.audioStartedAt=now;validateChapter8(s);now+=23150;chapter8HostAction(s,body(s,'chapter8-audio-ended',{recording:narrationFor('coded-message').id}));assert.equal(s.chapter8.step,'puzzle');assert.deepEqual(s.chapter8.revealedClues,[1,17]);
+});
+
+test('finale checkpoints and native events reuse authenticated CAS state, preserve history and reject stale duplicate progression',async()=>{
+ const s=fixture(),history=structuredClone({players:s.players,chapter4:s.chapter4,chapter5:s.chapter5,chapter6:s.chapter6,chapter7:s.chapter7});raw=JSON.stringify(s);
+ const auth=await call(host,{action:'maze-login',code:'chapter8-local-test'}),cookie=auth.headers['Set-Cookie'].split(';')[0];
+ assert.equal((await call(host,{action:'chapter-select',checkpoint:'chapter8-finale-news'})).status,403);
+ const selected=await call(host,{action:'chapter-select',checkpoint:'chapter8-finale-news'},cookie);assert.equal(selected.status,200);
+ const current=JSON.parse(raw),c=current.chapter8,b=body(current,'chapter8-finale-playing',{finaleId:c.finale.id,cueId:'breaking-news'});
+ const replies=await Promise.all([call(host,b,cookie),call(host,b,cookie)]);assert(replies.every(r=>r.status===200));assert.equal(JSON.parse(raw).chapter8.finale.mediaStartedAt,now);const saved=raw;now+=2000;assert.equal((await call(host,b,cookie)).status,200);assert.equal(raw,saved);
+ assert.equal((await call(host,{...b,action:'chapter8-finale-ended'},cookie)).status,409);now+=60480;assert.equal((await call(host,{...b,action:'chapter8-finale-ended'},cookie)).status,200);assert.equal((await call(host,{...b,action:'chapter8-finale-ended'},cookie)).status,409);
+ const result=JSON.parse(raw);assert.deepEqual({players:result.players,chapter4:result.chapter4,chapter5:result.chapter5,chapter6:result.chapter6,chapter7:result.chapter7},history);assert.equal(result.generation,s.generation);validateChapter8(result);
 });
