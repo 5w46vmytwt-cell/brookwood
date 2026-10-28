@@ -13,7 +13,7 @@ function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=tr
  }
  class Player{constructor(t){this.media=new Map(t.cues.map(c=>[c.id,Object.assign(new Media(),{src:c.src})]));}stop(){for(const a of this.media.values())a.pause();}}
  const root=new Media(),doc={createElement:()=>new Media(),getElementById:()=>root},calls=[];
- const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
+ const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:1,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
  const view=new Chapter8Finale(doc,{elapsedNow:()=>now-100000},{Player,request:async(_p,b)=>{calls.push(b);if(b.action==='chapter8-finale-playing')state.chapter8.finale.mediaStartedAt??=now;return {state};},onState(){}});
  return {view,state,calls,update:()=>view.update(state,authenticated),at:n=>now=100000+n,allow:()=>deny=false,media:()=>view.entry?.media};
 }
@@ -52,4 +52,11 @@ test('one whistle element crosses the camera switch without restarting, seeks it
  h.at(11410);media.currentTime=14.21;h.update();await flush();assert(media.paused);assert.equal(h.calls.filter(c=>c.action==='chapter8-finale-ended').length,1);
  const refreshed=harness('whistle-approach',{offset:5000,started:100000});refreshed.update();await flush();assert.equal(refreshed.media().currentTime,7.8);assert.equal(refreshed.view.root.dataset.visual,'living');assert.equal(refreshed.media().plays,1);
  const expired=harness('whistle-approach',{offset:12000,started:100000});expired.update();await flush();assert.equal(expired.media().plays,0);assert.equal(expired.calls.filter(c=>c.action==='chapter8-finale-ended').length,1);
+});
+
+test('wife screen shows the real game title and speaking waveform, returns cold, and both doorbells and breach keep the grid',async()=>{
+ const h=harness('wife-02',{offset:2500,started:100000});h.update();await flush();h.update();assert.equal(h.view.wife.hidden,false);assert.equal(h.view.wife.dataset.mood,'warm');assert.equal(h.view.gameTitle.textContent,'THE GREAT HALLOWEEN PARTY RESCUE');assert(h.view.wifeWave.className.includes('speaking'));assert.equal(h.view.microphone.dataset.speaking,'true');
+ h.media().pause();h.update();assert(!h.view.wifeWave.className.includes('speaking'));
+ const cold=harness('wife-14');cold.update();assert.equal(cold.view.wife.dataset.mood,'cold');assert.equal(cold.view.wife.hidden,false);
+ for(const id of ['doorbell-before','doorbell-after','garage-announcement']){const r=harness(id);r.update();assert.equal(r.view.root.dataset.visual,'grid');assert.equal(r.view.breach.hidden,id!=='garage-announcement');}
 });

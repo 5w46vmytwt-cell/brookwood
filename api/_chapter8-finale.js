@@ -1,15 +1,16 @@
 import {LobbyError,UNCHANGED} from './_state.js';
-import {finaleCues,finaleCue} from '../chapter8-finale-timing.js';
+import {finaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
 
 function enter(c,index,now){
- c.sequence++;const cue=finaleCues[index];
+ c.sequence++;const cue=cuesFor(c)[index];
  if(!cue){c.step='complete';c.phaseAt=now;c.completedAt=now;c.finale.completedAt=now;c.finale.deadline=null;return;}
+ if(cue.id==='news-black'){c.finale.soundAnchors??={};c.finale.soundAnchors.news=now;}
  if(cue.id==='garage-alarm-lead'){c.finale.soundAnchors??={};c.finale.soundAnchors.garage=now;}
  Object.assign(c.finale,{index,phaseAt:now,mediaStartedAt:null,deadline:cue.kind==='hold'&&cue.id!=='living-silence'?now+cue.durationMs:null});
 }
 export function startFinale(c,now,index=0){
  c.step='finale';c.phaseAt=now;c.audioStartedAt=null;c.deadline=null;c.completedAt=null;
- c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};enter(c,index,now);
+ c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:1,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};enter(c,index,now);
 }
 export function finaleHostAction(c,b,now){
  const f=c.finale,cue=finaleCue(c);
@@ -35,7 +36,8 @@ export function advanceFinale(c,now){
 export function validateFinale(c){
  const f=c.finale,time=n=>Number.isFinite(n)&&n>0,cue=finaleCue(c);
  if(!f||typeof f.id!=='string'||!f.id||!time(f.startedAt)||!time(f.phaseAt)||!Number.isInteger(f.index)||!cue||f.mediaStartedAt!==null&&(!time(f.mediaStartedAt)||f.mediaStartedAt<f.phaseAt||cue.kind==='hold')||f.completedAt!==null&&!time(f.completedAt)||f.testEntry!==undefined&&typeof f.testEntry!=='boolean')throw Error('Invalid Chapter 8 finale.');
- if(f.soundAnchors&&(typeof f.soundAnchors!=='object'||Array.isArray(f.soundAnchors)||Object.entries(f.soundAnchors).some(([k,v])=>!['garage','sirens'].includes(k)||!time(v))))throw Error('Invalid finale sound anchor.');
+ if(f.polishVersion!==undefined&&f.polishVersion!==1)throw Error('Invalid finale polish version.');
+ if(f.soundAnchors&&(typeof f.soundAnchors!=='object'||Array.isArray(f.soundAnchors)||Object.entries(f.soundAnchors).some(([k,v])=>!['garage','sirens','news'].includes(k)||!time(v))))throw Error('Invalid finale sound anchor.');
  if(c.step==='finale'){
   if(cue.kind==='hold'){if(f.deadline!==null&&(!time(f.deadline)||f.deadline!==f.phaseAt+cue.durationMs)||f.deadline===null&&cue.id!=='living-silence')throw Error('Invalid finale hold.');}
   else if(f.deadline!==null)throw Error('Invalid finale media deadline.');

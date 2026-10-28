@@ -1,3 +1,4 @@
+import {finaleAmbientTarget,finaleMustBeSilent} from './chapter8-presentation.js';
 import {narrationCues,narrationFor,ambientCue,AMBIENT_VOLUME,AMBIENT_FADE_MS,smooth} from './chapter8-puzzle.js';
 
 // Reuses the existing Player/loop implementation and the single TV scheduler.
@@ -8,10 +9,11 @@ export class Chapter8Audio{
   this.track=this.player.tracks?.[0];this.track?.audio?.addEventListener('playing',()=>{if(this.fadeInAt===null)this.fadeInAt=this.clock.elapsedNow();});
  }
  now(){return (this.state?.chapter8.startedAt??0)+this.clock.elapsedNow();}
- volume(){const c=this.state?.chapter8;if(!c||!this.running)return 0;return AMBIENT_VOLUME*(this.fadeInAt===null?0:smooth((this.clock.elapsedNow()-this.fadeInAt)/AMBIENT_FADE_MS))*(c.step==='finale'?smooth((c.finale.phaseAt+AMBIENT_FADE_MS-this.now())/AMBIENT_FADE_MS):c.step==='complete'?smooth((c.completedAt+AMBIENT_FADE_MS-this.now())/AMBIENT_FADE_MS):1);}
+ volume(){const c=this.state?.chapter8;if(!c||!this.running)return 0;return AMBIENT_VOLUME*(this.fadeInAt===null?0:smooth((this.clock.elapsedNow()-this.fadeInAt)/AMBIENT_FADE_MS))*(c.step==='finale'?(finaleMustBeSilent(c)?0:this.finaleGain/AMBIENT_VOLUME):c.step==='complete'?smooth((c.completedAt+AMBIENT_FADE_MS-this.now())/AMBIENT_FADE_MS):1);}
  update(state){
   const c=state.chapter8,run=state.generation+':'+c.id;if(this.run!==run){this.stop();this.run=run;}this.state=state;
-  this.running=['unexpected-evidence','photo-waiting','coded-message','puzzle','leaving','reaction'].includes(c.step)||c.step==='complete'&&this.now()<c.completedAt+AMBIENT_FADE_MS&&!c.finale||c.step==='finale'&&c.finale.index===0&&this.now()<c.finale.phaseAt+AMBIENT_FADE_MS;
+  this.running=['unexpected-evidence','photo-waiting','coded-message','puzzle','leaving','reaction'].includes(c.step)||c.step==='complete'&&this.now()<c.completedAt+AMBIENT_FADE_MS&&!c.finale||c.step==='finale';
+  if(c.step==='finale'){const target=finaleAmbientTarget(c,this.now()),dt=Math.max(0,Math.min(10000,this.now()-(this.gainAt??this.now())));this.finaleGain=finaleMustBeSilent(c)?0:target+((this.finaleGain??AMBIENT_VOLUME)-target)*Math.exp(-dt/250);this.gainAt=this.now();}else {this.finaleGain=AMBIENT_VOLUME;this.gainAt=this.now();}
   if(this.track){if(this.running){this.track.reset(c.startedAt);this.track.sync();}else {this.track.audio.volume=0;this.track.reset(null);this.fadeInAt=null;}}
   const key=c.id+':'+c.sequence,cue=narrationFor(c.step);if(this.entry?.key!==key)this.release();if(!cue)return;
   if(this.entry){if(this.entry.ended)this.ack('chapter8-audio-ended');return;}
@@ -32,5 +34,5 @@ export class Chapter8Audio{
  needsUnlock(){return this.blocked||!!(this.running&&this.track?.attempted&&!this.track.pending&&!this.track.unavailable&&this.track.audio.paused);}
  unlock(){if(this.running)this.track?.sync({gesture:true});const e=this.entry;if(!e)return;e.failed.clear();if(!e.audio.paused)e.playing();if(e.ended)this.ack('chapter8-audio-ended');else this.play();}
  release(){const e=this.entry;if(!e)return;this.entry=null;for(const [name,fn] of [['playing',e.playing],['ended',e.end],['pause',e.pause],['error',e.pause]])e.audio.removeEventListener(name,fn);e.audio.pause();this.blocked=false;this.message='';}
- stop(){this.release();this.running=false;this.fadeInAt=null;this.player.stop();if(this.track?.audio)this.track.audio.volume=0;this.state=null;this.run=null;}
+ stop(){this.release();this.running=false;this.fadeInAt=null;this.finaleGain=AMBIENT_VOLUME;this.gainAt=null;this.player.stop();if(this.track?.audio)this.track.audio.volume=0;this.state=null;this.run=null;}
 }

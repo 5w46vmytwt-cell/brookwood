@@ -19,7 +19,7 @@ const wife=(n,visual)=>({id:'wife-'+String(n).padStart(2,'0'),kind:'narration',s
 const hold=(id,visual,durationMs)=>({id,kind:'hold',visual,durationMs});
 const bell=id=>({id,kind:'effect',visual:'porch',src:'/assets/chapter4/audio/doorbell.mp3',durationMs:3024,volume:.45});
 const effect=(id,visual,spec,extra={})=>({id,kind:'effect',visual,...spec,...extra});
-const ordered=[
+const legacyOrdered=[
  hold('handoff','black',HANDOFF_MS),wife(1,'party'),wife(2,'party'),wife(3,'party'),wife(4,'grid'),
  hold('grid-driveway','grid',900),effect('motion-notification','driveway',effects.notification),wife(5,'driveway'),hold('grid-side','grid',900),wife(6,'side'),
  hold('grid-backyard','grid',900),wife(7,'backyard'),hold('grid-porch','grid',900),bell('doorbell-before'),wife(8,'porch'),bell('doorbell-after'),
@@ -31,8 +31,31 @@ const ordered=[
  hold('news-black','black',1000),{id:'breaking-news',kind:'video',src:NEWS_SRC,durationMs:NEWS_DURATION_MS,visual:'news',volume:1},
  hold('news-out','black',1500),wife(16,'party'),hold('ending','ending',3000)
 ];
-let at=0;
-export const finaleCues=Object.freeze(ordered.map(c=>{const cue=Object.freeze({...c,at,end:at+c.durationMs});at=cue.end;return cue;}));
-export const finaleDurationMs=at;
-export const finaleCue=c=>finaleCues[c?.finale?.index];
+
+export const GAME_TITLE='THE GREAT HALLOWEEN PARTY RESCUE';
+export const GAME_TITLE_AT_MS=1460, GAME_TITLE_END_MS=8100, WIFE_RELAX_AT_MS=14800;
+const bright=n=>wife(n,'wife-bright'),dark=n=>wife(n,'wife-dark');
+const ordered=[
+ hold('handoff','wife-bright',HANDOFF_MS),bright(1),bright(2),bright(3),
+ effect('notification-first','wife-bright',effects.notification),hold('notification-gap','wife-bright',1200),
+ effect('notification-second','wife-bright',effects.notification),hold('notification-reaction','wife-bright',800),bright(4),
+ hold('grid-driveway','grid',2500),hold('driveway-observe','driveway',3000),dark(5),hold('driveway-linger','driveway',2000),
+ hold('grid-side','grid',1800),effect('motion-notification','wife-dark',effects.notification),hold('motion-reaction','wife-dark',700),dark(6),
+ hold('select-side','grid',2000),hold('side-observe','side',3500),hold('grid-backyard','grid',1800),dark(7),hold('backyard-observe','backyard',3500),
+ hold('grid-porch','grid',1800),bell('doorbell-before'),hold('doorbell-reaction','wife-dark',600),dark(8),hold('porch-observe','porch',3500),
+ hold('porch-return-grid','grid',1800),bell('doorbell-after'),hold('doorbell-second-reaction','wife-dark',600),dark(9),
+ hold('grid-garage','grid',2500),hold('garage-alarm-lead','grid',1000),effect('garage-announcement','grid',effects.announcement),hold('garage-alarm-release','grid',1000),
+ hold('garage-observe','garage',3000),dark(10),dark(11),hold('garage-interior','garage',1500),
+ effect('interior-door','garage',effects.door),effect('whistle-approach','garage',effects.whistle,{cameraSwitchMs:3500}),
+ hold('living-silence','living',SILENCE_MS),hold('intruder-reveal','scare',SCARE_MS),hold('signal-break','lost',850),wife(12,'lost'),
+ dark(13),effect('escape-running','lost',effects.running),effect('escape-slam','lost',effects.slam),hold('escape-settle','living',2500),dark(14),hold('quiet-after-escape','wife-dark',2000),dark(15),
+ hold('news-black','black',2000),{id:'breaking-news',kind:'video',src:NEWS_SRC,durationMs:NEWS_DURATION_MS,visual:'news',volume:1},
+ hold('news-out','black',1500),wife(16,'wife-return'),hold('ending','ending',3000)
+].map(c=>c.id.startsWith('doorbell-')&&c.kind==='effect'?{...c,visual:'grid'}:c);
+function timed(cues){let at=0;return Object.freeze(cues.map(c=>{const cue=Object.freeze({...c,at,end:at+c.durationMs});at=cue.end;return cue;}));}
+export const legacyFinaleCues=timed(legacyOrdered);
+export const finaleCues=timed(ordered);
+export const finaleDurationMs=finaleCues.at(-1).end;
+export const cuesFor=c=>c?.finale?.polishVersion===1?finaleCues:legacyFinaleCues;
+export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news'];

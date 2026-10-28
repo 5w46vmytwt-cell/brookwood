@@ -13,7 +13,7 @@ test('canonical sound windows fit their measured sources, preserve all narration
  for(const s of Object.values(effects)){assert(s.offsetMs>=0);assert(s.durationMs>0);assert(s.offsetMs+s.durationMs<=s.sourceDurationMs+.001);}
  assert.deepEqual(finaleCues.filter(c=>c.kind==='narration').map(c=>c.id),Array.from({length:16},(_,n)=>'wife-'+String(n+1).padStart(2,'0')));
  const index=id=>finaleCues.findIndex(c=>c.id===id);
- assert(index('motion-notification')<index('wife-05'));assert.equal(finaleCues[index('garage-alarm-lead')].durationMs,1000);assert(index('garage-announcement')<index('wife-09'));
+ assert(index('motion-notification')<index('wife-06'));assert.equal(finaleCues[index('garage-alarm-lead')].durationMs,1000);assert(index('garage-announcement')<index('garage-observe'));
  assert(index('interior-door')<index('whistle-approach'));assert.equal(index('living-silence'),index('whistle-approach')+1);assert.equal(SILENCE_MS,3500);assert.equal(index('intruder-reveal'),index('living-silence')+1);
  assert(index('wife-12')<index('wife-13'));assert(index('wife-13')<index('escape-running'));assert.equal(index('escape-slam'),index('escape-running')+1);assert(index('escape-slam')<index('wife-14'));assert(index('wife-15')<index('breaking-news'));assert(index('wife-16')>index('breaking-news'));
 });

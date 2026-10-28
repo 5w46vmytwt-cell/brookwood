@@ -1,6 +1,7 @@
 import {Chapter8SoundDesign,soundLayers,primaryEffectGain} from './chapter8-sound-design.js';
-import {finaleCues,finaleCue,cameras,NEWS_SRC,SCARE_MS} from './chapter8-finale-timing.js';
+import {finaleCues,finaleCue,cameras,NEWS_SRC,SCARE_MS,GAME_TITLE_AT_MS} from './chapter8-finale-timing.js';
 import {smooth} from './chapter8-puzzle.js';
+import {wifePresentation} from './chapter8-presentation.js';
 
 // Driven solely by the existing TV scheduler. No additional timers or RAFs.
 export class Chapter8Finale{
@@ -14,6 +15,13 @@ export class Chapter8Finale{
   this.interference=make('div','ch8-camera-interference');this.interference.setAttribute('aria-hidden','true');this.root.appendChild(this.interference);
   this.label=make('div','ch8-camera-label');this.root.appendChild(this.label);this.timestamp=make('div','ch8-camera-time');this.root.appendChild(this.timestamp);
   this.title=make('div','ch8-finale-title');this.root.appendChild(this.title);
+  this.wife=make('section','investigation-scene ch8-wife');this.wife.hidden=true;this.root.appendChild(this.wife);
+  this.wifeLight=make('div','ch8-wife-light');this.wife.appendChild(this.wifeLight);
+  this.wifeEyebrow=make('p','investigation-eyebrow');this.wifeEyebrow.textContent='BROOKWOOD / HALLOWEEN NIGHT';this.wife.appendChild(this.wifeEyebrow);
+  this.microphone=make('div','ch8-wife-microphone');this.microphone.setAttribute('aria-hidden','true');this.microphone.innerHTML='<svg viewBox="0 0 100 130" fill="none" aria-hidden="true"><rect x="33" y="8" width="34" height="70" rx="17" stroke="currentColor" stroke-width="3"/><path d="M22 58v9a28 28 0 0 0 56 0v-9M50 96v20m-19 0h38M42 26h16m-16 12h16m-16 12h16m-16 12h16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';this.wife.appendChild(this.microphone);
+  this.wifeWave=make('div','investigation-wave ch8-wife-wave');this.wifeWave.setAttribute('aria-hidden','true');for(let i=0;i<25;i++)this.wifeWave.appendChild(make('i',''));this.wife.appendChild(this.wifeWave);
+  this.gameTitle=make('h1','investigation-title ch8-wife-game');this.wife.appendChild(this.gameTitle);
+  this.breach=make('div','ch8-security-breach');this.breach.hidden=true;this.breach.textContent='SECURITY BREACH';this.breach.setAttribute('role','status');this.root.appendChild(this.breach);
   this.video=make('video','ch8-finale-news');this.video.preload='auto';this.video.playsInline=true;this.video.controls=false;this.video.src=NEWS_SRC;this.root.appendChild(this.video);
   // Only eight photographs; keep decoded images ready for immediate switching.
   this.preloads=Object.entries(cameras).map(([key,src])=>{const img=make('img','');img.src=src;return {key,img};});
@@ -38,6 +46,13 @@ export class Chapter8Finale{
   this.timestamp.hidden=!camera;this.timestamp.textContent='2026-10-31  '+new Date(Date.UTC(2026,9,31,22,14,0)+Math.max(0,this.now()-f.startedAt)).toISOString().slice(11,19);
   this.title.hidden=!['party','news-intro','ending'].includes(visual);this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
   this.title.style.opacity=String(visual==='ending'?1-smooth(Math.max(0,elapsed-1200)/1800):smooth(elapsed/1200));
+  const wife=wifePresentation(c,this.now());this.wife.hidden=!wife.visible;this.wife.dataset.mood=wife.mood;this.gameTitle.hidden=!wife.title;this.gameTitle.textContent=wife.title;
+  this.wifeEyebrow.textContent=cue.src?.endsWith('security-notification.wav')?'SECURITY MOTION DETECTED':'BROOKWOOD / HALLOWEEN NIGHT';
+  this.gameTitle.style.opacity=String(smooth((wife.offset-GAME_TITLE_AT_MS)/500));this.gameTitle.style.transform='translateY('+(1-smooth((wife.offset-GAME_TITLE_AT_MS)/500))*15+'px)';
+  const speaking=cue.kind==='narration'&&this.entry?.key===f.id+':'+c.sequence&&!this.entry.ended&&!this.entry.media.paused;
+  this.wifeWave.className='investigation-wave ch8-wife-wave'+(speaking?' speaking':'');this.microphone.dataset.speaking=String(!!speaking);this.microphone.style.transform='scale('+(speaking?1+.025*Math.sin(wife.offset/160):1)+')';
+  this.wifeLight.style.transform='translate('+Math.sin((this.now()-f.startedAt)/(wife.mood==='warm'?9000:22000))*5+'%, '+Math.cos((this.now()-f.startedAt)/14000)*4+'%)';
+  this.breach.hidden=!(f.polishVersion===1&&['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue.id));this.breach.style.opacity=String(.86+.14*(.5+.5*Math.sin(elapsed/650)));
   if(cue.kind==='hold'){
    this.release();
    if(cue.id==='living-silence'&&f.deadline===null&&authenticated){const ready=this.preloads.find(p=>p.key==='living')?.img;if(ready?.complete&&ready.naturalWidth>0&&this.image.complete&&this.image.naturalWidth>0)this.ackReady();}
