@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Chapter8SoundDesign,effects,soundLayers,layerVolume,whistleGain,whistleCutoff,primaryEffectGain} from '../chapter8-sound-design.js';
-import {finaleCues,SILENCE_MS} from '../chapter8-finale-timing.js';
+import {version1FinaleCues as finaleCues,SILENCE_MS} from '../chapter8-finale-timing.js';
 const flush=()=>new Promise(r=>setImmediate(r));
 function harness({deny=false}={}){
  let now=100000;const player={media:new Map(soundLayers.map(s=>[s.id,{paused:true,currentTime:0,volume:1,readyState:4,plays:0,play(){this.plays++;if(deny)return Promise.reject(Error('Autoplay'));this.paused=false;return Promise.resolve();},pause(){this.paused=true;}}]))};

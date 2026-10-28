@@ -44,7 +44,7 @@ test('waiting and reaction refreshes seek the chapter loop, while an expired com
 
 test('reaction ambience continues through wife narration and CCTV, mutes strict silence without restarting, and stays off during news',async()=>{
  const h=harness('reaction');h.update();await flush();h.at(1600);h.update();const plays=h.track().plays;
- const {finaleCues}=await import('../chapter8-finale-timing.js');
+ const {version1FinaleCues:finaleCues}=await import('../chapter8-finale-timing.js');
  h.state.chapter8.step='finale';h.state.chapter8.finale={polishVersion:1,index:0,phaseAt:102000,mediaStartedAt:null};h.state.chapter8.sequence++;h.at(2000);h.update();assert.equal(h.track().volume,.07);assert(!h.track().paused);
  for(const [id,at] of [['wife-01',3000],['grid-driveway',5000],['whistle-approach',7000],['living-silence',9000],['breaking-news',11000],['wife-16',13000]]){
   h.state.chapter8.finale.index=finaleCues.findIndex(c=>c.id===id);h.state.chapter8.finale.phaseAt=100000+at;h.at(at);h.update();assert(!h.track().paused);assert.equal(h.track().plays,plays);
@@ -52,4 +52,10 @@ test('reaction ambience continues through wife narration and CCTV, mutes strict 
   if(id==='wife-01'){h.at(at+1500);h.update();assert(Math.abs(h.track().volume-.035)<.001);}
  }
  h.state.chapter8.step='complete';h.state.chapter8.completedAt=114000;h.at(14000);h.update();assert(h.track().paused);assert.equal(h.track().plays,plays);
+});
+
+test('version 2 fades existing music fully before wife takes over, then pauses it without any restart through every camera and the ending',async()=>{
+ const h=harness('reaction');h.update();await flush();h.at(1600);h.update();assert.equal(h.track().volume,.07);const plays=h.track().plays;
+ const {finaleCues}=await import('../chapter8-finale-timing.js');h.state.chapter8.step='finale';h.state.chapter8.sequence++;h.state.chapter8.finale={polishVersion:2,index:0,phaseAt:102000,mediaStartedAt:null};h.at(2000);h.update();assert.equal(h.track().volume,.07);h.at(2800);h.update();assert.equal(h.track().volume,.035);h.at(3600);h.update();assert.equal(h.track().volume,0);
+ for(let i=1;i<finaleCues.length;i++){h.state.chapter8.finale.index=i;h.state.chapter8.sequence++;h.update();assert(h.track().paused);assert.equal(h.track().volume,0);assert.equal(h.track().plays,plays);}
 });

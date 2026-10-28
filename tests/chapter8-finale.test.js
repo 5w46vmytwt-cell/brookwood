@@ -24,12 +24,12 @@ test('supplied finale assets are byte-preserved and cue durations match contiguo
   if(m.src.endsWith('.mp4')){assert.equal(mp4Metadata(bytes).durationMs,NEWS_DURATION_MS);assert.equal(m.tracks.find(t=>t.kind==='soun').codec,'mp4a');}
  }
  for(const cue of finaleCues.filter(c=>c.src)){const m=media.find(m=>m.src===cue.src);assert(m);assert(Math.abs(m.durationMs-(cue.sourceDurationMs??cue.durationMs))<.000001);}
- assert.equal(Object.keys(cameras).length,8);
+ assert.equal(new Set(Object.values(cameras)).size,8);
 });
 
 test('explicit cue timeline orders every wife recording, both doorbells, cameras, silence, scare, news and ending',()=>{
  const voice=finaleCues.filter(c=>c.kind==='narration');assert.deepEqual(voice.map(c=>c.id),Array.from({length:16},(_,n)=>'wife-'+String(n+1).padStart(2,'0')));
- assert(voice.slice(4,11).every(c=>c.visual==='wife-dark'));assert.deepEqual(finaleCues.filter(c=>/^(driveway-observe|side-observe|backyard-observe|porch-observe|garage-observe)$/.test(c.id)).map(c=>c.visual),['driveway','side','backyard','porch','garage']);
+ assert.deepEqual(voice.slice(4,11).map(c=>c.visual),['front','side','backyard','front','garage','living','living']);
  const index=id=>finaleCues.findIndex(c=>c.id===id);
  assert(index('doorbell-before')<index('wife-08'));assert(index('doorbell-after')>index('wife-08'));assert(index('wife-15')<index('breaking-news'));assert(index('wife-16')>index('breaking-news'));
  assert.equal(finaleCues[index('living-silence')].durationMs,SILENCE_MS);assert.equal(finaleCues.filter(c=>c.visual==='scare').length,1);assert.equal(finaleCues[index('intruder-reveal')].durationMs,SCARE_MS);
@@ -44,9 +44,9 @@ test('entire automated finale persists native gates, no overlapping speech, one 
   const restored=JSON.parse(JSON.stringify(s));validateChapter8(restored);assert.deepEqual(restored.chapter8,c);
   if(cue.visual==='scare')scares++;
   if(cue.kind==='hold'){
-   if(cue.id==='living-silence'){
+   if(cue.id==='living-silence'||cue.readyImage){
     assert.equal(f.deadline,null);assert.equal(advanceChapter8(s,now+100000),UNCHANGED);
-    chapter8HostAction(s,body(s,'chapter8-finale-ready'),now);assert.equal(f.deadline-now,SILENCE_MS);assert.equal(chapter8HostAction(s,body(s,'chapter8-finale-ready'),now+1000),UNCHANGED);
+    chapter8HostAction(s,body(s,'chapter8-finale-ready'),now);assert.equal(f.deadline-now,cue.durationMs);assert.equal(chapter8HostAction(s,body(s,'chapter8-finale-ready'),now+1000),UNCHANGED);
    }
    assert.equal(advanceChapter8(s,f.deadline-1),UNCHANGED);now=f.deadline;advanceChapter8(s,now);
   }else{

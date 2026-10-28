@@ -44,11 +44,11 @@ export class Chapter8SoundDesign{
   if(this.run!==f?.id){for(const e of this.active.values()){e.media.pause();e.media.loop=false;}this.active.clear();this.run=f?.id;this.blocked=false;}
   if(f){
    if(['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue?.id))desired.set('garage-alarm',f.soundAnchors?.garage??f.phaseAt);
-   if(f.polishVersion!==1&&['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape'].includes(cue?.id)&&f.soundAnchors?.sirens!=null)desired.set('approaching-sirens',f.soundAnchors.sirens);
+   if(!(f.polishVersion>=1)&&['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape'].includes(cue?.id)&&f.soundAnchors?.sirens!=null)desired.set('approaching-sirens',f.soundAnchors.sirens);
    if(cue?.id==='intruder-reveal')desired.set('scare-impact',f.phaseAt);
   }
   const sirenMix=new Map();
-  if(f?.polishVersion===1&&f.soundAnchors?.sirens!=null&&!['breaking-news','news-out','wife-16','ending'].includes(cue?.id)){
+  if(f?.polishVersion>=1&&f.soundAnchors?.sirens!=null&&!['breaking-news','news-out','wife-16','ending'].includes(cue?.id)){
    const elapsed=this.now()-f.soundAnchors.sirens,fade=cue?.id==='news-black'?1-smooth((this.now()-f.phaseAt)/cue.durationMs):1;
    if(elapsed>=0)for(const w of sirenWindows(elapsed)){desired.set(w.id,f.soundAnchors.sirens+w.at);sirenMix.set(w.id,{gain:w.gain*(.08+.26*smooth(elapsed/12000))*fade});}
   }

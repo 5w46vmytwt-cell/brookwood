@@ -7,6 +7,7 @@ export const NEWS_DURATION_MS=62480;
 export const SILENCE_MS=3500, SCARE_MS=700, HANDOFF_MS=1600;
 export const cameras=Object.freeze({
  grid:'/assets/chapter8/ch8_security_grid.png',
+ front:'/assets/chapter8/ch8_cam04_front_porc.png',
  driveway:'/assets/chapter8/ch8_cam01_driveway.png',
  side:'/assets/chapter8/ch8_cam02_side_passage.png',
  backyard:'/assets/chapter8/ch8_cam03_backyard.png',
@@ -35,7 +36,7 @@ const legacyOrdered=[
 export const GAME_TITLE='THE GREAT HALLOWEEN PARTY RESCUE';
 export const GAME_TITLE_AT_MS=1460, GAME_TITLE_END_MS=8100, WIFE_RELAX_AT_MS=14800;
 const bright=n=>wife(n,'wife-bright'),dark=n=>wife(n,'wife-dark');
-const ordered=[
+const version1Ordered=[
  hold('handoff','wife-bright',HANDOFF_MS),bright(1),bright(2),bright(3),
  effect('notification-first','wife-bright',effects.notification),hold('notification-gap','wife-bright',1200),
  effect('notification-second','wife-bright',effects.notification),hold('notification-reaction','wife-bright',800),bright(4),
@@ -52,10 +53,27 @@ const ordered=[
  hold('news-black','black',2000),{id:'breaking-news',kind:'video',src:NEWS_SRC,durationMs:NEWS_DURATION_MS,visual:'news',volume:1},
  hold('news-out','black',1500),wife(16,'wife-return'),hold('ending','ending',3000)
 ].map(c=>c.id.startsWith('doorbell-')&&c.kind==='effect'?{...c,visual:'grid'}:c);
+
+export const CAMERA_ZOOM_MS=1400,CAMERA_HOLD_MS=2500,GRID_PAUSE_MS=2500;
+export const cameraTiles=Object.freeze({front:{x:1/3,y:.5,w:1/3,h:.5},porch:{x:1/3,y:.5,w:1/3,h:.5},side:{x:0,y:0,w:1/3,h:.5},backyard:{x:2/3,y:0,w:1/3,h:.5},garage:{x:2/3,y:.5,w:1/3,h:.5},living:{x:0,y:.5,w:1/3,h:.5}});
+const zoom=(id,camera,direction)=>({...hold(id,camera,CAMERA_ZOOM_MS),zoom:{camera,direction},...(direction==='in'?{readyImage:camera}:{})});
+const alert=(id)=>effect(id,'grid',effects.notification,{motion:true});
+const cameraVisit=(id,visual,n)=>[alert(id+'-motion'),hold(id+'-alert-register','grid',700),zoom(id+'-open',visual,'in'),wife(n,visual),hold(id+'-hold',visual,CAMERA_HOLD_MS),zoom(id+'-close',visual,'out'),hold(id+'-grid-pause','grid',GRID_PAUSE_MS)];
+const ordered=[
+ hold('handoff','wife-bright',HANDOFF_MS),bright(1),bright(2),bright(3),bright(4),hold('grid-front','grid',GRID_PAUSE_MS),
+ ...cameraVisit('front','front',5),...cameraVisit('side','side',6),...cameraVisit('backyard','backyard',7),
+ {...bell('doorbell-before'),visual:'grid'},zoom('doorbell-open','front','in'),wife(8,'front'),{...bell('doorbell-after'),visual:'front'},hold('doorbell-hold','front',CAMERA_HOLD_MS),zoom('doorbell-close','front','out'),hold('doorbell-grid-pause','grid',GRID_PAUSE_MS),
+ hold('garage-alarm-lead','grid',1000),effect('garage-announcement','grid',effects.announcement),hold('garage-alarm-release','grid',1000),zoom('garage-open','garage','in'),wife(9,'garage'),hold('garage-hold','garage',CAMERA_HOLD_MS),zoom('garage-close','garage','out'),hold('garage-grid-pause','grid',GRID_PAUSE_MS),
+ effect('interior-door','grid',effects.door),zoom('living-open','living','in'),wife(10,'living'),wife(11,'living'),effect('whistle-approach','living',effects.whistle),
+ hold('living-silence','living',SILENCE_MS),hold('intruder-reveal','scare',SCARE_MS),hold('signal-break','lost',850),wife(12,'lost'),
+ dark(13),effect('escape-running','lost',effects.running),effect('escape-slam','lost',effects.slam),hold('escape-settle','living',2500),dark(14),hold('quiet-after-escape','wife-dark',2000),dark(15),
+ hold('news-black','black',2000),{id:'breaking-news',kind:'video',src:NEWS_SRC,durationMs:NEWS_DURATION_MS,visual:'news',volume:1},hold('news-out','black',1500),wife(16,'wife-return'),hold('ending','ending',3000)
+];
 function timed(cues){let at=0;return Object.freeze(cues.map(c=>{const cue=Object.freeze({...c,at,end:at+c.durationMs});at=cue.end;return cue;}));}
-export const legacyFinaleCues=timed(legacyOrdered);
+export const legacyFinaleCues=timed(legacyOrdered),version1FinaleCues=timed(version1Ordered);
 export const finaleCues=timed(ordered);
+export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...finaleCues];
 export const finaleDurationMs=finaleCues.at(-1).end;
-export const cuesFor=c=>c?.finale?.polishVersion===1?finaleCues:legacyFinaleCues;
+export const cuesFor=c=>c?.finale?.polishVersion===2?finaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news'];

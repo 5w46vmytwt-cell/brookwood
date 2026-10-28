@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {finaleCues,legacyFinaleCues,finaleCue,GAME_TITLE,GAME_TITLE_AT_MS,WIFE_RELAX_AT_MS} from '../chapter8-finale-timing.js';
+import {version1FinaleCues as finaleCues,legacyFinaleCues,finaleCue,GAME_TITLE,GAME_TITLE_AT_MS,WIFE_RELAX_AT_MS} from '../chapter8-finale-timing.js';
 import {wifePresentation,finaleAmbientTarget} from '../chapter8-presentation.js';
 import {sirenWindows,Chapter8SoundDesign,soundLayers} from '../chapter8-sound-design.js';
 import {validateChapter8,advanceChapter8} from '../api/_chapter8.js';
@@ -55,10 +55,10 @@ test('sirens remain present after 31.6 seconds, reconstruct mid-crossfade, fade 
 });
 
 test('saved unversioned 41-cue runs retain their exact cue identity/duration after refresh; new runs use polish version 1',()=>{
- const state=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(state);assert.equal(state.chapter8.finale.polishVersion,1);
+ const state=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(state);assert.equal(state.chapter8.finale.polishVersion,2);
  const f=state.chapter8.finale;delete f.polishVersion;f.index=5;f.deadline=f.phaseAt+900;assert.equal(finaleCue(state.chapter8).id,'grid-driveway');assert.equal(legacyFinaleCues.length,41);validateChapter8(state);advanceChapter8(state,f.deadline);assert.equal(finaleCue(state.chapter8).id,'motion-notification');
 });
 
 test('wife presentation reuses the established narrator waveform and scopes warm/cold/security styling to Chapter 8',()=>{
- const js=fs.readFileSync('chapter8-finale.js','utf8'),css=fs.readFileSync('chapter8.css','utf8');assert(js.includes('investigation-scene ch8-wife'));assert(js.includes('investigation-wave ch8-wife-wave'));assert(js.includes('SECURITY BREACH'));assert(css.includes('.ch8-wife[data-mood=cold]'));assert(css.includes('prefers-reduced-motion'));assert(!js.includes('requestAnimationFrame('));assert(!js.includes('setTimeout('));
+ const js=fs.readFileSync('chapter8-finale.js','utf8'),css=fs.readFileSync('chapter8.css','utf8');assert(js.includes('new NarratorScreen(document)'));assert(fs.readFileSync('narrator-screen.js','utf8').includes('source.cloneNode(true)'));assert(js.includes('SECURITY BREACH'));assert(css.includes('.ch8-wife[data-mood=cold]'));assert(css.includes('prefers-reduced-motion'));assert(!js.includes('requestAnimationFrame('));assert(!js.includes('setTimeout('));
 });
