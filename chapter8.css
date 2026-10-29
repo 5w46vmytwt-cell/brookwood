@@ -28,12 +28,5 @@ body.chapter8-active #chapterSelectPanel{z-index:90}
 .ch8-security-breach{position:absolute;inset:28% 10%;display:grid;place-items:center;text-align:center;background:#160606ed;color:#efb2ab;border:2px solid #ad4b45;font:clamp(30px,6vw,90px)/1.2 'Courier New',monospace;letter-spacing:.12em;box-shadow:0 0 0 100vmax #0007}
 
 .ch8-camera-grid{position:absolute;width:min(100vw,200vh);aspect-ratio:2/1;left:50%;top:50%;transform:translate(-50%,-50%);will-change:transform}.ch8-camera-grid img{display:block;width:100%;height:100%;object-fit:contain}
-.ch8-finale .ch8-wife{z-index:6;font-family:Georgia,'Times New Roman',serif;color:#eee;pointer-events:none}
-.ch8-wife .broadcast-label{color:#f1e7f5}.ch8-wife .broadcast-frequency{color:#eee3ef}.ch8-wife .broadcast-wave i{background:#f1d3e5}
-.ch8-wife[data-mood=cold] .broadcast-label,.ch8-wife[data-mood=cold] .broadcast-frequency{color:#adb6cf}.ch8-wife[data-mood=cold] .broadcast-wave i{background:#a5afc7}
-
-
-@media(prefers-reduced-motion:reduce){.ch8-wife .broadcast-wave i{animation:none!important}.ch8-security-breach{opacity:1!important}}
-
-.ch8-wife .broadcast-mic{filter:drop-shadow(0 0 28px #8877aa2b)}
+.ch8-finale .ch8-wife{position:absolute;inset:0;z-index:6}
 .ch8-camera-grid{z-index:0}.ch8-camera-image{z-index:1}.ch8-camera-interference{z-index:2}.ch8-camera-label,.ch8-camera-time,.ch8-finale-title{z-index:3}.ch8-security-breach{z-index:4}.ch8-finale-news{z-index:5}

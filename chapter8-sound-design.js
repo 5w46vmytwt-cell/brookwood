@@ -41,7 +41,7 @@ export class Chapter8SoundDesign{
  constructor(player,now,{Context=globalThis.AudioContext}={}){this.player=player;this.now=now;this.Context=Context;this.active=new Map();this.blocked=false;}
  update(c,cue){
   const f=c?.step==='finale'?c.finale:null,desired=new Map();
-  if(this.run!==f?.id){for(const e of this.active.values()){e.media.pause();e.media.loop=false;}this.active.clear();this.run=f?.id;this.blocked=false;}
+  if(this.run!==f?.id){for(const e of this.active.values()){e.media.pause();e.media.loop=false;}this.active.clear();this.run=f?.id;this.impactPrepared=false;this.blocked=false;}
   if(f){
    if(['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue?.id))desired.set('garage-alarm',f.soundAnchors?.garage??f.phaseAt);
    if(!(f.polishVersion>=1)&&['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape'].includes(cue?.id)&&f.soundAnchors?.sirens!=null)desired.set('approaching-sirens',f.soundAnchors.sirens);
@@ -61,10 +61,18 @@ export class Chapter8SoundDesign{
    let e=this.active.get(id);if(!e){e={anchor,media,attempted:false,pending:false};this.active.set(id,e);}
    media.volume=mix?mix.gain:id==='scare-impact'&&f.polishVersion>=3?.8*(1-smooth((elapsed-1850)/100)):layerVolume(id,elapsed);media.muted=false;media.loop=!!spec.repeat;
    if(media.paused&&!e.attempted&&media.readyState>=2){
-    media.currentTime=((mix?2000:spec.offsetMs)+(spec.repeat?elapsed%spec.sourceDurationMs:elapsed))/1000;e.attempted=true;e.pending=true;
+    const offset=((mix?2000:spec.offsetMs)+(spec.repeat?elapsed%spec.sourceDurationMs:elapsed))/1000;
+    if(id!=='scare-impact'||!this.impactPrepared||Math.abs(media.currentTime-offset)>.1)media.currentTime=offset;
+    e.attempted=true;e.pending=true;
     Promise.resolve(media.play()).catch(()=>{if(this.active.get(id)===e)this.blocked=true;}).finally(()=>e.pending=false);
    }
   }
+ }
+ prepareImpact(){
+  const media=this.player.media.get('scare-impact');if(!media||media.readyState<1)return false;
+  // Decode/seek silently before arming suspense; never prime with audible play.
+  if(!this.impactPrepared){media.currentTime=effects.impact.offsetMs/1000;this.impactPrepared=true;}
+  return media.readyState>=3&&!media.seeking;
  }
  prepareWhistle(media){
   if(!this.Context)return true;

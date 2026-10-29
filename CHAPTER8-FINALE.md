@@ -1,57 +1,57 @@
-# Chapter 8 - targeted rehearsal corrections
+# Chapter 8 - exact Chapter 7 narrator and corrected scare order
 
 ## Review status
 
-Production baseline: 62bf4a7. This revision on fix/chapter8-rehearsal-polish is reviewed and approved for release through the existing GitHub main / Vercel production workflow. Deployment readiness is verified separately. Supplied media, game data, host authorization, earlier chapters and future Collector/webcam work are preserved. The only shared change is backward-compatible narrator CSS selector reuse with original husband color defaults.
+Production baseline: f1794f5. Reviewed and approved for release from fix/chapter8-chapter7-narrator through the existing GitHub main / Vercel production workflow. Deployment readiness is verified separately. Supplied media, multiplayer, sessions, host authentication, Redis/environment configuration, camera pacing, sirens, native news completion and final narration remain intact. No Collector video or credits are added.
 
-## Actual narration and asset mapping (inspected before editing)
+## Actual Chapter 7 renderer reused
 
-The first generic reaction never says driveway or front door. Inspection confirmed that the previous first alert and the doorbell both mapped to ch8_cam04_front_porc.png, the close image beside the doorbell (grid bottom middle). After viewing the actual asset choices, the user explicitly confirmed: use ch8_cam01_driveway.png first, retaining the porch image for doorbells. The corrected first zoom selects the grid's top-middle driveway tile and the actual distant-intruder photograph. It is labeled DRIVEWAY, not silently renamed FRONT PORCH. No image is fabricated or modified.
+The actual path is tv.html #chapter7TV -> #chapter7Investigation -> #ch7Scene, rendered by Chapter7Investigation.update in chapter7-story.js. The complete scene contains #ch7PodcastLogo (hidden for narrator), #ch7Eyebrow, #ch7Title, #ch7Subtitle, #ch7Waveform with its 35 original bars, #ch7Options and #ch7Progress. The working Chapter 7 narrator has no separate microphone SVG: its speaking visualization is that waveform. chapter7.css provides the parent black surface, typography, 50%/44% radial background, exact spacing, ch7-voice keyframes, per-bar delays and responsive rules. narratorFrame in chapter7-story-timing.js provides its initial black hold, smooth entry and final visual fade; no audio gain is changed.
 
-| Recording | Measured full duration | Recorded content / mapped visual |
-| --- | --- | --- |
-| wife-01 | 28.682 s | Playful return / husband's existing narrator component, warm wife palette |
-| wife-02 | 8.986 s | The Great Halloween Party Rescue / same narrator component and preserved title reveal |
-| wife-03 | 6.426 s | Promises no creepy happenings / same narrator component |
-| wife-04 | 12.434 s | Camera notifications, I think you should see this / introduces the grid; not assigned to an individual camera |
-| wife-05 | 11.886 s | First distant-intruder reaction / DRIVEWAY (user-confirmed asset) |
-| wife-06 | 16.274 s | Another notification; moving around the side of the house / SIDE PASSAGE |
-| wife-07 | 12.121 s | He's in the backyard now / BACKYARD |
-| wife-08 | 10.998 s | That's the doorbell camera; don't open the door / FRONT DOOR, same front-porch photograph |
-| wife-09 | 12.121 s | He's inside, in the garage; calling police / GARAGE |
-| wife-10 | 12.513 s | Police on their way; hears movement, coming upstairs / EMPTY LIVING ROOM, the requested interior feed; it does not name a camera |
-| wife-11 | 5.721 s | Where is he? Keep lights off, nobody move / same EMPTY LIVING ROOM |
-| wife-12 | 4.676 s | “He's coming for you. You have to hide. Right now!” / EMPTY LIVING ROOM, BEFORE silence and scare |
-| wife-13 | 8.673 s | Sirens/police approaching / existing narrator component, muted wife palette |
-| wife-14 | 6.922 s | Think he's gone; is everyone okay / same muted narrator presentation |
-| wife-15 | 5.799 s | Introduces emergency broadcast / before the full news video |
-| wife-16 | 51.644 s | Full apology, reassurance, jokes and Happy Halloween / after native news completion |
+The previous Chapter 8 screen incorrectly cloned #chapter5-radio, the vintage-microphone handoff from Chapter 5. Even complete reuse of that screen could not match Chapter 7. Comparing it against Chapter 5 was the wrong visual reference.
 
-Wife-10 refers to hearing movement upstairs, not an upstairs-camera image. No upstairs feed exists or is invented; the visibly empty interior feed stays on screen. All clips play completely and in their original numeric order. Duration values above are rounded only for reading; canonical gates retain the full measured precision.
+narrator-screen.js now binds Chapter 7's original nodes and performs the same presentation updates for Chapter 7. For Chapter 8 it instantiates the actual outer #chapter7TV container and the complete #chapter7Investigation hierarchy inside a shadow root. Original IDs, classes, ancestor selectors and the original /chapter7.css dependency are preserved unchanged. Shadow scope prevents duplicate document IDs and unrelated Chapter 8 styling from leaking in. Non-narrator source layers and host controls stay hidden; no Chapter 7 media playback or gameplay controller is duplicated.
 
-## Corrected choreography
+The wife theme changes only colors: the background is taken from the actual #ch7Scene CSS rule and only its color stops are substituted, preserving gradient geometry. Text and waveform colors change to lavender/pink/blue, with the existing muted palette on later appearances. No alternative SVG, gradient geometry, waveform markup or animation clock is created. The same narratorFrame formula is sampled from persisted media clocks for visual entry/exit, including refresh. Chapter 7's stylesheet is byte-preserved and its default rendering/timing remain unchanged. The minimal Chapter 7 JS changes bind the shared renderer and expose an optional narration duration to the existing frame function.
 
-Each driveway/side/backyard visit is GRID -> ordinary MOTION DETECTED + full notification sound -> 700-ms registration -> 1.400-second zoom from the correct grid tile -> corresponding full wife recording over the individual image -> 2.500-second same-image hold -> 1.400-second zoom out -> 2.500-second grid pause. No new notification starts while a previous feed is open. The normal alert uses the CCTV label, not the red breach panel.
+Visual verification: scripts/verify-chapter8-narrator-browser.mjs instantiates the actual old Chapter 7 controller from f1794f5 and the current Chapter 7 controller, then the actual Chapter8Finale view. At both 1920x1080 and 1280x720, all measured scene/child structures, rectangles, typography, animation properties and gradient geometry match. The old/current Chapter 7 snapshots match. Animation sampling is frozen only in the verification harness to compare the same frame. Native source animation remains unchanged in the application.
 
-The first doorbell plays on the grid. Its completion immediately starts the 1.400-second front-door opening transition; wife-08 starts as the individual feed is fully visible, with no extra grid/reaction pause and no wife presentation cutaway. The second full doorbell then plays on that same open front-door image after her complete warning. The feed remains open for another 2.500 seconds, zooms out and holds the grid 2.500 seconds. No grid or wife-screen cut separates the two rings.
+Side-by-side screenshots (Chapter 7 left, wife right):
 
-The red SECURITY BREACH panel stays on the grid for the alarm lead, complete automated announcement with existing ducking, and release fade. Only then does the garage open. Wife-09 plays over the garage photograph for its complete native recording. Its 2.500-second post-recording hold, zoom out and 2.500-second grid pause precede the interior door sound and living-room opening. Wife-10 and wife-11 stay on the empty living-room feed throughout, followed by the original uninterrupted approaching whistle. Then the complete 4.675918-second wife-12 warning plays over that empty room. Its native ended event advances into an image-ready, persisted 5.000-second genuinely silent hold. One 2.000-second scare follows, then the existing SIGNAL LOST. No siren starts before wife-13.
+- logs/ch7-ch8-narrator-comparison-1920.png
+- logs/ch7-ch8-narrator-comparison-1280.png
+- logs/ch7-ch8-narrator-comparison.json contains comparison assertions.
 
-The first doorbell has a visual opening transition before the first spoken word because camera-specific speech must never begin while the grid remains the primary view. There is no arbitrary additional delay. All source media is preloaded, and every camera-open transition is armed only after the requested image is decoded/visible-ready on an authenticated TV. Late media cannot skip the first words.
+## Warning recording inspected
 
-## Zoom and audio synchronization
+The exact supplied file is assets/chapter8/audio/wife-12.mp3. Its existing source transcription is: "He's coming for you. You have to hide. Right now!" MPEG-frame metadata remeasurement confirms 4675.918367346939 ms. This is a complete standalone recording, with no unrelated introduction or trailing dialogue that requires editing. The full file plays at volume 1; no trimming, re-encoding, replacement or audio-editing dependency exists. All 16 narration files remain byte-for-byte unchanged and in numeric spoken order.
 
-The actual grid is 1774 x 887 (2:1), with three columns and two rows. Tile coordinates are image-relative percentages: DRIVEWAY = top middle; FRONT DOOR/DOORBELL = bottom middle, SIDE = top left, BACKYARD = top right, GARAGE = bottom right, LIVING ROOM = bottom left. One pure cameraFrame resolver samples the existing TV scheduler. It centers the selected tile, calculates the correct aspect-preserving zoom for the viewport, and blends to the unchanged contained feed only near the end. The return is the exact reverse. No replacement photographs, arbitrary camera timers or separate RAFs are introduced.
+## Corrected scare sequence
 
-Camera-specific native audio cannot start until its image has decoded. Zooms have persisted server deadlines armed through the existing generation/run/sequence-fenced host acknowledgment. Once speech begins, the cue remains fixed until native ended passes the full measured server duration gate. The post-narration cue retains the same image at opacity 1; there is no new fade-to-black or camera change at that boundary.
+The living-room recordings wife-10/wife-11 and continuous whistle remain unchanged. After the whistle stops:
 
-The 1.600-second takeover fades out existing background MUSIC completely before wife-01 starts. It pauses after that fade and never restarts during any camera, wife return, news or ending. Intentional notifications, doorbells, breach/voice, door, whistle, sting, running, slam and police sirens remain independent and intact. The existing two-slot crossfaded sirens still begin with wife-13 and continue until the two-second pre-news fade; no siren overlaps the anchor.
+1. Empty living room, exactly 5000 authoritative milliseconds of genuinely silent suspense. Music remains stopped, whistle is stopped, sirens have not begun, and no narration plays.
+2. One masked image and the existing strong scream/sting start together. The image lasts exactly 2000 authoritative milliseconds; the sting remains at 80% with the existing safe finite excerpt and tail fade. The same audio element is silently decoded/seek-prepared during earlier scenes, and the existing suspense-ready acknowledgment waits for image and sting readiness before arming the five-second clock. This fixes a native MP3 seek stall that could otherwise consume the short scare window. It never primes with audible playback, adds no timer and changes no source bytes or other effect gain.
+3. The next cue is the complete wife-12 recording with visual lost. The former separate 850-ms signal-break hold is removed. A native playing handler reveals SIGNAL LOST and heavy interference in the same event turn that the recording starts. Before playback is ready (including autoplay recovery), no premature SIGNAL LOST label or warning voice appears. SIGNAL LOST stays visible for the entire warning; only native completion and the measured duration gate can advance it.
+4. Wife-13 and the existing siren/escape/news/ending sequence follow, with no narration overlaps.
 
-## Exactly reused narrator screen
+Nominal finale-relative windows:
 
-narrator-screen.js instantiates the actual #chapter5-radio DOM from the husband's established screen, including its vintage microphone SVG, grille/metal geometry, broadcast labels/frequency, original waveform bars and existing broadcast-wave CSS animation. It samples the same paused animation through the scheduler's negative --handoff-delay. No new microphone drawing, decorative lighting system, pulse engine or waveform keyframes are created. SVG definition IDs are namespaced only on the clone; the husband's DOM and computed appearance are unchanged. The existing CSS rule bodies now also target .brookwood-narrator; background color variables retain the exact original husband defaults. The Chapter 8 recreation of the gradient, scanlines and responsive title layout is removed. A theme parameter changes colors only. Explicit presentation layering prevents CCTV overlays from covering the wife.
+| Event | Start - end (seconds) |
+| --- | --- |
+| Approaching whistle | 205.774 - 217.174 |
+| Silent empty room | 217.174 - 222.174 |
+| Masked reveal + sting onset | 222.174 - 224.174 |
+| SIGNAL LOST + full wife-12 | 224.174 - 228.850 |
+| Wife-13 / approaching police | starts 228.850 |
 
-Only the wife's palette is overridden: slightly lighter lavender/blue initially, darker muted colors on later appearances. Layout, microphone dimensions, typography, scanline treatment, responsive positions and animation are the existing broadcast design. The game title remains source-synchronized at wife-02 offsets 1.460-8.100 seconds with its brief fade. Wife-16 starts muted and returns to warm colors only after the recorded relaxation line at 14.800 seconds. Reduced-motion support remains.
+These are canonical nominal offsets, not substitutes for native media completion. Loading/acknowledgment/poll latency can extend actual playback; the persisted silence/scare deadlines cannot be extended by refresh. SIGNAL LOST/voice use native playing synchronization, rather than two independent timers.
+
+Stored unversioned/version-1/version-2/version-3 cuts retain their previous index mapping and clocks. Fresh authenticated finale checkpoints select polishVersion 4. No existing game is migrated or reset. The expired scare disappears without being replayed while delayed progression catches up. Refresh seeks active media and preserves the remaining window.
+
+## Preserved camera and audio behavior
+
+First actual asset: ch8_cam01_driveway.png; then side passage and backyard. Each normal alert, camera-specific complete narration, 2.500-second image hold, 1.400-second reverse zoom and 2.500-second grid pause is unchanged. Doorbells remain after backyard, with the close front-porch asset. The garage warning/alarm/announcement, interior door and approaching whistle are unchanged. The existing music fades out during takeover and never resumes underneath the wife, CCTV, silence or news. Sirens still crossfade continuously until the pre-news fade. The 62.480-second breaking-news video advances only on its native ended event, before the complete wife-16 and Happy Halloween ending.
 
 ## Audio inventory and source selection
 
@@ -67,16 +67,17 @@ All eight requested assets exist and decode in Chrome. WAVs are supported 16/24-
 | sirens | police-sirens.mp3 | 31.584 | 2.000 - 16.000, crossfaded repeats |
 | running | running-footsteps.mp3 | 6.060 | 0.350 - 5.350 |
 | slam | door-slam.mp3 | 2.520 | 1.150 - 2.520 |
-| impact | ch6_sfx_scream.mp3 | 3.312 | 0.200 - 2.150 for fresh version-3 runs |
+| impact | ch6_sfx_scream.mp3 | 3.312 | 0.200 - 2.150 for version-3 and later runs |
 | doorbell | assets/chapter4/audio/doorbell.mp3 | 3.024 | 0.000 - 3.024, twice |
 
-No requested asset is missing or format-unusable. The reused Chapter 6 sound is a scream/sting: its 0.200-2.150-second excerpt plays at 80% for fresh version-3 runs, fading over the last 100 ms. This increases only the sting from the former 24% (about +10.46 dB), never above unity; source bytes and other audio gains remain untouched. Older stored cuts retain the former excerpt and gain. Earlier chapters and that file are unchanged. Running/slam peaks approach full scale, so playback is attenuated rather than destructively normalized. A human rehearsal on the actual party speakers is recommended.
+No requested asset is missing or format-unusable. The reused Chapter 6 sound is a scream/sting: its 0.200-2.150-second excerpt plays at 80% for version-3 and later runs, fading over the last 100 ms. This increases only the sting from the former 24% (about +10.46 dB), never above unity; source bytes and other audio gains remain untouched. Pre-version-3 stored cuts retain the former excerpt and gain. Earlier chapters and that file are unchanged. Running/slam peaks approach full scale, so playback is attenuated rather than destructively normalized. A human rehearsal on the actual party speakers is recommended.
 
 
 
-## Complete corrected timeline
 
-63 cues; nominal runtime 382.588 seconds = 6 minutes 22.588 seconds. Production baseline: 379.788 seconds. Added nominal time: 2.800 seconds (silence +1.500 s, scare +1.300 s). Moving wife-12 preserves its complete duration. Native loading, acknowledgments and polling can extend actual playback.
+## Complete current timeline
+
+62 cues; nominal runtime 381.738 seconds = 6 minutes 21.738 seconds. Previous cut: 382.588 seconds. Removing the separate signal-break shortens the nominal runtime by 0.850 seconds. No narration or camera hold is shortened.
 
 | Cue | Nominal start - end (seconds) | View / transition |
 | --- | --- | --- |
@@ -127,39 +128,34 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 | wife-10 | 187.541 - 200.053 | living |
 | wife-11 | 200.053 - 205.774 | living |
 | whistle-approach | 205.774 - 217.174 | living |
-| wife-12 | 217.174 - 221.850 | living |
-| living-silence | 221.850 - 226.850 | living |
-| intruder-reveal | 226.850 - 228.850 | scare |
-| signal-break | 228.850 - 229.700 | lost |
-| wife-13 | 229.700 - 238.373 | wife-dark |
-| escape-running | 238.373 - 243.373 | lost |
-| escape-slam | 243.373 - 244.743 | lost |
-| escape-settle | 244.743 - 247.243 | living |
-| wife-14 | 247.243 - 254.165 | wife-dark |
-| quiet-after-escape | 254.165 - 256.165 | wife-dark |
-| wife-15 | 256.165 - 261.964 | wife-dark |
-| news-black | 261.964 - 263.964 | black |
-| breaking-news | 263.964 - 326.444 | news |
-| news-out | 326.444 - 327.944 | black |
-| wife-16 | 327.944 - 379.588 | wife-return |
-| ending | 379.588 - 382.588 | ending |
+| living-silence | 217.174 - 222.174 | living |
+| intruder-reveal | 222.174 - 224.174 | scare |
+| wife-12 | 224.174 - 228.850 | lost / native playing synchronized |
+| wife-13 | 228.850 - 237.523 | wife-dark |
+| escape-running | 237.523 - 242.523 | lost |
+| escape-slam | 242.523 - 243.893 | lost |
+| escape-settle | 243.893 - 246.393 | living |
+| wife-14 | 246.393 - 253.315 | wife-dark |
+| quiet-after-escape | 253.315 - 255.315 | wife-dark |
+| wife-15 | 255.315 - 261.114 | wife-dark |
+| news-black | 261.114 - 263.114 | black |
+| breaking-news | 263.114 - 325.594 | news |
+| news-out | 325.594 - 327.094 | black |
+| wife-16 | 327.094 - 378.738 | wife-return |
+| ending | 378.738 - 381.738 | ending |
 
-## Validation for this revision
+## Validation
 
-- Chapter 8: 73/73 passed. Chapter 7/8 regression tests: 162/162 passed.
-- Full suite: 630 passed, 16 failed (646 total). The failing names match the existing 16 client.test.js TV mock failures on the baseline; no new failures. The unchanged mock lacks chapter7Checkpoints/document.body.
-- Production build: passed, 235 static files; API syntax verified.
-- Actual Chrome viewport checks: wife background and microphone render at 1920x1080, 1280x720 and 1024x768. All measured husband computed styles match the baseline stylesheet at all three sizes.
-- Full native Chrome TV/phone rehearsal: PASS, all 63 cues, all 16 complete recordings at full voice volume, silent phone and preserved 12 participants. First reaction used the actual driveway asset; side/backyard and post-backyard doorbells retained their synchronization. Five refresh checks passed: opening zoom, side narration, silent room, sirens and native news playback.
-- The native wife-12 ended event precedes the full 5.000-second silent hold. One 2.000-second masked reveal and stronger sting precede SIGNAL LOST. Sirens continue until the pre-news fade; the 62.480-second news reaches native ended before wife-16. The final recording and ending complete normally, with no runtime exceptions.
-- All supplied media hashes are unchanged. No production data, sessions, Redis configuration or environment variables are changed.
+- Chapter 8: 77/77 passed. Chapter 7/8 regression tests: 166/166 passed.
+- Full suite: 634 passed, 16 failed (650 total). The failing names match the 16 pre-existing TV mock failures; no new failures. Baseline comparison is in logs/ch8-exact-baseline-comparison.json.
+- Production build: PASS, 235 static files, API syntax verified.
+- 1080p/720p side-by-side real-browser presentation and Chapter 7 baseline checks: PASS.
+- Isolated native scare/warning probes: PASS with and without a scare refresh. Native sting/image and warning/SIGNAL LOST pair correctly. Browser audit samples UI after the event's presentation handler while preserving the original native event timestamp; it does not alter playback.
+- Full native cinematic browser rehearsal: PASS, all 62 cues, 16 full native narration completions at volume 1, one scare, 5000-ms silence and 2000-ms scare deadline. Seven refresh checks passed: zoom, side narration, silence, scare, warning, sirens and news. The 62.480-second news reached native ended before the complete wife-16/ending. All 12 participants were preserved, the phone remained silent, and no runtime exception occurred. Detailed evidence: logs/chapter8-finale-browser-report.json and logs/ch8-exact-browser.txt.
+- Existing media hash tests pass; no supplied asset changed. No production game/API mutation has been made.
 
-The prior gradient/scanline recreation is removed. Both narrator instances use the established background/effect CSS rule bodies, with original husband color defaults and a wife palette parameter. The original SVG geometry, typography, microphone positions, responsive rules, paused waveform keyframes and scheduler-sampled animation remain shared. Explicit wife stacking keeps CCTV layers behind her presentation. No independent animation clock or new narrator artwork exists.
+## Local preview and remaining limits
 
-The stronger sting uses the existing scream file's 0.200-2.150-second excerpt at 80%, compared with the former 24%/0.650-second excerpt. A 100-ms tail fade ends 50 ms before the image disappears. This is approximately +10.46 dB relative to the prior playback gain, without gain above unity or source-file processing. Narration and every other effect retain their existing volume.
+Run npm run dev, open local /tv, Ctrl+Shift+C, authenticate and select CHAPTER 8 - FINAL CINEMATIC. A fresh checkpoint selects version 4. Earlier stored runs intentionally keep their original cuts. scripts/verify-chapter8-finale-browser.mjs uses isolated local in-memory state and a silent phone; run scripts/verify-chapter8-narrator-browser.mjs alongside it to reproduce both screenshot pairs. Neither script contacts production Redis.
 
-## Preview and compatibility
-
-Run npm run dev, open local /tv, use Ctrl+Shift+C, authenticate and select CHAPTER 8 - FINAL CINEMATIC. A fresh checkpoint selects polishVersion 3. Existing unversioned/version-1/version-2 runs retain their saved cue mapping, hold lengths and sting behavior on refresh; no migration or reset is performed. All 17 puzzle clues, synchronization, host authentication and player data are preserved.
-
-Normal browser audio activation and buffering limitations remain. Actual party-speaker loudness should be checked during local rehearsal. Local validation completed before release authorization; production status is verified separately after deployment.
+Browser audio still requires the existing unlock gesture; buffering and device output latency remain browser constraints. A blocked warning waits to reveal SIGNAL LOST until native playback starts. Actual party-speaker loudness should be reviewed locally. Local implementation and validation preceded release authorization; production status is verified separately after deployment.

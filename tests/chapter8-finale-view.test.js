@@ -7,14 +7,14 @@ function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=tr
  let now=100000+offset;
  class Media{
   constructor(){this.listeners=new Map();this.style={};this.dataset={};this.children=[];this.hidden=false;this.complete=true;this.naturalWidth=1536;this.readyState=4;this.duration=70;this.currentTime=0;this.paused=true;this.plays=0;this.volume=1;}
-  cloneNode(){return new Media();}querySelectorAll(){return [];}querySelector(selector){this.parts??=new Map();if(!this.parts.has(selector))this.parts.set(selector,new Media());return this.parts.get(selector);}
+  attachShadow(){return new Media();}replaceChildren(...nodes){this.children=nodes;}get classList(){return {toggle:(name,on)=>{this.className=(this.className??'').split(' ').filter(c=>c&&c!==name).concat(on?[name]:[]).join(' ');}};}cloneNode(){return new Media();}querySelectorAll(){return [];}querySelector(selector){this.parts??=new Map();if(!this.parts.has(selector))this.parts.set(selector,new Media());return this.parts.get(selector);}
   setAttribute(k,v){this[k]=v;}getAttribute(k){return this[k];}removeAttribute(k){delete this[k];}appendChild(n){this.children.push(n);}remove(){this.removed=true;}
   addEventListener(n,fn){if(!this.listeners.has(n))this.listeners.set(n,new Set());this.listeners.get(n).add(fn);}removeEventListener(n,fn){this.listeners.get(n)?.delete(fn);}emit(n){for(const fn of this.listeners.get(n)??[])fn();}load(){}
   play(){this.plays++;if(deny)return Promise.reject(Error('Autoplay'));this.paused=false;queueMicrotask(()=>this.emit('playing'));return Promise.resolve();}pause(){this.paused=true;}
  }
  class Player{constructor(t){this.media=new Map(t.cues.map(c=>[c.id,Object.assign(new Media(),{src:c.src})]));}stop(){for(const a of this.media.values())a.pause();}}
  const root=new Media(),doc={createElement:()=>new Media(),getElementById:()=>root},calls=[];
- const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:3,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
+ const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:4,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
  const view=new Chapter8Finale(doc,{elapsedNow:()=>now-100000},{Player,request:async(_p,b)=>{calls.push(b);if(b.action==='chapter8-finale-playing')state.chapter8.finale.mediaStartedAt??=now;return {state};},onState(){}});
  return {view,state,calls,update:()=>view.update(state,authenticated),at:n=>now=100000+n,allow:()=>deny=false,media:()=>view.entry?.media};
 }
@@ -35,7 +35,19 @@ test('autoplay failure requires existing unlock gesture, retry reuses same eleme
 
 test('empty-room silence is visually ready before its persisted timer; no media plays; scare expires without replay',async()=>{
  const h=harness('living-silence');h.view.image.complete=false;h.update();assert.equal(h.calls.length,0);assert([...h.view.player.media.values()].every(a=>a.paused));h.view.image.complete=true;h.update();await flush();assert.equal(h.calls.length,1);assert.equal(h.calls[0].action,'chapter8-finale-ready');for(let i=0;i<10;i++)h.update();assert.equal(h.calls.length,1);
- h.state.chapter8.finale.index++;h.state.chapter8.sequence++;h.at(0);h.update();assert.equal(h.view.root.dataset.visual,'scare');h.at(SCARE_MS);h.update();assert.equal(h.view.root.dataset.visual,'lost');h.at(SCARE_MS+1000);h.update();assert.equal(h.view.root.dataset.visual,'lost');
+ h.state.chapter8.finale.index++;h.state.chapter8.sequence++;h.at(0);h.update();assert.equal(h.view.root.dataset.visual,'scare');h.at(SCARE_MS);h.update();assert.equal(h.view.root.dataset.visual,'black');h.at(SCARE_MS+1000);h.update();assert.equal(h.view.root.dataset.visual,'black');
+});
+
+test('SIGNAL LOST and complete wife-12 start on the same native playing event, including autoplay recovery and refreshed warning',async()=>{
+ const blocked=harness('wife-12',{deny:true});blocked.update();await flush();assert.equal(blocked.view.root.dataset.visual,'black');assert.equal(blocked.view.label.hidden,true);
+ blocked.allow();blocked.view.unlock();await flush();assert.equal(blocked.view.root.dataset.visual,'lost');assert.equal(blocked.view.label.textContent,'SIGNAL LOST');assert.equal(blocked.view.label.hidden,false);assert.equal(blocked.media().volume,1);
+ for(let n=0;n<10;n++)blocked.update();assert.equal(blocked.media().plays,2);assert.equal(blocked.view.root.dataset.visual,'lost');
+ const restored=harness('wife-12',{offset:2000,started:100000});restored.update();assert.equal(restored.view.label.hidden,true);await flush();assert.equal(restored.media().currentTime,2);assert.equal(restored.view.root.dataset.visual,'lost');restored.at(4600);restored.update();assert.equal(restored.view.root.dataset.visual,'lost');
+});
+
+test('suspense is armed only after the sting has silently decoded and completed its initial seek',async()=>{
+ const h=harness('living-silence'),sting=h.view.player.media.get('scare-impact');sting.readyState=1;sting.seeking=true;h.update();assert.equal(h.calls.length,0);assert.equal(sting.currentTime,.2);assert.equal(sting.plays,0);
+ sting.readyState=4;h.update();assert.equal(h.calls.length,0);sting.seeking=false;h.update();await flush();assert.equal(h.calls[0].action,'chapter8-finale-ready');assert.equal(sting.plays,0);
 });
 
 test('read-only TV cannot acknowledge or arm scenes, and cleanup stops/unloads all media and removes handlers',async()=>{
@@ -56,7 +68,7 @@ test('one whistle element crosses the camera switch without restarting, seeks it
 });
 
 test('wife screen shows the real game title and speaking waveform, returns cold, and both doorbells and breach keep the grid',async()=>{
- const h=harness('wife-02',{offset:2500,started:100000});h.update();await flush();h.update();assert.equal(h.view.wife.hidden,false);assert.equal(h.view.wife.dataset.mood,'warm');assert.equal(h.view.gameTitle.textContent,'THE GREAT HALLOWEEN PARTY RESCUE');assert(h.view.wifeWave.className.includes('speaking'));assert.equal(h.view.microphone.dataset.speaking,'true');
+ const h=harness('wife-02',{offset:2500,started:100000});h.update();await flush();h.update();assert.equal(h.view.wife.hidden,false);assert.equal(h.view.wife.dataset.mood,'warm');assert.equal(h.view.gameTitle.textContent,'THE GREAT HALLOWEEN PARTY RESCUE');assert(h.view.wifeWave.className.includes('speaking'));assert(h.view.wifeWave.className.includes('speaking'));
  h.media().pause();h.update();assert(!h.view.wifeWave.className.includes('speaking'));
  const cold=harness('wife-14');cold.update();assert.equal(cold.view.wife.dataset.mood,'cold');assert.equal(cold.view.wife.hidden,false);
  for(const id of ['doorbell-before','garage-announcement']){const r=harness(id);r.update();assert.equal(r.view.root.dataset.visual,'grid');assert.equal(r.view.breach.hidden,id!=='garage-announcement');}

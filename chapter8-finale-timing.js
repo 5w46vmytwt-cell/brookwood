@@ -75,9 +75,13 @@ export const version2FinaleCues=timed(ordered.map(c=>c.id==='living-silence'?{..
 // Preserve every stored version-2 index; only fresh finales select this cut.
 const revised=ordered.filter(c=>c.id!=='wife-12');
 revised.splice(revised.findIndex(c=>c.id==='living-silence'),0,wife(12,'living'));
-export const finaleCues=timed(revised.map(c=>c.id==='living-silence'?{...c,durationMs:SILENCE_MS}:c.id==='intruder-reveal'?{...c,durationMs:SCARE_MS}:c.visual==='front'&&!c.id.startsWith('doorbell-')&&c.id!=='wife-08'?{...c,visual:'driveway',...(c.zoom?{zoom:{...c.zoom,camera:'driveway'}}:{}),...(c.readyImage?{readyImage:'driveway'}:{})}:c));
-export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...finaleCues];
+export const version3FinaleCues=timed(revised.map(c=>c.id==='living-silence'?{...c,durationMs:SILENCE_MS}:c.id==='intruder-reveal'?{...c,durationMs:SCARE_MS}:c.visual==='front'&&!c.id.startsWith('doorbell-')&&c.id!=='wife-08'?{...c,visual:'driveway',...(c.zoom?{zoom:{...c.zoom,camera:'driveway'}}:{}),...(c.readyImage?{readyImage:'driveway'}:{})}:c));
+// Native warning begins at SIGNAL LOST, with no intervening hold.
+const current=version3FinaleCues.filter(c=>!['wife-12','signal-break'].includes(c.id));
+current.splice(current.findIndex(c=>c.id==='intruder-reveal')+1,0,{...wife(12,'lost'),syncVisualToAudio:true});
+export const finaleCues=timed(current);
+export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...finaleCues];
 export const finaleDurationMs=finaleCues.at(-1).end;
-export const cuesFor=c=>c?.finale?.polishVersion===3?finaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
+export const cuesFor=c=>c?.finale?.polishVersion===4?finaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news'];

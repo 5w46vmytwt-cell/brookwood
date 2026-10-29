@@ -27,7 +27,7 @@ test('doorbells bracket the complete front-door warning without a grid cut or wi
 test('breach completes on grid before opening garage; garage narration/hold close to grid before living-room narration, whistle and scare',()=>{
  assert(index('garage-alarm-lead')>index('doorbell-grid-pause'));
  const ids=finaleCues.slice(index('garage-alarm-lead'),index('living-silence')).map(c=>c.id);
- assert.deepEqual(ids,['garage-alarm-lead','garage-announcement','garage-alarm-release','garage-open','wife-09','garage-hold','garage-close','garage-grid-pause','interior-door','living-open','wife-10','wife-11','whistle-approach','wife-12']);
+ assert.deepEqual(ids,['garage-alarm-lead','garage-announcement','garage-alarm-release','garage-open','wife-09','garage-hold','garage-close','garage-grid-pause','interior-door','living-open','wife-10','wife-11','whistle-approach']);
  for(const id of ['garage-alarm-lead','garage-announcement','garage-alarm-release'])assert.equal(finaleCues[index(id)].visual,'grid');
  assert.equal(finaleCues[index('wife-09')].visual,'garage');for(const id of ['wife-10','wife-11','whistle-approach','living-silence'])assert.equal(finaleCues[index(id)].visual,'living');assert.equal(finaleCues[index('whistle-approach')].cameraSwitchMs,undefined);assert.equal(finaleCues[index('living-silence')].durationMs,5000);
 });
@@ -47,12 +47,12 @@ test('camera-open readiness cannot be advanced by elapsed time before decode; du
 });
 
 test('version 2 music fades out once at takeover and never returns underneath narration, effects or final narration',()=>{
- const c={finale:{polishVersion:3,index:0,phaseAt:100000,mediaStartedAt:null}};assert.equal(finaleAmbientTarget(c,100000),.07);assert.equal(finaleAmbientTarget(c,101600),0);
+ const c={finale:{polishVersion:4,index:0,phaseAt:100000,mediaStartedAt:null}};assert.equal(finaleAmbientTarget(c,100000),.07);assert.equal(finaleAmbientTarget(c,101600),0);
  for(let i=1;i<finaleCues.length;i++){c.finale.index=i;assert.equal(finaleAmbientTarget(c,150000),0);assert(finaleMustBeSilent(c));}
 });
 
 test('wife reuses husband source DOM, microphone geometry and sampled broadcast animation, with no replacement SVG or waveform system',()=>{
- const source=fs.readFileSync('narrator-screen.js','utf8'),view=fs.readFileSync('chapter8-finale.js','utf8');assert(source.includes("getElementById('chapter5-radio')"));assert(source.includes('source.cloneNode(true)'));assert(source.includes('--handoff-delay'));assert(!source.includes('<svg'));assert(!view.includes('<svg'));assert(!view.includes('wifeLight'));assert(!view.includes('requestAnimationFrame('));assert(!view.includes('setInterval('));assert(!view.includes('setTimeout('));
+ const source=fs.readFileSync('narrator-screen.js','utf8'),view=fs.readFileSync('chapter8-finale.js','utf8');assert(source.includes("getElementById('chapter7Investigation')"));assert(source.includes('source.cloneNode(true)'));assert(source.includes("dependency.href='/chapter7.css'"));assert(source.includes('attachShadow'));assert(!source.includes('<svg'));assert(!view.includes('<svg'));assert(!view.includes('wifeLight'));assert(!view.includes('requestAnimationFrame('));assert(!view.includes('setInterval('));assert(!view.includes('setTimeout('));
 });
 
 test('all narration order/media windows remain unchanged; old 41/57 cue runs retain their stored index mapping',()=>{

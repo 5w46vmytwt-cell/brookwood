@@ -1,4 +1,5 @@
 import {InvestigationAudio} from './chapter7-story-audio.js';
+import {NarratorScreen} from './narrator-screen.js';
 import {theories,storyRecording,PHOTO_ATTENTION_MS,PHOTO_ENHANCED_MS,transitionFrame,narratorFrame,sceneDuration,smooth,connectionFrame,dateFrame} from './chapter7-story-timing.js';
 const clamp=x=>Math.min(1,Math.max(0,x));
 export function photographFrame(position){return {attention:clamp((position-PHOTO_ATTENTION_MS)/5000),enhanced:position>=PHOTO_ENHANCED_MS,mix:clamp((position-PHOTO_ENHANCED_MS)/1500)};}
@@ -12,6 +13,7 @@ export class Chapter7Investigation{
   this.document=document;this.clock=clock;this.request=request;this.onState=onState;this.state=null;this.id=null;this.authenticated=false;this.epoch=0;this.pending=false;
   this.audio=new InvestigationAudio(clock,{Player,request,onState});
   this.node=id=>document.getElementById(id);
+  this.narrator=new NarratorScreen(document,{root:this.node('chapter7Investigation')});
   for(const [id,action] of [['ch7CloseVoting','investigation-close-voting'],['ch7EnvelopeReturned','investigation-envelope-return'],['ch7HostRetrieve','investigation-host-retrieval']])this.node(id).onclick=()=>this.submit(action);
   this.node('ch7TestFill').onclick=()=>this.submit('investigation-test-fill');
   this.node('ch7TestVotes').onclick=()=>this.testVotes();
@@ -68,7 +70,8 @@ export class Chapter7Investigation{
    if(i.step==='ending-fade')stage.style.opacity=this.fade(elapsed,sceneDuration(i),false);
   }
   if(i.testMode&&i.election)node('ch7Progress').textContent+=' / TEST DATA: '+i.election.simulatedVoteCount+' SIMULATED';
-  node('ch7Eyebrow').textContent=eyebrow;node('ch7Title').textContent=title;node('ch7Subtitle').textContent=subtitle;
+  if(['narrator','podcast-intro','vote-intro'].includes(i.step))this.narrator.update({eyebrow,title,subtitle,scene:i.step,opacity:scene.style.opacity,speaking:!!this.audio.entry&&!(this.audio.entry.secondary??this.audio.entry.audio).paused&&!this.audio.entry.ended});
+  else {node('ch7Eyebrow').textContent=eyebrow;node('ch7Title').textContent=title;node('ch7Subtitle').textContent=subtitle;}
   node('ch7CloseVoting').hidden=!this.authenticated||!i.election||!['theory-vote','envelope-vote','incoming'].includes(i.step);node('ch7CloseVoting').disabled=this.pending||!i.election?.voteCount||i.election?.closed;
   node('ch7HostRetrieve').hidden=!this.authenticated||i.step!=='retriever-fallback';node('ch7HostRetrieve').disabled=this.pending;
   node('ch7EnvelopeReturned').hidden=!this.authenticated||i.step!=='envelope-waiting';node('ch7EnvelopeReturned').disabled=this.pending;

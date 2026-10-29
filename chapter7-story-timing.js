@@ -20,7 +20,7 @@ export function connectionFrame(position,playing=true){const tick=Math.floor(pos
 export function dateFrame(elapsed){return {opacity:smooth(elapsed/1200)*(1-smooth((elapsed-(DATE_REVEAL_MS-1200))/1200)),yearScale:1+.25*smooth(elapsed/DATE_REVEAL_MS)};}
 export const smooth=x=>{const t=Math.min(1,Math.max(0,x));return t*t*(3-2*t);};
 // The narrator plays in full; the date belongs only to the later date-reveal phase.
-export function narratorFrame(position){const end=storyRecording('narrator').durationMs;return {date:0,yearScale:1,scene:smooth((position-3500)/2500)*(1-smooth((position-(end-1000))/1000))};}
+export function narratorFrame(position,end=storyRecording('narrator').durationMs){return {date:0,yearScale:1,scene:smooth((position-3500)/2500)*(1-smooth((position-(end-1000))/1000))};}
 export function sceneDuration(i,step=i.step){if(i.polishVersion>=5){if(step==='photo-hold')return FINAL_WINDOW_HOLD_MS;if(step==='ending-fade')return FINAL_WINDOW_FADE_MS;}if(step==='connection'&&i.polishVersion>=3)return undefined;if(i.polishVersion>=2){if(step==='theory1-transition'||step==='theory2-transition'||step==='theory3-transition')return 9000;if(step==='narrator-transition')return 11000;if(step==='vote-fade')return 1000;if(step==='theory-fade'||step==='ending-fade')return 1600;}return timedScenes[step];}
 export const TRANSITION_MS=8000;
 export function transitionFrame(elapsed,narrator=false,version=2){const delay=narrator?2000:0;if(version<2)return {out:1-smooth(elapsed/1200),title:smooth((elapsed-delay-2000)/700)*(1-smooth((elapsed-delay-5600)/700)),incoming:smooth((elapsed-delay-6500)/1500)};return {out:1-smooth(elapsed/1600),title:smooth((elapsed-delay-2300)/900)*(1-smooth((elapsed-delay-6200)/900)),incoming:smooth((elapsed-delay-7300)/1700)};}

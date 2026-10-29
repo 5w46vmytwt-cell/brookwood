@@ -18,7 +18,7 @@ export class Chapter8Finale{
   this.interference=make('div','ch8-camera-interference');this.interference.setAttribute('aria-hidden','true');this.root.appendChild(this.interference);
   this.label=make('div','ch8-camera-label');this.root.appendChild(this.label);this.timestamp=make('div','ch8-camera-time');this.root.appendChild(this.timestamp);
   this.title=make('div','ch8-finale-title');this.root.appendChild(this.title);
-  this.narrator=new NarratorScreen(document);this.wife=this.narrator.root;this.microphone=this.narrator.microphone;this.wifeWave=this.narrator.wave;this.gameTitle=this.narrator.title;this.root.appendChild(this.wife);
+  this.narrator=new NarratorScreen(document,{theme:'wife'});this.wife=this.narrator.root;this.microphone=this.narrator.microphone;this.wifeWave=this.narrator.wave;this.gameTitle=this.narrator.title;this.root.appendChild(this.wife);
   this.breach=make('div','ch8-security-breach');this.breach.hidden=true;this.breach.textContent='SECURITY BREACH';this.breach.setAttribute('role','status');this.root.appendChild(this.breach);
   this.video=make('video','ch8-finale-news');this.video.preload='auto';this.video.playsInline=true;this.video.controls=false;this.video.src=NEWS_SRC;this.root.appendChild(this.video);
   // Only eight photographs; keep decoded images ready for immediate switching.
@@ -32,7 +32,8 @@ export class Chapter8Finale{
   this.root.hidden=false;this.root.dataset.cue=cue.id;
   const elapsed=this.now()-f.phaseAt,expiredScare=cue.visual==='scare'&&elapsed>=cue.durationMs;
   const approachElapsed=f.mediaStartedAt===null?0:this.now()-f.mediaStartedAt;
-  const visual=expiredScare?'lost':cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
+  const waitingForVoice=cue.syncVisualToAudio&&!(this.entry?.key===f.id+':'+c.sequence&&this.entry.started);
+  const visual=waitingForVoice?'black':expiredScare?(f.polishVersion>=4?'black':'lost'):cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
   this.gridCanvas.hidden=!(visual==='grid'||cue.zoom);
   this.image.hidden=!camera||visual==='grid';this.video.hidden=visual!=='news';this.interference.hidden=!camera&&visual!=='lost';
   if(camera&&this.image.getAttribute('src')!==cameras[visual])this.image.src=cameras[visual];
@@ -48,12 +49,13 @@ export class Chapter8Finale{
   this.title.hidden=!['party','news-intro','ending'].includes(visual);this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
   this.title.style.opacity=String(visual==='ending'?1-smooth(Math.max(0,elapsed-1200)/1800):smooth(elapsed/1200));
   const wife=wifePresentation(c,this.now()),speaking=cue.kind==='narration'&&this.entry?.key===f.id+':'+c.sequence&&!this.entry.ended&&!this.entry.media.paused;
-  if(wife.visible&&!this.wifeVisible)this.wifeVisibleAt=f.phaseAt;this.wifeVisible=wife.visible;
-  this.narrator.update({...wife,speaking,titleOpacity:smooth((wife.offset-GAME_TITLE_AT_MS)/500),opacity:smooth((this.now()-(this.wifeVisibleAt??f.phaseAt))/1600)});
+  this.narrator.update({...wife,speaking,title:wife.title||'BROOKWOOD FARM',eyebrow:'BROOKWOOD FARM · CASE FILE 1996',subtitle:wife.title?'':'THE QUESTIONS REMAIN.',titleOpacity:wife.title?smooth((wife.offset-GAME_TITLE_AT_MS)/500):1});
   this.breach.hidden=!(f.polishVersion>=1&&['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue.id));this.breach.style.opacity=String(.86+.14*(.5+.5*Math.sin(elapsed/650)));
+  const prepareImpact=['handoff','wife-01','wife-02','wife-03','wife-04','wife-05','wife-06','wife-07','wife-08','wife-09','wife-10','wife-11','whistle-approach','living-silence'].includes(cue.id);
+  const impactReady=prepareImpact&&f.polishVersion>=4?this.sound.prepareImpact():true;
   if(cue.kind==='hold'){
    this.release();
-   if((cue.id==='living-silence'||cue.readyImage)&&f.deadline===null&&authenticated){const ready=this.preloads.find(p=>p.key===(cue.readyImage??'living'))?.img;if(ready?.complete&&ready.naturalWidth>0&&this.image.complete&&this.image.naturalWidth>0)this.ackReady();}
+   if((cue.id==='living-silence'||cue.readyImage)&&f.deadline===null&&authenticated&&impactReady){const ready=this.preloads.find(p=>p.key===(cue.readyImage??'living'))?.img;if(ready?.complete&&ready.naturalWidth>0&&this.image.complete&&this.image.naturalWidth>0)this.ackReady();}
    return;
   }
   const key=f.id+':'+c.sequence;
@@ -66,7 +68,7 @@ export class Chapter8Finale{
   const entry={key,cue,media,ended:false,pending:false,attempted:false,acks:new Set(),failed:new Set()};this.entry=entry;
   const offset=f.mediaStartedAt===null?0:Math.max(0,(this.now()-f.mediaStartedAt)/1000);
   media.currentTime=Math.min((cue.offsetMs??0)/1000+offset,Math.max(0,media.duration-.12));media.volume=primaryEffectGain(cue,offset*1000);media.muted=false;media.loop=false;
-  entry.playing=()=>{if(this.entry!==entry)return;this.blocked=false;this.message='';if(this.state.chapter8.finale.mediaStartedAt===null)this.ack('chapter8-finale-playing');};
+  entry.playing=()=>{if(this.entry!==entry)return;entry.started=true;if(cue.syncVisualToAudio){this.root.dataset.visual='lost';this.label.textContent='SIGNAL LOST';this.label.hidden=false;this.interference.hidden=false;this.interference.style.opacity='.75';}this.blocked=false;this.message='';if(this.state.chapter8.finale.mediaStartedAt===null)this.ack('chapter8-finale-playing');};
   entry.end=()=>{if(this.entry!==entry)return;entry.ended=true;this.ack('chapter8-finale-ended');};
   entry.pause=()=>{if(this.entry===entry&&!entry.ended&&!media.ended){this.blocked=true;this.message='RESUME FINALE';}};
   entry.error=()=>{if(this.entry===entry){this.blocked=true;this.message='MEDIA COULD NOT LOAD — RETRY';}};

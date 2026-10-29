@@ -63,7 +63,7 @@ test('entire automated finale persists native gates, no overlapping speech, one 
 test('late polling retains absolute scare window, refresh cannot restart it or extend silence',()=>{
  const s=fixture('chapter8-finale-silence'),now=s.chapter8.finale.phaseAt;chapter8HostAction(s,body(s,'chapter8-finale-ready'),now);
  const saved=JSON.parse(JSON.stringify(s));chapter8HostAction(saved,body(saved,'chapter8-finale-ready'),now+5000);assert.equal(saved.chapter8.finale.deadline,now+SILENCE_MS);
- advanceChapter8(saved,now+8000);assert.equal(finaleCue(saved.chapter8).id,'intruder-reveal');assert.equal(saved.chapter8.finale.phaseAt,now+SILENCE_MS);assert.equal(saved.chapter8.finale.deadline,now+SILENCE_MS+SCARE_MS);advanceChapter8(saved,now+8000);assert.equal(finaleCue(saved.chapter8).id,'signal-break');
+ advanceChapter8(saved,now+8000);assert.equal(finaleCue(saved.chapter8).id,'intruder-reveal');assert.equal(saved.chapter8.finale.phaseAt,now+SILENCE_MS);assert.equal(saved.chapter8.finale.deadline,now+SILENCE_MS+SCARE_MS);advanceChapter8(saved,now+8000);assert.equal(finaleCue(saved.chapter8).id,'wife-12');
 });
 
 test('news refresh preserves original clock; elapsed time alone never interrupts video; post-news voice waits for ended',()=>{
