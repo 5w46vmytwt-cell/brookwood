@@ -45,6 +45,7 @@ export class Chapter8Finale{
   this.interference.style.transform=visual==='lost'?'translateY('+(Math.floor(elapsed/65)%9-4)+'px)':'none';
   this.label.hidden=!camera&&visual!=='lost';this.label.textContent=visual==='lost'?'SIGNAL LOST':visual==='grid'?'SECURITY SYSTEM • LIVE':'● REC  /  '+({driveway:'DRIVEWAY',front:'FRONT DOOR',side:'SIDE PASSAGE',porch:'FRONT PORCH',living:'LIVING ROOM',scare:'LIVING ROOM'}[visual]??visual.toUpperCase());
   if(cue.motion)this.label.textContent='MOTION DETECTED';
+  this.root.dataset.motion=String(!!cue.motion&&visual==='grid');
   this.timestamp.hidden=!camera;this.timestamp.textContent='2026-10-31  '+new Date(Date.UTC(2026,9,31,22,14,0)+Math.max(0,this.now()-f.startedAt)).toISOString().slice(11,19);
   this.title.hidden=!['party','news-intro','ending'].includes(visual);this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
   this.title.style.opacity=String(visual==='ending'?1-smooth(Math.max(0,elapsed-1200)/1800):smooth(elapsed/1200));

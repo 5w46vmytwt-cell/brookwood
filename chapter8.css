@@ -19,6 +19,7 @@ body.chapter8-active #chapterSelectPanel{z-index:90}
 .ch8-camera-interference{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#d2e3d7 4px,#000 5px);mix-blend-mode:screen}
 .ch8-camera-label,.ch8-camera-time{position:absolute;z-index:2;font:clamp(12px,1.25vw,23px)/1.4 'Courier New',monospace;letter-spacing:.12em;color:#d8dfd9;text-shadow:0 2px 3px #000;background:#020503b0;padding:.5em .8em}
 .ch8-camera-label{left:2.5%;top:3%}.ch8-camera-time{right:2.5%;bottom:3%}
+.ch8-finale[data-visual=grid][data-motion=true] .ch8-camera-label{left:50%;top:50%;transform:translate(-50%,-50%);font-size:clamp(20px,2.2vw,38px);white-space:nowrap}
 .ch8-finale[data-visual=lost]{background:repeating-linear-gradient(0deg,#090d0a 0 3px,#17221a 4px,#000 7px)}
 .ch8-finale[data-visual=lost] .ch8-camera-label{left:50%;top:50%;transform:translate(-50%,-50%);font-size:clamp(20px,3vw,52px);white-space:nowrap}
 .ch8-finale-title{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:8vw;color:#dcd9cf;font:clamp(28px,5vw,85px)/1.3 Georgia,serif;letter-spacing:.2em;background:radial-gradient(ellipse,#14201844,#000 75%)}

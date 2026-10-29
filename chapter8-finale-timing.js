@@ -79,9 +79,13 @@ export const version3FinaleCues=timed(revised.map(c=>c.id==='living-silence'?{..
 // Native warning begins at SIGNAL LOST, with no intervening hold.
 const current=version3FinaleCues.filter(c=>!['wife-12','signal-break'].includes(c.id));
 current.splice(current.findIndex(c=>c.id==='intruder-reveal')+1,0,{...wife(12,'lost'),syncVisualToAudio:true});
-export const finaleCues=timed(current);
-export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...finaleCues];
+export const version4FinaleCues=timed(current);
+const polished=[...current];
+polished.splice(polished.findIndex(c=>c.id==='wife-04'),0,effect('camera-question-notification','wife-bright',effects.notification),hold('camera-question-gap','wife-bright',350));
+polished.splice(polished.findIndex(c=>c.id==='wife-12')+1,0,hold('signal-lost-pause','lost',3500));
+export const finaleCues=timed(polished.map(c=>c.id==='whistle-approach'?{...c,soundVersion:5}:c));
+export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...finaleCues];
 export const finaleDurationMs=finaleCues.at(-1).end;
-export const cuesFor=c=>c?.finale?.polishVersion===4?finaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
+export const cuesFor=c=>c?.finale?.polishVersion===5?finaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news'];

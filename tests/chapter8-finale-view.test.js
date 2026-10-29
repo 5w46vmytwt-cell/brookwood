@@ -14,7 +14,7 @@ function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=tr
  }
  class Player{constructor(t){this.media=new Map(t.cues.map(c=>[c.id,Object.assign(new Media(),{src:c.src})]));}stop(){for(const a of this.media.values())a.pause();}}
  const root=new Media(),doc={createElement:()=>new Media(),getElementById:()=>root},calls=[];
- const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:4,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
+ const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:5,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
  const view=new Chapter8Finale(doc,{elapsedNow:()=>now-100000},{Player,request:async(_p,b)=>{calls.push(b);if(b.action==='chapter8-finale-playing')state.chapter8.finale.mediaStartedAt??=now;return {state};},onState(){}});
  return {view,state,calls,update:()=>view.update(state,authenticated),at:n=>now=100000+n,allow:()=>deny=false,media:()=>view.entry?.media};
 }

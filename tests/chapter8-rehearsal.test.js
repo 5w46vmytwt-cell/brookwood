@@ -30,7 +30,7 @@ test('five silent seconds precede the two-second scare, then the entire native w
 });
 test('silent hold has no active music or effects; impact starts at reveal, is stronger, stays below unity and expires once',async()=>{
  let now=100000;const media=new Map(soundLayers.map(s=>[s.id,{paused:true,readyState:4,currentTime:0,volume:0,plays:0,pause(){this.paused=true;},play(){this.paused=false;this.plays++;return Promise.resolve();}}]));
- const sound=new Chapter8SoundDesign({media},()=>now,{Context:null});const c={step:'finale',finale:{id:'f',polishVersion:4,index:idx('living-silence'),phaseAt:100000,mediaStartedAt:null}};
+ const sound=new Chapter8SoundDesign({media},()=>now,{Context:null});const c={step:'finale',finale:{id:'f',polishVersion:5,index:idx('living-silence'),phaseAt:100000,mediaStartedAt:null}};
  sound.update(c,finaleCue(c));assert([...media.values()].every(a=>a.paused));assert.equal(finaleAmbientTarget(c,now),0);
  c.finale.index=idx('intruder-reveal');sound.update(c,finaleCue(c));await new Promise(r=>setImmediate(r));const impact=media.get('scare-impact');assert.equal(impact.plays,1);assert.equal(impact.currentTime,.2);assert.equal(impact.volume,.8);assert(impact.volume>.24&&impact.volume<=1);
  now+=1800;sound.update(c,finaleCue(c));assert(impact.volume>.7);assert.equal(impact.plays,1);now+=200;sound.update(c,finaleCue(c));assert(impact.paused);sound.stop();

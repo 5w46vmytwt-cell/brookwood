@@ -23,10 +23,10 @@ export function sirenWindows(elapsed){
   return {id:n%2?'approaching-sirens-b':'approaching-sirens',at:n*SIREN_STRIDE_MS,age,gain:inGain*outGain};
  });
 }
-export const whistleGain=elapsed=>.14+.66*smooth(elapsed/10000);
+export const whistleGain=(elapsed,version=4)=>version>=5?.33+.4*smooth(elapsed/7600)+.22*smooth((elapsed-7600)/3800):.14+.66*smooth(elapsed/10000);
 export const whistleCutoff=elapsed=>1000+5500*smooth(elapsed/9000);
 export function primaryEffectGain(cue,elapsed){
- if(cue.id==='whistle-approach')return whistleGain(elapsed);
+ if(cue.id==='whistle-approach')return whistleGain(elapsed,cue.soundVersion);
  if(cue.kind!=='effect'||cue.sourceDurationMs===undefined||cue.durationMs===cue.sourceDurationMs)return cue.volume;
  return cue.volume*smooth(elapsed/12)*(1-smooth((elapsed-cue.durationMs+60)/60));
 }

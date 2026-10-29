@@ -47,7 +47,7 @@ test('camera-open readiness cannot be advanced by elapsed time before decode; du
 });
 
 test('version 2 music fades out once at takeover and never returns underneath narration, effects or final narration',()=>{
- const c={finale:{polishVersion:4,index:0,phaseAt:100000,mediaStartedAt:null}};assert.equal(finaleAmbientTarget(c,100000),.07);assert.equal(finaleAmbientTarget(c,101600),0);
+ const c={finale:{polishVersion:5,index:0,phaseAt:100000,mediaStartedAt:null}};assert.equal(finaleAmbientTarget(c,100000),.07);assert.equal(finaleAmbientTarget(c,101600),0);
  for(let i=1;i<finaleCues.length;i++){c.finale.index=i;assert.equal(finaleAmbientTarget(c,150000),0);assert(finaleMustBeSilent(c));}
 });
 
