@@ -29,7 +29,7 @@ test('supplied finale assets are byte-preserved and cue durations match contiguo
 
 test('explicit cue timeline orders every wife recording, both doorbells, cameras, silence, scare, news and ending',()=>{
  const voice=finaleCues.filter(c=>c.kind==='narration');assert.deepEqual(voice.map(c=>c.id),Array.from({length:16},(_,n)=>'wife-'+String(n+1).padStart(2,'0')));
- assert.deepEqual(voice.slice(4,11).map(c=>c.visual),['front','side','backyard','front','garage','living','living']);
+ assert.deepEqual(voice.slice(4,11).map(c=>c.visual),['driveway','side','backyard','front','garage','living','living']);
  const index=id=>finaleCues.findIndex(c=>c.id===id);
  assert(index('doorbell-before')<index('wife-08'));assert(index('doorbell-after')>index('wife-08'));assert(index('wife-15')<index('breaking-news'));assert(index('wife-16')>index('breaking-news'));
  assert.equal(finaleCues[index('living-silence')].durationMs,SILENCE_MS);assert.equal(finaleCues.filter(c=>c.visual==='scare').length,1);assert.equal(finaleCues[index('intruder-reveal')].durationMs,SCARE_MS);

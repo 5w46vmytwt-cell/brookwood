@@ -57,9 +57,9 @@ export class Chapter8SoundDesign{
    const spec=soundLayers.find(s=>s.id===id),elapsed=this.now()-anchor,media=this.player.media.get(id);
    if(!media)continue;
    const mix=sirenMix.get(id),duration=mix?SIREN_WINDOW_MS:spec.playDurationMs??spec.durationMs;
-   if(elapsed<0||elapsed>=duration){media.pause();media.loop=false;continue;}
+   if(elapsed<0||elapsed>=(id==='scare-impact'&&f.polishVersion>=3?1950:duration)){media.pause();media.loop=false;continue;}
    let e=this.active.get(id);if(!e){e={anchor,media,attempted:false,pending:false};this.active.set(id,e);}
-   media.volume=mix?mix.gain:layerVolume(id,elapsed);media.muted=false;media.loop=!!spec.repeat;
+   media.volume=mix?mix.gain:id==='scare-impact'&&f.polishVersion>=3?.8*(1-smooth((elapsed-1850)/100)):layerVolume(id,elapsed);media.muted=false;media.loop=!!spec.repeat;
    if(media.paused&&!e.attempted&&media.readyState>=2){
     media.currentTime=((mix?2000:spec.offsetMs)+(spec.repeat?elapsed%spec.sourceDurationMs:elapsed))/1000;e.attempted=true;e.pending=true;
     Promise.resolve(media.play()).catch(()=>{if(this.active.get(id)===e)this.blocked=true;}).finally(()=>e.pending=false);

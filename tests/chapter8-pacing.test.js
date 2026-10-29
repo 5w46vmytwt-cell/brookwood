@@ -55,7 +55,7 @@ test('sirens remain present after 31.6 seconds, reconstruct mid-crossfade, fade 
 });
 
 test('saved unversioned 41-cue runs retain their exact cue identity/duration after refresh; new runs use polish version 1',()=>{
- const state=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(state);assert.equal(state.chapter8.finale.polishVersion,2);
+ const state=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(state);assert.equal(state.chapter8.finale.polishVersion,3);
  const f=state.chapter8.finale;delete f.polishVersion;f.index=5;f.deadline=f.phaseAt+900;assert.equal(finaleCue(state.chapter8).id,'grid-driveway');assert.equal(legacyFinaleCues.length,41);validateChapter8(state);advanceChapter8(state,f.deadline);assert.equal(finaleCue(state.chapter8).id,'motion-notification');
 });
 

@@ -30,7 +30,7 @@ export class Chapter8Finale{
   this.sound.update(c,cue);
   if(!cue){this.release();this.root.hidden=true;return;}
   this.root.hidden=false;this.root.dataset.cue=cue.id;
-  const elapsed=this.now()-f.phaseAt,expiredScare=cue.visual==='scare'&&elapsed>=SCARE_MS;
+  const elapsed=this.now()-f.phaseAt,expiredScare=cue.visual==='scare'&&elapsed>=cue.durationMs;
   const approachElapsed=f.mediaStartedAt===null?0:this.now()-f.mediaStartedAt;
   const visual=expiredScare?'lost':cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
   this.gridCanvas.hidden=!(visual==='grid'||cue.zoom);
@@ -42,7 +42,7 @@ export class Chapter8Finale{
   this.gridCanvas.style.transformOrigin=frame.origin;this.gridCanvas.style.transform='translate(-50%, -50%) translate('+frame.x+'%, '+frame.y+'%) scale('+frame.scale+')';
   this.interference.style.opacity=String(visual==='lost'?.65+(Math.floor(elapsed/70)%3)*.1:.07+(Math.floor(elapsed/1300)%11===0?.07:0));
   this.interference.style.transform=visual==='lost'?'translateY('+(Math.floor(elapsed/65)%9-4)+'px)':'none';
-  this.label.hidden=!camera&&visual!=='lost';this.label.textContent=visual==='lost'?'SIGNAL LOST':visual==='grid'?'SECURITY SYSTEM • LIVE':'● REC  /  '+({front:'FRONT DOOR',side:'SIDE PASSAGE',porch:'FRONT PORCH',living:'LIVING ROOM',scare:'LIVING ROOM'}[visual]??visual.toUpperCase());
+  this.label.hidden=!camera&&visual!=='lost';this.label.textContent=visual==='lost'?'SIGNAL LOST':visual==='grid'?'SECURITY SYSTEM • LIVE':'● REC  /  '+({driveway:'DRIVEWAY',front:'FRONT DOOR',side:'SIDE PASSAGE',porch:'FRONT PORCH',living:'LIVING ROOM',scare:'LIVING ROOM'}[visual]??visual.toUpperCase());
   if(cue.motion)this.label.textContent='MOTION DETECTED';
   this.timestamp.hidden=!camera;this.timestamp.textContent='2026-10-31  '+new Date(Date.UTC(2026,9,31,22,14,0)+Math.max(0,this.now()-f.startedAt)).toISOString().slice(11,19);
   this.title.hidden=!['party','news-intro','ending'].includes(visual);this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
