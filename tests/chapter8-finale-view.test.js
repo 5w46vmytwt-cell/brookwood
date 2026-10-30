@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Chapter8Finale} from '../chapter8-finale.js';
-import {finaleCues,SCARE_MS} from '../chapter8-finale-timing.js';
+import {version6FinaleCues as finaleCues,finaleCues as creditCues,SCARE_MS} from '../chapter8-finale-timing.js';
 const flush=()=>new Promise(r=>setImmediate(r));
-function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=true}={}){
+function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=true,version=6}={}){
  let now=100000+offset;
  class Media{
   constructor(){this.listeners=new Map();this.style={};this.dataset={};this.children=[];this.hidden=false;this.complete=true;this.naturalWidth=1536;this.readyState=4;this.duration=70;this.currentTime=0;this.paused=true;this.plays=0;this.volume=1;}
@@ -14,7 +14,7 @@ function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=tr
  }
  class Player{constructor(t){this.media=new Map(t.cues.map(c=>[c.id,Object.assign(new Media(),{src:c.src})]));}stop(){for(const a of this.media.values())a.pause();}}
  const root=new Media(),doc={createElement:()=>new Media(),getElementById:()=>root},calls=[];
- const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:6,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
+ const index=(version===7?creditCues:finaleCues).findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:version,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
  const view=new Chapter8Finale(doc,{elapsedNow:()=>now-100000},{Player,request:async(_p,b)=>{calls.push(b);if(b.action==='chapter8-finale-playing')state.chapter8.finale.mediaStartedAt??=now;return {state};},onState(){}});
  return {view,state,calls,update:()=>view.update(state,authenticated),at:n=>now=100000+n,allow:()=>deny=false,media:()=>view.entry?.media};
 }
@@ -85,4 +85,14 @@ test('main final song is a single nonlooping full-volume music cue on black; ref
 
 test('HTML greeting removes the saved letter groups after refresh without showing any wife or camera background',()=>{
  for(const [id,count] of [['ending',0],['ending-glitch-1',3],['ending-glitch-3',9],['ending-glitch-5',14]]){const h=harness(id,{offset:200});h.update();assert.equal(h.view.letters.filter(n=>n.dataset.gone==='true').length,count);assert(h.view.wife.hidden);assert(h.view.image.hidden);assert(h.view.video.hidden);assert(h.view.collector.hidden);assert.equal(h.view.title.dataset.glitch,String(finaleCues[h.state.chapter8.finale.index].glitch??0));h.view.stop();}
+});
+
+test('credits start the existing song once; native playing and decoded photograph arm the intro, with no restarted audio on photo entry',async()=>{
+ const h=harness('credits-intro',{version:7});h.update();assert.equal(h.calls.length,0);await flush();h.update();await flush();assert.equal(h.calls[0].action,'chapter8-finale-ready');assert.equal(h.view.player.media.get('final-song').plays,1);assert.equal(h.view.title.textContent,'TO BE CONTINUED...');
+ Object.assign(h.state.chapter8.finale,{index:creditCues.findIndex(c=>c.id==='credit-photo-1'),phaseAt:105500,deadline:114500,soundAnchors:{credits:100000}});h.state.chapter8.sequence++;h.at(7500);h.update();assert.equal(h.view.player.media.get('final-song').plays,1);assert.equal(h.view.player.media.get('final-song').volume,.8);assert(!h.view.photoPaper.hidden);assert(h.view.title.hidden);assert.equal(h.view.creditPhoto.src,'/assets/chapter8/final1.png');h.view.creditPhoto.complete=false;h.update();assert.equal(h.view.photoPaper.style.opacity,'0');h.view.stop();assert(h.view.player.media.get('final-song').paused);
+});
+
+test('shutdown seeks native playback after refresh and only ended acknowledges; final9 refresh stays permanently visible, silent and makes no requests',async()=>{
+ const h=harness('shutdown',{version:7,offset:2500,started:100000});h.view.shutdown.duration=5.25834375;h.update();await flush();assert.equal(h.media(),h.view.shutdown);assert.equal(h.media().currentTime,2.5);assert.equal(h.media().volume,1);assert(!h.view.shutdown.hidden);assert(h.view.photoPaper.hidden);assert([...h.view.player.media.values()].every(a=>a.paused));h.at(5259);h.update();assert.equal(h.calls.length,0);h.media().emit('ended');await flush();assert.equal(h.calls[0].action,'chapter8-finale-ended');h.view.stop();assert(!h.view.shutdown.src);
+ const final=harness('final-image',{version:7,offset:4000});final.state.chapter8.step='complete';final.state.chapter8.completedAt=101200;final.update();await flush();assert(!final.view.root.hidden);assert(!final.view.finalImage.hidden);assert.equal(final.view.finalImage.style.opacity,'1');assert.equal(final.view.finalImage.src,'/assets/chapter8/final9.png');assert(final.view.photoPaper.hidden);for(let n=0;n<5;n++){final.at(100000+n);final.update();}assert.equal(final.calls.length,0);assert([...final.view.player.media.values()].every(a=>a.paused));
 });

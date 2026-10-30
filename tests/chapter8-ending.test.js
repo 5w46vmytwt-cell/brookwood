@@ -1,12 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import{createHash}from'node:crypto';
-import {finaleCues,version5FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
+import {version6FinaleCues as finaleCues,version5FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
 import {GREETING,greetingFrame,LETTER_GROUPS,HAPPY_TRACK,HAPPY_START_MS,FINAL_SONG_VOLUME} from '../chapter8-ending.js';
 import {Chapter8SoundDesign,soundLayers} from '../chapter8-sound-design.js';
 import {makeChapter8Starter,chapter8HostAction,advanceChapter8,validateChapter8} from '../api/_chapter8.js';
 import {finalNarrationFixture} from './chapter7-fixture.js';import {UNCHANGED} from '../api/_state.js';
 import {mp4Metadata} from './mp4-metadata.js';import {mp3Metadata} from './mp3-metadata.js';
 const cue=id=>finaleCues.find(c=>c.id===id),index=id=>finaleCues.findIndex(c=>c.id===id);
-function fixture(id){const s=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(s);Object.assign(s.chapter8.finale,{index:index(id),phaseAt:100000,mediaStartedAt:null,deadline:cue(id).kind==='hold'?100000+cue(id).durationMs:null});return s;}
+function fixture(id){const s=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(s);Object.assign(s.chapter8.finale,{polishVersion:6,index:index(id),phaseAt:100000,mediaStartedAt:null,deadline:cue(id).kind==='hold'?100000+cue(id).durationMs:null});return s;}
 const body=s=>({generation:s.generation,chapter8Id:s.chapter8.id,sequence:s.chapter8.sequence,finaleId:s.chapter8.finale.id,cueId:finaleCue(s.chapter8).id});
 
 test('all existing cues through wife16 remain exact; saved version5 retains its original ending and indices',()=>{

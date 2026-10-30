@@ -53,3 +53,9 @@ body.chapter8-active #chapterSelectPanel{z-index:90}
 @keyframes ch8-greeting-drift{to{transform:translateY(-3vh);opacity:.4}}
 @keyframes ch8-ending-static{to{transform:translateY(9px) scaleY(1.04);clip-path:polygon(0 9%,100% 12%,100% 40%,0 32%,0 57%,100% 65%,100% 83%,0 90%)}}
 @media(prefers-reduced-motion:reduce){.ch8-halloween-words,.ch8-halloween:before,.ch8-halloween:after{animation:none!important}}
+
+.ch8-credit-paper{position:absolute;left:50%;top:50%;z-index:4;margin:0;box-sizing:border-box;background:#efe6d3;box-shadow:0 16px 36px #000c,0 2px 6px #0009;will-change:transform,opacity}
+.ch8-credit-paper:after{content:'';position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 2px #846d4344;border:1px solid #fff3;background:repeating-linear-gradient(32deg,#795d3010 0 1px,transparent 1px 4px);mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;padding:inherit;box-sizing:border-box}
+.ch8-credit-photo{display:block;width:100%;height:auto}
+.ch8-final-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5}
+.ch8-finale-title.ch8-continued{background:#000;color:#d9d3c8;font-size:clamp(24px,3.2vw,62px);letter-spacing:.2em}

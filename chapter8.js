@@ -32,7 +32,7 @@ export class Chapter8View{
   if(c&&(!previous?.chapter8||previous.chapter8.id!==c.id))this.authenticate();
   if(!c){this.node('chapter8TV').hidden=true;this.audio?.stop();this.finale?.stop();this.finale=null;return;}
   this.setup();this.node('chapter8TV').hidden=false;if(this.clock.canSync?.()===false)return;this.audio.update(state);
-  if(c.step==='finale'&&!this.finale)this.finale=new Chapter8Finale(this.document,this.clock,{Player:this.Player,request:this.request,onState:this.onState});
+  if((c.step==='finale'||c.step==='complete'&&c.finale?.polishVersion>=7)&&!this.finale)this.finale=new Chapter8Finale(this.document,this.clock,{Player:this.Player,request:this.request,onState:this.onState});
   this.finale?.update(state,this.authenticated);
   const puzzle=['puzzle','leaving'].includes(c.step);this.node('chapter8Canvas').hidden=!puzzle;this.node('chapter8Canvas').style.opacity=String(c.step==='leaving'?smooth((c.deadline-c.startedAt-this.clock.elapsedNow())/PUZZLE_FADE_MS):1);
   this.node('chapter8Narrator').hidden=puzzle||c.step==='complete'||c.step==='finale';this.node('chapter8Narrator').style.opacity=String(smooth((c.startedAt+this.clock.elapsedNow()-c.phaseAt)/1600));this.node('chapter8Heading').textContent=({'unexpected-evidence':'UNEXPECTED EVIDENCE','photo-waiting':'TAKE A PHOTOGRAPH OF THE NOTE.','coded-message':'A CODED MESSAGE',reaction:'THE MESSAGE'})[c.step]??'';

@@ -23,7 +23,7 @@ test('supplied finale assets are byte-preserved and cue durations match contiguo
   if(m.src.endsWith('.wav'))assert.equal(wavMetadata(bytes).durationMs,m.durationMs);
   if(m.src.endsWith('.mp4')){assert.equal(mp4Metadata(bytes).durationMs,NEWS_DURATION_MS);assert.equal(m.tracks.find(t=>t.kind==='soun').codec,'mp4a');}
  }
- const endingMedia=JSON.parse(fs.readFileSync('chapter8-ending-media.json'));for(const cue of finaleCues.filter(c=>c.src)){const m=[...media,...endingMedia].find(m=>m.src===cue.src);assert(m);assert(Math.abs(m.durationMs-(cue.sourceDurationMs??cue.durationMs))<.000001);}
+ const endingMedia=JSON.parse(fs.readFileSync('chapter8-ending-media.json'));for(const cue of finaleCues.filter(c=>c.src)){const m=[...media,...endingMedia,...JSON.parse(fs.readFileSync('chapter8-credits-media.json'))].find(m=>m.src===cue.src);assert(m);assert(Math.abs(m.durationMs-(cue.sourceDurationMs??cue.durationMs))<.000001);}
  assert.equal(new Set(Object.values(cameras)).size,8);
 });
 
@@ -34,7 +34,7 @@ test('explicit cue timeline orders every wife recording, both doorbells, cameras
  assert(index('doorbell-before')<index('wife-08'));assert(index('doorbell-after')>index('wife-08'));assert(index('wife-15')<index('breaking-news'));assert(index('wife-16')>index('breaking-news'));
  assert.equal(finaleCues[index('living-silence')].durationMs,SILENCE_MS);assert.equal(finaleCues.filter(c=>c.visual==='scare').length,1);assert.equal(finaleCues[index('intruder-reveal')].durationMs,SCARE_MS);
  for(let n=1;n<finaleCues.length;n++)assert.equal(finaleCues[n].at,finaleCues[n-1].end);
- assert.equal(finaleCues.at(-1).id,'final-song');
+ assert.equal(finaleCues.at(-1).id,'final-image');
 });
 
 test('entire automated finale persists native gates, no overlapping speech, one scare and terminal completion without changing players/history',()=>{

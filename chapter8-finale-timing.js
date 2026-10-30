@@ -1,4 +1,5 @@
 import {effects} from './chapter8-sound-design.js';
+import {creditPhotos,CREDITS_INTRO_MS,PHOTO_MS,MUSIC_OUT_MS,SHUTDOWN_SRC,SHUTDOWN_MS} from './chapter8-credits.js';
 import {GREETING_HOLD_MS,GLITCH_DURATIONS,COLLECTOR_SRC,COLLECTOR_DURATION_MS,FINAL_SONG_SRC,FINAL_SONG_DURATION_MS,FINAL_SONG_VOLUME} from './chapter8-ending.js';
 // Nominal cue windows exclude loading/poll latency. Native media completion,
 // not a wall-clock timeout, is authoritative for every recording and the news.
@@ -85,15 +86,22 @@ const polished=[...current];
 polished.splice(polished.findIndex(c=>c.id==='wife-04'),0,effect('camera-question-notification','wife-bright',effects.notification),hold('camera-question-gap','wife-bright',350));
 polished.splice(polished.findIndex(c=>c.id==='wife-12')+1,0,hold('signal-lost-pause','lost',3500));
 export const version5FinaleCues=timed(polished.map(c=>c.id==='whistle-approach'?{...c,soundVersion:5}:c));
-export const finaleCues=timed([...version5FinaleCues.filter(c=>c.id!=='ending'),
+export const version6FinaleCues=timed([...version5FinaleCues.filter(c=>c.id!=='ending'),
  hold('ending-in','ending',1000),hold('ending','ending',GREETING_HOLD_MS),
  ...GLITCH_DURATIONS.map((duration,n)=>({...hold('ending-glitch-'+(n+1),'ending',duration),glitch:n+1})),
  hold('collector-black','black',1000),
  {id:'collector-reveal',kind:'video',visual:'collector',src:COLLECTOR_SRC,durationMs:COLLECTOR_DURATION_MS,volume:1},
  {id:'final-song',kind:'music',visual:'black',src:FINAL_SONG_SRC,durationMs:FINAL_SONG_DURATION_MS,volume:FINAL_SONG_VOLUME}
 ]);
-export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...version5FinaleCues,...finaleCues];
+export const finaleCues=timed([...version6FinaleCues.slice(0,-1),
+ {...hold('credits-intro','credits-intro',CREDITS_INTRO_MS),credits:true,readyImage:'credit-1'},
+ ...creditPhotos.slice(0,8).map(p=>({...hold('credit-photo-'+p.number,'credit-photo',PHOTO_MS),credits:true,photo:p.number,readyImage:'credit-'+p.number})),
+ {...hold('credits-music-out','black',MUSIC_OUT_MS),credits:true},
+ {id:'shutdown',kind:'video',visual:'shutdown',src:SHUTDOWN_SRC,durationMs:SHUTDOWN_MS,volume:1},
+ {...hold('final-image','final9',1200),readyImage:'credit-9'}
+]);
+export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...version5FinaleCues,...version6FinaleCues,...finaleCues];
 export const finaleDurationMs=finaleCues.at(-1).end;
-export const cuesFor=c=>c?.finale?.polishVersion===6?finaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
+export const cuesFor=c=>c?.finale?.polishVersion===7?finaleCues:c?.finale?.polishVersion===6?version6FinaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news'];

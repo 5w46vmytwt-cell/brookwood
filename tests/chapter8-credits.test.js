@@ -1,0 +1,44 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import{createHash}from'node:crypto';
+import {finaleCues,version6FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
+import {creditPhotos,creditFrame,creditsVolume,Chapter8CreditsAudio,SHUTDOWN_MS} from '../chapter8-credits.js';
+import {makeChapter8Starter,chapter8HostAction,advanceChapter8,validateChapter8} from '../api/_chapter8.js';
+import {finalNarrationFixture} from './chapter7-fixture.js';import {UNCHANGED} from '../api/_state.js';
+import {fragmentedMp4Metadata} from './fragmented-mp4-metadata.js';
+const cue=id=>finaleCues.find(c=>c.id===id);
+function fixture(id){const s=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(s);const c=s.chapter8,f=c.finale;Object.assign(f,{index:finaleCues.findIndex(c=>c.id===id),phaseAt:100000,mediaStartedAt:null,deadline:cue(id).kind==='hold'&&!cue(id).readyImage?100000+cue(id).durationMs:null});return s;}
+const body=s=>({generation:s.generation,chapter8Id:s.chapter8.id,sequence:s.chapter8.sequence,finaleId:s.chapter8.finale.id,cueId:finaleCue(s.chapter8).id});
+test('supplied final1-final9 PNG bytes and dimensions are exact; shutdown is unchanged H264/AAC fragmented media',()=>{
+ const media=JSON.parse(fs.readFileSync('chapter8-credits-media.json'));assert.equal(media.length,10);assert.deepEqual(media.slice(0,9).map(m=>m.src),creditPhotos.map(p=>p.src));for(const m of media){const b=fs.readFileSync('.'+m.src);assert.equal(b.length,m.bytes);assert.equal(createHash('sha256').update(b).digest('hex'),m.sha256);if(m.width){assert.equal(b.readUInt32BE(16),m.width);assert.equal(b.readUInt32BE(20),m.height);assert.equal(b.subarray(0,8).toString('hex'),'89504e470d0a1a0a');}else{assert.equal(fragmentedMp4Metadata(b).durationMs,SHUTDOWN_MS);assert.equal(m.durationMs,SHUTDOWN_MS);assert(m.fragmented);assert.equal(m.tracks[1].codec,'mp4a');assert.equal(m.tracks[1].sampleRate,32000);}}
+});
+test('new timeline preserves all Collector-era cues, orders eight photos numerically and permanently completes on final9; legacy version6 is unchanged',()=>{
+ assert.equal(cuesFor({finale:{polishVersion:6}}),version6FinaleCues);assert.deepEqual(finaleCues.slice(0,version6FinaleCues.length-1),version6FinaleCues.slice(0,-1));
+ const end=finaleCues.slice(version6FinaleCues.length-1);assert.deepEqual(end.map(c=>c.id),['credits-intro',...Array.from({length:8},(_,n)=>'credit-photo-'+(n+1)),'credits-music-out','shutdown','final-image']);assert.deepEqual(end.filter(c=>c.photo).map(c=>c.photo),[1,2,3,4,5,6,7,8]);assert.equal(cue('credits-intro').durationMs,5500);assert.equal(cue('credits-music-out').durationMs,2500);assert.equal(cue('final-image').visual,'final9');
+});
+test('coherent photo motion includes seven full seconds, exclusive fade-out and black, alternating rotation, exact aspect ratio and uncropped corners at both TV resolutions',()=>{
+ for(const [width,height] of [[1920,1080],[1280,720]])for(const photo of creditPhotos.slice(0,8)){const c=cue('credit-photo-'+photo.number);assert.equal(c.durationMs,9000);assert.equal(creditFrame(c,0).opacity,0);assert.equal(creditFrame(c,900).opacity,1);assert.equal(creditFrame(c,7900).opacity,1);assert.equal(creditFrame(c,8800).opacity,0);assert.equal(creditFrame(c,8999).opacity,0);assert.equal(creditFrame(c,2000,{armed:false}).opacity,0);
+  for(const t of [0,500,900,4500,7900,8500,8999]){const f=creditFrame(c,t,{width,height}),a=Math.abs(f.angle)*Math.PI/180,w=f.width,h=(w-2*f.padding)*photo.height/photo.width+2*f.padding;assert((w*Math.cos(a)+h*Math.sin(a))*f.scale+Math.abs(f.x)*2<width);assert((h*Math.cos(a)+w*Math.sin(a))*f.scale+Math.abs(f.y)*2<height);assert.equal(Math.sign(f.angle),photo.number%2?-1:1);assert(Math.abs(f.angle)<=3);}
+ }
+ assert.equal(creditFrame(cue('credits-intro'),500).opacity,1);assert.equal(creditFrame(cue('credits-intro'),4500).opacity,1);assert.equal(creditFrame(cue('credits-intro'),5500).opacity,0);
+});
+test('credits introduction waits for native song readiness; readiness and music anchor survive duplicate requests, delayed polling and refresh',()=>{
+ const s=fixture('credits-intro');assert.equal(advanceChapter8(s,999999),UNCHANGED);chapter8HostAction(s,{...body(s),action:'chapter8-finale-ready'},100000);assert.equal(s.chapter8.finale.soundAnchors.credits,100000);assert.equal(s.chapter8.finale.deadline,105500);assert.equal(chapter8HostAction(s,{...body(s),action:'chapter8-finale-ready'},101000),UNCHANGED);
+ const restored=structuredClone(s);validateChapter8(restored);assert.equal(advanceChapter8(restored,105499),UNCHANGED);advanceChapter8(restored,106000);assert.equal(finaleCue(restored.chapter8).id,'credit-photo-1');assert.equal(restored.chapter8.finale.soundAnchors.credits,100000);assert.equal(restored.chapter8.finale.deadline,null);
+});
+test('shutdown cannot be advanced by timers, plays fully, then final9 completes and remains terminal after refresh without changing players',()=>{
+ const s=fixture('shutdown'),players=structuredClone(s.players);chapter8HostAction(s,{...body(s),action:'chapter8-finale-playing'},100000);assert.equal(advanceChapter8(s,999999),UNCHANGED);assert.throws(()=>chapter8HostAction(s,{...body(s),action:'chapter8-finale-ended'},101000));const b={...body(s),action:'chapter8-finale-ended'};chapter8HostAction(s,b,100000+SHUTDOWN_MS);assert.throws(()=>chapter8HostAction(s,b,110000));assert.equal(finaleCue(s.chapter8).id,'final-image');chapter8HostAction(s,{...body(s),action:'chapter8-finale-ready'},110000);advanceChapter8(s,111200);assert.equal(s.chapter8.step,'complete');assert.equal(finaleCue(s.chapter8).visual,'final9');
+ const restored=structuredClone(s);validateChapter8(restored);assert.equal(advanceChapter8(restored,9999999),UNCHANGED);assert.deepEqual(restored.players,players);assert.equal(finaleCue(restored.chapter8).id,'final-image');
+});
+function audioHarness(deny=false){let ready=0;const listeners=new Map(),media={readyState:4,paused:true,currentTime:0,plays:0,addEventListener(n,f){listeners.set(n,f);},removeEventListener(n){listeners.delete(n);},play(){this.plays++;if(deny)return Promise.reject(Error('Autoplay'));this.paused=false;listeners.get('playing')?.();return Promise.resolve();},pause(){this.paused=true;listeners.get('pause')?.();}};return {media,listeners,audio:new Chapter8CreditsAudio(media,()=>ready++),ready:()=>ready,allow:()=>deny=false};}
+test('one full-volume music element continues through all photos, refresh seeks saved anchor, fade ends at zero and shutdown/final9 are silent',async()=>{
+ const h=audioHarness(),c=fixture('credits-intro').chapter8;h.audio.update(c,cue('credits-intro'),100000,{authenticated:true});await new Promise(r=>setImmediate(r));h.audio.update(c,cue('credits-intro'),100020,{authenticated:true});assert.equal(h.ready(),1);assert.equal(h.media.volume,.8);assert.equal(h.media.loop,false);c.finale.soundAnchors={credits:100000};
+ for(let n=1;n<=8;n++){c.finale.phaseAt=105500+(n-1)*9000;h.media.currentTime=(c.finale.phaseAt-100000)/1000;h.audio.update(c,cue('credit-photo-'+n),c.finale.phaseAt);assert.equal(h.media.plays,1);assert.equal(h.media.volume,.8);}
+ c.finale.phaseAt=177500;for(const t of [0,500,1250,2000,2500]){h.audio.update(c,cue('credits-music-out'),177500+t);assert.equal(h.media.volume,creditsVolume(cue('credits-music-out'),t));}assert(h.media.paused);assert.equal(h.media.volume,0);h.audio.update(c,cue('shutdown'),180000);assert(h.media.paused);h.audio.update({...c,step:'complete'},cue('final-image'),190000);assert(h.media.paused);h.audio.destroy();assert.equal(h.listeners.size,0);
+ const refresh=audioHarness();refresh.audio.update(c,cue('credit-photo-4'),140000);assert.equal(refresh.media.currentTime,40);assert.equal(refresh.media.plays,1);
+});
+test('autoplay rejection is isolated, host unlock retries one element and read-only TVs do not acknowledge readiness',async()=>{
+ const h=audioHarness(true),c=fixture('credits-intro').chapter8;h.audio.update(c,cue('credits-intro'),100000);await new Promise(r=>setImmediate(r));assert(h.audio.blocked);h.audio.update(c,cue('credits-intro'),100100);assert.equal(h.media.plays,1);h.allow();h.audio.unlock();h.audio.update(c,cue('credits-intro'),100200);await new Promise(r=>setImmediate(r));h.audio.update(c,cue('credits-intro'),100300);assert.equal(h.media.plays,2);assert.equal(h.ready(),0);h.audio.destroy();assert(h.media.paused);
+});
+
+test('a song preload failure before credits remains recoverable through the existing resume control',()=>{
+ const h=audioHarness(),c=fixture('credits-intro').chapter8;h.media.error=Error('Network');h.media.readyState=0;h.media.load=()=>{h.media.error=null;h.media.readyState=4;};h.audio.update(c,cue('credits-intro'),100000);assert(h.audio.blocked);assert.equal(h.media.plays,0);h.audio.unlock();h.audio.update(c,cue('credits-intro'),100100);assert.equal(h.media.plays,1);assert(!h.media.paused);h.audio.destroy();
+});

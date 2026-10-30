@@ -1,0 +1,89 @@
+[
+  {
+    "src": "/assets/chapter8/final1.png",
+    "bytes": 2260904,
+    "sha256": "ff0d8232c9c1bca8aad5969d29cb2890e7088737a37cafc61485b239d2841904",
+    "width": 1671,
+    "height": 941
+  },
+  {
+    "src": "/assets/chapter8/final2.png",
+    "bytes": 2265579,
+    "sha256": "4e3a03c9534aad1c2e2c783a3c5d359c018e09c5be33efcf35f0a7094ce1e186",
+    "width": 1671,
+    "height": 941
+  },
+  {
+    "src": "/assets/chapter8/final3.png",
+    "bytes": 1974174,
+    "sha256": "2f4f17f35dad500d899447474c5998c4b9e9c3896b65bb6ff2e1941e12c9e6e0",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "src": "/assets/chapter8/final4.png",
+    "bytes": 2172410,
+    "sha256": "6f2845435a9da9d470ae4f0fbc2bc81e46770971d50564c406920ef2b916e01d",
+    "width": 1671,
+    "height": 941
+  },
+  {
+    "src": "/assets/chapter8/final5.png",
+    "bytes": 1815356,
+    "sha256": "96418f30c64ea441b82e38b24a7c8c9f9c4955a35647a2e8e6a43212ce148a2b",
+    "width": 1536,
+    "height": 1024
+  },
+  {
+    "src": "/assets/chapter8/final6.png",
+    "bytes": 2329819,
+    "sha256": "0a48bc8a0767b799137f601222e2a2819547b3c8f75bbefb50e48e4d5f9b13b7",
+    "width": 1669,
+    "height": 942
+  },
+  {
+    "src": "/assets/chapter8/final7.png",
+    "bytes": 2246507,
+    "sha256": "c1bb5d6cc8c1cc6efa18fdc601063591b96889d36fc434ee244073188ac83c9d",
+    "width": 1669,
+    "height": 942
+  },
+  {
+    "src": "/assets/chapter8/final8.png",
+    "bytes": 2084031,
+    "sha256": "55be339528803c26d65d4e98c16b1ab64189b760ee8d9af3c7814566a682b96a",
+    "width": 1672,
+    "height": 941
+  },
+  {
+    "src": "/assets/chapter8/final9.png",
+    "bytes": 1385762,
+    "sha256": "22fd6f0ff7cbbca1776f5a3660640f3283097be08de860f77de5770850ab8dd1",
+    "width": 1669,
+    "height": 942
+  },
+  {
+    "src": "/assets/chapter8/shutdown.mp4",
+    "bytes": 1939544,
+    "sha256": "e1fa68335a35843bfdbfb415d234fb74c5876616b1153aff86eceb63e07627cc",
+    "durationMs": 5258.34375,
+    "fastStart": true,
+    "tracks": [
+      {
+        "kind": "vide",
+        "codec": "avc1.640020",
+        "durationSeconds": 5.166666666666667,
+        "width": 1344,
+        "height": 768
+      },
+      {
+        "kind": "soun",
+        "codec": "mp4a",
+        "durationSeconds": 5.25834375,
+        "channels": 2,
+        "sampleRate": 32000
+      }
+    ],
+    "fragmented": true
+  }
+]

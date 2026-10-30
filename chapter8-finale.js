@@ -5,6 +5,7 @@ import {allFinaleCues,finaleCue,cameras,NEWS_SRC,SCARE_MS,GAME_TITLE_AT_MS} from
 import {smooth} from './chapter8-puzzle.js';
 import {wifePresentation} from './chapter8-presentation.js';
 import {GREETING,greetingFrame,COLLECTOR_SRC} from './chapter8-ending.js';
+import {creditPhotos,creditFrame,Chapter8CreditsAudio,SHUTDOWN_SRC} from './chapter8-credits.js';
 
 // Driven solely by the existing TV scheduler. No additional timers or RAFs.
 export class Chapter8Finale{
@@ -25,14 +26,18 @@ export class Chapter8Finale{
   this.breach=make('div','ch8-security-breach');this.breach.hidden=true;this.breach.textContent='SECURITY BREACH';this.breach.setAttribute('role','status');this.root.appendChild(this.breach);
   this.video=make('video','ch8-finale-news');this.video.preload='auto';this.video.playsInline=true;this.video.controls=false;this.video.src=NEWS_SRC;this.root.appendChild(this.video);
   this.collector=make('video','ch8-finale-news');this.collector.preload='auto';this.collector.playsInline=true;this.collector.controls=false;this.collector.src=COLLECTOR_SRC;this.collector.hidden=true;this.root.appendChild(this.collector);
+  this.shutdown=make('video','ch8-finale-news');this.shutdown.preload='auto';this.shutdown.playsInline=true;this.shutdown.controls=false;this.shutdown.src=SHUTDOWN_SRC;this.shutdown.hidden=true;this.root.appendChild(this.shutdown);
+  this.photoPaper=make('figure','ch8-credit-paper');this.creditPhoto=make('img','ch8-credit-photo');this.creditPhoto.alt='';this.photoPaper.appendChild(this.creditPhoto);this.photoPaper.hidden=true;this.root.appendChild(this.photoPaper);
+  this.finalImage=make('img','ch8-final-image');this.finalImage.src=creditPhotos[8].src;this.finalImage.alt='Happy Halloween';this.finalImage.hidden=true;this.root.appendChild(this.finalImage);
+  this.creditsAudio=new Chapter8CreditsAudio(this.player.media.get('final-song'),()=>this.ackReady());
   // Only eight photographs; keep decoded images ready for immediate switching.
-  this.preloads=Object.entries(cameras).map(([key,src])=>{const img=make('img','');img.src=src;return {key,img};});
+  this.preloads=[...Object.entries(cameras),...creditPhotos.map(p=>['credit-'+p.number,p.src])].map(([key,src])=>{const img=make('img','');img.src=src;return {key,img};});
  }
  now(){return (this.state?.chapter8.startedAt??0)+this.clock.elapsedNow();}
  update(state,authenticated){
-  this.state=state;this.authenticated=authenticated;const c=state?.chapter8,f=c?.finale,cue=c?.step==='finale'?finaleCue(c):null;
+  this.state=state;this.authenticated=authenticated;const c=state?.chapter8,f=c?.finale,cue=c?.step==='finale'||c?.step==='complete'&&f?.polishVersion>=7?finaleCue(c):null;
   this.sound.update(c,cue);
-  if(!cue){this.release();this.root.hidden=true;return;}
+  if(!cue){this.release();this.creditsAudio.stop();this.root.hidden=true;return;}
   this.root.hidden=false;this.root.dataset.cue=cue.id;
   const elapsed=this.now()-f.phaseAt,expiredScare=cue.visual==='scare'&&elapsed>=cue.durationMs;
   const approachElapsed=f.mediaStartedAt===null?0:this.now()-f.mediaStartedAt;
@@ -40,6 +45,14 @@ export class Chapter8Finale{
   const visual=waitingForVoice?'black':expiredScare?(f.polishVersion>=4?'black':'lost'):cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
   this.gridCanvas.hidden=!(visual==='grid'||cue.zoom);
   this.image.hidden=!camera||visual==='grid';this.video.hidden=visual!=='news';this.collector.hidden=visual!=='collector';this.interference.hidden=!camera&&visual!=='lost';
+  this.shutdown.hidden=visual!=='shutdown';this.photoPaper.hidden=visual!=='credit-photo';this.finalImage.hidden=visual!=='final9';
+  const creditPhoto=creditPhotos.find(p=>p.number===cue.photo),creditView=this.document.defaultView;
+  if(creditPhoto&&this.creditPhoto.getAttribute('src')!==creditPhoto.src)this.creditPhoto.src=creditPhoto.src;
+  const credit=creditFrame(cue,elapsed,{width:creditView?.innerWidth??1920,height:creditView?.innerHeight??1080,armed:f.deadline!==null&&(!cue.photo||this.creditPhoto.complete&&this.creditPhoto.naturalWidth>0),reduced:creditView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false});
+  this.photoPaper.style.width=credit.width+'px';this.photoPaper.style.padding=credit.padding+'px';this.photoPaper.style.opacity=String(credit.opacity);this.photoPaper.style.transform='translate(-50%, -50%) translate('+credit.x+'px,'+credit.y+'px) rotate('+credit.angle+'deg) scale('+credit.scale+')';
+  this.finalImage.style.opacity=String(c.step==='complete'?1:f.deadline===null?0:smooth(elapsed/1200));
+  if(cue.credits)this.release();
+  const creditReady=this.preloads.find(p=>p.key==='credit-1')?.img;this.creditsAudio.update(c,cue,this.now(),{ready:!!creditReady?.complete&&creditReady.naturalWidth>0,authenticated});
   if(camera&&this.image.getAttribute('src')!==cameras[visual])this.image.src=cameras[visual];
   // The reveal is abrupt. Other CCTV feed changes use a short fade from black.
   const frame=cameraFrame(cue,elapsed,f.deadline!==null,(this.document.defaultView?.innerWidth??1920)/(this.document.defaultView?.innerHeight??1080));
@@ -52,8 +65,10 @@ export class Chapter8Finale{
   this.root.dataset.motion=String(!!cue.motion&&visual==='grid');
   this.timestamp.hidden=!camera;this.timestamp.textContent='2026-10-31  '+new Date(Date.UTC(2026,9,31,22,14,0)+Math.max(0,this.now()-f.startedAt)).toISOString().slice(11,19);
   const revisedEnding=f.polishVersion>=6&&visual==='ending';
-  this.title.hidden=!['party','news-intro','ending'].includes(visual);if(!revisedEnding)this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
+  this.title.hidden=!['party','news-intro','ending','credits-intro'].includes(visual);if(!revisedEnding)this.title.textContent=visual==='credits-intro'?'TO BE CONTINUED...':visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
+  this.title.classList.toggle('ch8-continued',visual==='credits-intro');
   this.title.style.opacity=String(visual==='ending'?1-smooth(Math.max(0,elapsed-1200)/1800):smooth(elapsed/1200));
+  if(visual==='credits-intro')this.title.style.opacity=String(credit.opacity);
   this.title.classList.toggle('ch8-halloween',revisedEnding);
   if(revisedEnding){
    if(this.greeting.parentNode!==this.title)this.title.replaceChildren(this.greeting);
@@ -67,13 +82,13 @@ export class Chapter8Finale{
   const impactReady=prepareImpact&&f.polishVersion>=4?this.sound.prepareImpact():true;
   if(cue.kind==='hold'){
    this.release();
-   if((cue.id==='living-silence'||cue.readyImage)&&f.deadline===null&&authenticated&&impactReady){const ready=this.preloads.find(p=>p.key===(cue.readyImage??'living'))?.img;if(ready?.complete&&ready.naturalWidth>0&&this.image.complete&&this.image.naturalWidth>0)this.ackReady();}
+   if(c.step==='finale'&&cue.id!=='credits-intro'&&(cue.id==='living-silence'||cue.readyImage)&&f.deadline===null&&authenticated&&impactReady){const ready=this.preloads.find(p=>p.key===(cue.readyImage??'living'))?.img,display=cue.photo?this.creditPhoto:cue.visual==='final9'?this.finalImage:this.image;if(ready?.complete&&ready.naturalWidth>0&&display.complete&&display.naturalWidth>0)this.ackReady();}
    return;
   }
   const key=f.id+':'+c.sequence;
   if(this.entry?.key!==key)this.release();
   if(this.entry){const e=this.entry;if(cue.offsetMs!=null&&!e.ended&&e.media.currentTime*1000>=cue.offsetMs+cue.durationMs){e.end();e.media.pause();}const progress=Math.max(0,e.media.currentTime*1000-(cue.offsetMs??0));e.media.volume=primaryEffectGain(cue,progress);if(cue.id==='whistle-approach')this.sound.approach(progress);if(this.entry.ended)this.ack('chapter8-finale-ended');else if(!this.entry.media.paused&&f.mediaStartedAt===null)this.ack('chapter8-finale-playing');return;}
-  const media=cue.kind==='video'?(cue.id==='collector-reveal'?this.collector:this.video):this.player.media.get(cue.id);
+  const media=this.mediaFor(cue);
   if(!media||media.readyState<2){this.blocked=!!media?.error;this.message=this.blocked?'MEDIA COULD NOT LOAD — RETRY':'PREPARING '+(cue.kind==='video'?'BROADCAST':'AUDIO');return;}
   if(cameras[cue.visual]&&(!this.image.complete||!this.image.naturalWidth))return;
   if(cue.id==='whistle-approach'&&!this.sound.prepareWhistle(media))return;
@@ -99,8 +114,9 @@ export class Chapter8Finale{
   e.acks.add(action);this.send(action).catch(()=>{if(this.entry===e){e.failed.add(action);this.blocked=true;this.message='RESUME FINALE TO RETRY';e.media.pause();}}).finally(()=>e.acks.delete(action));
  }
  play(){const e=this.entry;if(!e||e.pending||e.ended||!e.media.paused||e.attempted)return;e.attempted=true;e.pending=true;Promise.resolve(e.media.play()).catch(()=>{if(this.entry===e){this.blocked=true;this.message='ENABLE AUDIO / RESUME';}}).finally(()=>e.pending=false);}
- unlock(){this.sound.unlock();this.readyKey=null;const e=this.entry;if(!e){const cue=finaleCue(this.state?.chapter8),media=cue?.kind==='video'?(cue.id==='collector-reveal'?this.collector:this.video):this.player.media.get(cue?.id);if(media?.error)media.load();return;}e.failed.clear();e.attempted=false;if(e.media.error){e.media.load();this.release();return;}if(e.ended)this.ack('chapter8-finale-ended');else if(!e.media.paused)e.playing();else this.play();}
- needsUnlock(){return this.blocked||this.sound.blocked;}
+ mediaFor(cue){return cue?.kind==='video'?cue.id==='collector-reveal'?this.collector:cue.id==='shutdown'?this.shutdown:this.video:this.player.media.get(cue?.id);}
+ unlock(){this.sound.unlock();this.creditsAudio.unlock();this.readyKey=null;const e=this.entry;if(!e){const media=this.mediaFor(finaleCue(this.state?.chapter8));if(media?.error)media.load();return;}e.failed.clear();e.attempted=false;if(e.media.error){e.media.load();this.release();return;}if(e.ended)this.ack('chapter8-finale-ended');else if(!e.media.paused)e.playing();else this.play();}
+ needsUnlock(){return this.blocked||this.sound.blocked||this.creditsAudio.blocked;}
  release(){const e=this.entry;if(!e)return;this.entry=null;for(const [name,fn] of [['playing',e.playing],['ended',e.end],['pause',e.pause],['error',e.error]])e.media.removeEventListener(name,fn);e.media.pause();this.blocked=false;this.message='';}
- stop(){this.epoch++;this.release();this.sound.stop();this.player.stop();for(const media of [...this.player.media.values(),this.video,this.collector]){media.pause();media.removeAttribute('src');media.load();}this.state=null;this.root.hidden=true;this.root.remove();for(const {img} of this.preloads)img.removeAttribute('src');this.preloads=[];}
+ stop(){this.epoch++;this.release();this.sound.stop();this.creditsAudio.destroy();this.player.stop();for(const media of [...this.player.media.values(),this.video,this.collector,this.shutdown]){media.pause();media.removeAttribute('src');media.load();}this.creditPhoto.removeAttribute('src');this.finalImage.removeAttribute('src');this.state=null;this.root.hidden=true;this.root.remove();for(const {img} of this.preloads)img.removeAttribute('src');this.preloads=[];}
 }
