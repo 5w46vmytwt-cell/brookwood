@@ -13,3 +13,7 @@
 
 #chapterDate{flex-direction:column;gap:24px}
 #chapterDate .chapter-location{font-size:clamp(12px,1.4vw,20px)}
+
+#chapterFarmLabel{padding-left:4vw;padding-right:4vw;overflow-wrap:anywhere}
+#chapterWelcome{flex-direction:column;gap:24px;background:#000;padding:5vw}
+#chapterWelcomeFun{opacity:0;font-size:clamp(12px,1.4vw,20px);color:#aaa}
