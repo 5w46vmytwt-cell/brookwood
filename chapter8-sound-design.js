@@ -1,4 +1,5 @@
 import {smooth} from './chapter8-puzzle.js';
+import {HAPPY_TRACK,happyVolume} from './chapter8-ending.js';
 
 // Read-only source windows. Only the alarm has a finite managed repeat.
 const base='/assets/chapter8/audio/';
@@ -14,7 +15,7 @@ export const effects=Object.freeze({
  impact:{id:'scare-impact',src:'/assets/chapter6/audio/ch6_sfx_scream.mp3',sourceDurationMs:3312,offsetMs:200,durationMs:650}
 });
 export const SIREN_WINDOW_MS=14000,SIREN_CROSSFADE_MS=2000,SIREN_STRIDE_MS=12000;
-export const soundLayers=[effects.alarm,effects.sirens,{...effects.sirens,id:'approaching-sirens-b'},effects.impact];
+export const soundLayers=[effects.alarm,effects.sirens,{...effects.sirens,id:'approaching-sirens-b'},effects.impact,HAPPY_TRACK];
 export function sirenWindows(elapsed){
  const cycle=Math.floor(elapsed/SIREN_STRIDE_MS);return [cycle-1,cycle].filter(n=>n>=0&&elapsed-n*SIREN_STRIDE_MS<SIREN_WINDOW_MS).map(n=>{
   const age=elapsed-n*SIREN_STRIDE_MS;
@@ -46,9 +47,11 @@ export class Chapter8SoundDesign{
    if(['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue?.id))desired.set('garage-alarm',f.soundAnchors?.garage??f.phaseAt);
    if(!(f.polishVersion>=1)&&['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape'].includes(cue?.id)&&f.soundAnchors?.sirens!=null)desired.set('approaching-sirens',f.soundAnchors.sirens);
    if(cue?.id==='intruder-reveal')desired.set('scare-impact',f.phaseAt);
+   const pastMusicCut=cue?.glitch===2&&f.deadline!=null&&this.now()>=f.deadline;
+   if(f.polishVersion>=6&&!pastMusicCut&&f.soundAnchors?.happy!=null&&this.now()>=f.soundAnchors.happy&&(cue?.id==='wife-16'||cue?.visual==='ending'&&!(cue.glitch>=3)))desired.set('happy-return',f.soundAnchors.happy);
   }
   const sirenMix=new Map();
-  if(f?.polishVersion>=1&&f.soundAnchors?.sirens!=null&&!['breaking-news','news-out','wife-16','ending'].includes(cue?.id)){
+  if(f?.polishVersion>=1&&f.soundAnchors?.sirens!=null&&!['breaking-news','news-out','wife-16','ending'].includes(cue?.id)&&(f.polishVersion<6||['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape','wife-15','news-black'].includes(cue?.id))){
    const elapsed=this.now()-f.soundAnchors.sirens,fade=cue?.id==='news-black'?1-smooth((this.now()-f.phaseAt)/cue.durationMs):1;
    if(elapsed>=0)for(const w of sirenWindows(elapsed)){desired.set(w.id,f.soundAnchors.sirens+w.at);sirenMix.set(w.id,{gain:w.gain*(.08+.26*smooth(elapsed/12000))*fade});}
   }
@@ -59,9 +62,9 @@ export class Chapter8SoundDesign{
    const mix=sirenMix.get(id),duration=mix?SIREN_WINDOW_MS:spec.playDurationMs??spec.durationMs;
    if(elapsed<0||elapsed>=(id==='scare-impact'&&f.polishVersion>=3?1950:duration)){media.pause();media.loop=false;continue;}
    let e=this.active.get(id);if(!e){e={anchor,media,attempted:false,pending:false};this.active.set(id,e);}
-   media.volume=mix?mix.gain:id==='scare-impact'&&f.polishVersion>=3?.8*(1-smooth((elapsed-1850)/100)):layerVolume(id,elapsed);media.muted=false;media.loop=!!spec.repeat;
+   media.volume=id==='happy-return'?happyVolume(cue,cue.id==='wife-16'?elapsed:this.now()-f.phaseAt):mix?mix.gain:id==='scare-impact'&&f.polishVersion>=3?.8*(1-smooth((elapsed-1850)/100)):layerVolume(id,elapsed);media.muted=false;media.loop=!!spec.repeat;
    if(media.paused&&!e.attempted&&media.readyState>=2){
-    const offset=((mix?2000:spec.offsetMs)+(spec.repeat?elapsed%spec.sourceDurationMs:elapsed))/1000;
+    const offset=((mix?2000:spec.offsetMs??0)+(spec.repeat?elapsed%spec.sourceDurationMs:elapsed))/1000;
     if(id!=='scare-impact'||!this.impactPrepared||Math.abs(media.currentTime-offset)>.1)media.currentTime=offset;
     e.attempted=true;e.pending=true;
     Promise.resolve(media.play()).catch(()=>{if(this.active.get(id)===e)this.blocked=true;}).finally(()=>e.pending=false);

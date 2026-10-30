@@ -1,5 +1,6 @@
 import {LobbyError,UNCHANGED} from './_state.js';
 import {finaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
+import {HAPPY_START_MS} from '../chapter8-ending.js';
 
 function enter(c,index,now){
  c.sequence++;const cue=cuesFor(c)[index];
@@ -10,7 +11,7 @@ function enter(c,index,now){
 }
 export function startFinale(c,now,index=0){
  c.step='finale';c.phaseAt=now;c.audioStartedAt=null;c.deadline=null;c.completedAt=null;
- c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:5,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};enter(c,index,now);
+ c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:6,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};enter(c,index,now);
 }
 export function finaleHostAction(c,b,now){
  const f=c.finale,cue=finaleCue(c);
@@ -20,7 +21,7 @@ export function finaleHostAction(c,b,now){
   if(f.deadline!==null)return UNCHANGED;f.deadline=now+cue.durationMs;f.phaseAt=now;return;
  }
  if(cue.kind==='hold')throw new LobbyError(409,'This scene has no recording.');
- if(b.action==='chapter8-finale-playing'){if(f.mediaStartedAt!==null)return UNCHANGED;f.mediaStartedAt=now;if(cue.id==='wife-13'){f.soundAnchors??={};f.soundAnchors.sirens=now;}return;}
+ if(b.action==='chapter8-finale-playing'){if(f.mediaStartedAt!==null)return UNCHANGED;f.mediaStartedAt=now;if(cue.id==='wife-13'){f.soundAnchors??={};f.soundAnchors.sirens=now;}if(f.polishVersion>=6&&cue.id==='wife-16'){f.soundAnchors??={};f.soundAnchors.happy=now+HAPPY_START_MS;}return;}
  if(b.action==='chapter8-finale-ended'){
   if(f.mediaStartedAt===null||now<f.mediaStartedAt+cue.durationMs-250)throw new LobbyError(409,'Let the complete recording finish.');
   enter(c,f.index+1,now);return;
@@ -36,8 +37,8 @@ export function advanceFinale(c,now){
 export function validateFinale(c){
  const f=c.finale,time=n=>Number.isFinite(n)&&n>0,cue=finaleCue(c);
  if(!f||typeof f.id!=='string'||!f.id||!time(f.startedAt)||!time(f.phaseAt)||!Number.isInteger(f.index)||!cue||f.mediaStartedAt!==null&&(!time(f.mediaStartedAt)||f.mediaStartedAt<f.phaseAt||cue.kind==='hold')||f.completedAt!==null&&!time(f.completedAt)||f.testEntry!==undefined&&typeof f.testEntry!=='boolean')throw Error('Invalid Chapter 8 finale.');
- if(f.polishVersion!==undefined&&![1,2,3,4,5].includes(f.polishVersion))throw Error('Invalid finale polish version.');
- if(f.soundAnchors&&(typeof f.soundAnchors!=='object'||Array.isArray(f.soundAnchors)||Object.entries(f.soundAnchors).some(([k,v])=>!['garage','sirens','news'].includes(k)||!time(v))))throw Error('Invalid finale sound anchor.');
+ if(f.polishVersion!==undefined&&![1,2,3,4,5,6].includes(f.polishVersion))throw Error('Invalid finale polish version.');
+ if(f.soundAnchors&&(typeof f.soundAnchors!=='object'||Array.isArray(f.soundAnchors)||Object.entries(f.soundAnchors).some(([k,v])=>!['garage','sirens','news','happy'].includes(k)||!time(v))))throw Error('Invalid finale sound anchor.');
  if(c.step==='finale'){
   if(cue.kind==='hold'){if(f.deadline!==null&&(!time(f.deadline)||f.deadline!==f.phaseAt+cue.durationMs)||f.deadline===null&&cue.id!=='living-silence'&&!cue.readyImage)throw Error('Invalid finale hold.');}
   else if(f.deadline!==null)throw Error('Invalid finale media deadline.');

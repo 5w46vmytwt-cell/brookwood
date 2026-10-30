@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
-import {finaleCues,version4FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
+import {version5FinaleCues as finaleCues,version4FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
 import {whistleGain,primaryEffectGain,effects,Chapter8SoundDesign,soundLayers} from '../chapter8-sound-design.js';
 import {makeChapter8Starter,chapter8HostAction,advanceChapter8,validateChapter8} from '../api/_chapter8.js';
 import {finalNarrationFixture} from './chapter7-fixture.js';import {UNCHANGED} from '../api/_state.js';import {wifePresentation,finaleAmbientTarget} from '../chapter8-presentation.js';

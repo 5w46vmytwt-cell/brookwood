@@ -1,15 +1,30 @@
-# Chapter 8 - final CCTV alert, whistle and SIGNAL LOST polish
+# Chapter 8 - revised Happy Halloween / Collector ending
 
 ## Review status
 
-Production baseline: bbe66f2fc6c7f01825d95a5e297b851132ae6497. Four targeted adjustments on fix/chapter8-final-alert-polish are authorized for automatic commit/push and release through the existing GitHub main / Brookwood Vercel production workflow after validation. Production readiness is verified separately. Narrator rendering, media bytes, game data, sessions, host authentication, Redis/environment configuration and earlier chapters remain unchanged. No Collector video or credits are included.
+Production baseline: 4d7123257c77b31be4d488e45bca820f190d1aee. The user authorized this focused ending extension, validation, commit/push and production deployment through the existing GitHub main / Brookwood Vercel workflow. Preserve the working finale through wife-16, all earlier chapters, source media, game data, sessions, host authentication, Redis and environment variables. No claymation credits or reserved Happy Halloween PNG is used. Production readiness is independently checked after release.
 
-## Final polish changes
+## Preserved CCTV polish
 
 1. wife-04.mp3 contains the complete camera-system question: "Huh? That's weird. Wait, why am I getting notifications from your house cameras? Are you expecting someone else tonight? I think you should see this." One new camera-question-notification cue plays the unchanged security-notification.wav (1895.986395 ms), followed by a 350-ms camera-question-gap, immediately before the full recording. The existing three grid motion alerts remain; there are four notification plays in a fresh finale. Native ended gates prevent overlap or truncated dialogue.
 2. Only a motion cue on the grid sets data-motion=true. Its existing neutral security label is centered at 50%/50% of the TV viewport, with translate(-50%,-50%) and readable clamped typography. No feed geometry, zoom, hold or alert lifetime changes. The separate red SECURITY BREACH rule is unchanged.
 3. Fresh version-5 whistle cues use gain = .33 + .40*smooth(t/7600) + .22*smooth((t-7600)/3800), with t in milliseconds. Gain is 33% initially, 73% at the final-third boundary and 95% at 11400 ms. Both stages are continuous with smooth zero-slope joins; the final stage has the stronger peak approach rate. All samples are louder than the former envelope and below unity. Source window 2.800-14.200 s, natural pauses, low-pass approach, duration and abrupt stop are unchanged. Existing cuts retain the old 14%-80% envelope. Jump-scare gain remains 80%.
 4. Native wife-12 completion now enters a persisted signal-lost-pause hold for exactly 3500 server milliseconds. SIGNAL LOST remains visible, the wife presentation stays hidden and all audio is paused. No siren anchor exists until wife-13 actually starts after the hold. Duplicate completion, refresh, delayed polling and multiple TVs cannot restart or shorten the saved deadline. The warning's simultaneous SIGNAL LOST/native-playing start is unchanged.
+
+## Revised ending (version 6)
+
+- The actual wife-16 MP3 was decoded and transcribed again. At 14.800 seconds she says: First, let's shake this off. Nothing bad happened, and it is still Halloween. Older cached transcript text was incomplete. The supplied recording is unchanged. Its native playing acknowledgement persists a happy soundtrack anchor at mediaStartedAt + 14800; duplicate acknowledgements cannot move it.
+- Newly supplied assets/chapter8/audio/fun-soundtrack.mp3 (99.840 s) starts there with a 1.2-second gentle entrance to 16% under the full-volume wife narration. One preloaded Player element continues across her complete recording, the greeting and early glitches without restarting. Greeting entrance raises only this background track smoothly to 45%. No old investigation ambience resumes.
+- Enhance the existing .ch8-finale-title HTML greeting: two lines, fourteen individual letters, dimensional Georgia lettering, orange/amber glow, restrained breathing/particle details and a dark cinematic surface. There is a one-second entrance, then a full 10000-ms hold at full opacity. The reserved credits PNG is never loaded. Responsive/reduced-motion rules are scoped to Chapter 8.
+- Five deterministic glitches last 600 / 800 / 1000 / 1200 / 1400 ms. They remove 3 / 3 / 3 / 3 / 2 letters, with increasing RGB tearing and static; all letters are gone at stage five. The cheerful track is abruptly paused at stage three. The fifth glitch has the strongest static, clears to black for its final 200 ms, then the next cue holds black silence for another 1000 ms.
+- Collector reveal uses the supplied 104.000-second video with its native AAC audio at volume 1, contained fullscreen at its original 1920x1080 aspect ratio. Chrome measured its native duration at 104.000 seconds; the file's AAC track metadata includes a 21-ms encoder tail. Only native ended can advance; wall-clock expiry cannot cut it short. No bed, narration, siren or other effect plays over it.
+- Native Collector completion enters the nonlooping final-credits.mp3 main-song cue (251611.428571 ms, 320 kb/s stereo) on clean black, volume 0.8, with no narration ducking or other audio. The existing authenticated response starts playback as soon as the next authoritative cue is received; no artificial gap or extra hold is added. Native song completion ends Chapter 8. No new credits scenes are invented.
+- Reuse the existing TV clock, Player preload map, one cue entry per sequence, native playing/ended listeners, autoplay resume control, generation/run/sequence fences and atomic API progression. No extra timers, RAFs, pollers or phone audio are introduced. Refresh reconstructs letter state from the persisted cue and seeks each active media clock rather than replaying earlier cues. Leaving/reset/replay stops and unloads both videos and all audio.
+- Fresh runs select polishVersion 6. Stored version-5 and older runs retain their exact saved cue indices and timelines; no production session is migrated or reset.
+
+### Media delivery
+
+The supplied collector-reveal.mp4 is 204196548 bytes, exceeding GitHub's ordinary 100-MiB file limit. The original stays untouched locally and is explicitly excluded from Git/build output. A 65016535-byte 1080p H.264 delivery copy, collector-reveal-web.mp4, is included and used by the cinematic. It retains the original frame rate, duration and aspect ratio; only video is encoded at a constrained 5-Mbit/s target. The original AAC stream is copied without re-encoding. Its demuxed compressed-audio SHA256 matches the source exactly: b4b715bc82aaed0928fcd9a09a5c22cd814f9d289b1adfcb9197b24a25c5738a. Source/delivery hashes and new audio metadata are in chapter8-ending-media.json. Both supplied MP3s remain byte-for-byte unchanged. No media is missing.
 
 ## Actual Chapter 7 renderer reused
 
@@ -55,11 +70,11 @@ Nominal finale-relative windows:
 
 These are canonical nominal offsets, not substitutes for native media completion. Loading/acknowledgment/poll latency can extend actual playback; the persisted silence/scare deadlines cannot be extended by refresh. SIGNAL LOST/voice use native playing synchronization, rather than two independent timers.
 
-Stored unversioned/version-1/version-2/version-3/version-4 cuts retain their previous index mapping and clocks. Fresh authenticated finale checkpoints select polishVersion 5. No existing game is migrated or reset. The expired scare disappears without being replayed while delayed progression catches up. Refresh seeks active media and preserves the remaining window.
+Stored unversioned/version-1/version-2/version-3/version-4/version-5 cuts retain their previous index mapping and clocks. Fresh authenticated finale checkpoints select polishVersion 6. No existing game is migrated or reset. The expired scare disappears without being replayed while delayed progression catches up. Refresh seeks active media and preserves the remaining window.
 
 ## Preserved camera and audio behavior
 
-First actual asset: ch8_cam01_driveway.png; then side passage and backyard. Each normal alert, camera-specific complete narration, 2.500-second image hold, 1.400-second reverse zoom and 2.500-second grid pause is unchanged. Doorbells remain after backyard, with the close front-porch asset. The garage warning/alarm/announcement, interior door and approaching whistle are unchanged. The existing music fades out during takeover and never resumes underneath the wife, CCTV, silence or news. Sirens still crossfade continuously until the pre-news fade. The 62.480-second breaking-news video advances only on its native ended event, before the complete wife-16 and Happy Halloween ending.
+First actual asset: ch8_cam01_driveway.png; then side passage and backyard. Each normal alert, camera-specific complete narration, 2.500-second image hold, 1.400-second reverse zoom and 2.500-second grid pause is unchanged. Doorbells remain after backyard, with the close front-porch asset. The garage warning/alarm/announcement, interior door and approaching whistle are unchanged. The original investigation music fades out during takeover and never resumes underneath the wife, CCTV, silence or news. Only the new cheerful track enters late in wife-16 as specified above. Sirens still crossfade continuously until the pre-news fade. The 62.480-second breaking-news video advances only on its native ended event, before the complete wife-16 and Happy Halloween ending.
 
 ## Audio inventory and source selection
 
@@ -85,7 +100,7 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 
 ## Complete current timeline
 
-65 cues; nominal runtime 387.484 seconds = 6 minutes 27.484 seconds. Previous production cut: 381.738 seconds. Added time is 5.745986 seconds: 1.895986-second notification, 0.350-second separation and 3.500-second post-warning pause. Every existing recording, camera hold, zoom, grid pause, interior-door/whistle interval, five-second suspense and two-second scare keeps its full duration. Native loading and acknowledgment latency may extend wall-clock playback.
+74 cues; nominal runtime 757.096 seconds = 12 minutes 37.096 seconds, including the complete final song. Existing cues through wife-16 have identical windows to version 5. Native buffering, playback, acknowledgements and polling may extend wall-clock runtime. The greeting holds at full opacity for ten server seconds after its entrance; media completion always remains native-event driven.
 
 | Cue | Nominal start - end (seconds) | View / transition |
 | --- | --- | --- |
@@ -140,7 +155,7 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 | whistle-approach | 208.020 - 219.420 | living |
 | living-silence | 219.420 - 224.420 | living |
 | intruder-reveal | 224.420 - 226.420 | scare |
-| wife-12 | 226.420 - 231.096 | lost / native playing synchronized |
+| wife-12 | 226.420 - 231.096 | lost |
 | signal-lost-pause | 231.096 - 234.596 | lost |
 | wife-13 | 234.596 - 243.269 | wife-dark |
 | escape-running | 243.269 - 248.269 | lost |
@@ -153,21 +168,32 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 | breaking-news | 268.860 - 331.340 | news |
 | news-out | 331.340 - 332.840 | black |
 | wife-16 | 332.840 - 384.484 | wife-return |
-| ending | 384.484 - 387.484 | ending |
+| ending-in | 384.484 - 385.484 | ending |
+| ending | 385.484 - 395.484 | ending |
+| ending-glitch-1 | 395.484 - 396.084 | ending / letter-removal stage 1 |
+| ending-glitch-2 | 396.084 - 396.884 | ending / letter-removal stage 2 |
+| ending-glitch-3 | 396.884 - 397.884 | ending / letter-removal stage 3 |
+| ending-glitch-4 | 397.884 - 399.084 | ending / letter-removal stage 4 |
+| ending-glitch-5 | 399.084 - 400.484 | ending / letter-removal stage 5 |
+| collector-black | 400.484 - 401.484 | black |
+| collector-reveal | 401.484 - 505.484 | collector |
+| final-song | 505.484 - 757.096 | black |
 
 ## Validation
 
-- Chapter 8: 82/82 passed. Chapter 7/8 regression tests: 171/171 passed.
-- Full suite: 639 passed, 16 failed (655 total). The failing names match the 16 pre-existing TV mock failures; no new failures. Baseline comparison is in logs/ch8-polish-baseline-comparison.json.
-- Production build: PASS, 235 static files, API syntax verified.
-- 1080p/720p actual-browser checks: centered motion alert geometry and legibility PASS. SECURITY BREACH computed geometry/colors match bbe66f2 exactly. The existing Chapter 7 narrator and palette-only wife comparison still match; rendering files are unchanged.
-- Isolated native scare/warning probes: PASS with and without a scare refresh. Native sting/image and warning/SIGNAL LOST pair correctly. Browser audit samples UI after the event's presentation handler while preserving the original native event timestamp; it does not alter playback.
-- Full native cinematic browser rehearsal: PASS. All 65 cues, four notifications, centered grid alerts, louder whistle, 3500-ms silent post-warning hold, one unchanged scare and native news/ending completed. Nine refresh recoveries passed: question, zoom, side narration, silence, scare, warning, post-warning pause, sirens and news. All 12 participants were preserved; the phone stayed silent and no runtime exception occurred. Evidence: logs/chapter8-finale-browser-report.json and logs/ch8-polish-browser.txt.
-- Focused native pause rehearsal: PASS. Native wife-12 completion entered the 3500-ms hold, remained silent on SIGNAL LOST through refresh and started the next narration/sirens only after the persisted deadline (logs/ch8-pause-probe.json).
-- Existing media hash tests pass; no supplied asset changed. No production game/API mutation has been made.
+- Chapter 8 tests: 91/91 passed. Chapter 7/8 regression tests: 180/180 passed.
+- Production build: PASS, 239 static files; API and browser syntax verified. Original oversized video and unrelated Chapter 1 draft are excluded.
+- Both supplied music files decode completely; hashes and durations are validated. Original Collector audio and delivery-copy audio hashes match. All previously supplied Chapter 8 media hashes still pass.
+- Targeted coverage includes ten-second greeting hold, five deterministic letter-removal stages, native wife-16 music anchor, smooth ducking/continuity, stage-three cutoff, black silence, native Collector/video/song gates, autoplay recovery, refresh seeking, cleanup, legacy timelines and unchanged players/history.
+- Full native-speed browser rehearsal: PASS. All 74 cues, all five letter-removal stages, every complete recording, unchanged single scare, native news/Collector completion and full main song at 80% passed. Thirteen refresh recoveries passed: question, zoom, side narration, silence, scare, warning, post-warning pause, sirens, news, wife-16, greeting, Collector and final song. Twelve participants were preserved, the phone created no audio, and no runtime exception occurred. Source: logs/chapter8-finale-browser-report.json and logs/ch8-ending-browser-complete.txt.
+- Greeting screenshots at 1920x1080 and 1280x720 were inspected: complete text is legible and contained; warm dimensional typography and atmosphere render correctly. The reserved artwork is unused. Screenshots: logs/ch8-greeting-1920.png and logs/ch8-greeting-1280.png.
+- Native Collector-end to main-song-playing gap measured 47 ms; only final-credits.mp3 was active, at 80%, nonlooping on black. Source: logs/ch8-final-song-live-proof.json.
+- No unrelated historical test suite was rerun. No production game/session/Redis mutation is used for verification.
 
 ## Local preview and remaining limits
 
-Run npm run dev, open local /tv, Ctrl+Shift+C, authenticate and select CHAPTER 8 - FINAL CINEMATIC. A fresh checkpoint selects version 5. Earlier stored runs intentionally keep their original cuts. scripts/verify-chapter8-finale-browser.mjs uses isolated local in-memory state and a silent phone; run scripts/verify-chapter8-narrator-browser.mjs alongside it to reproduce both screenshot pairs. Neither script contacts production Redis.
+Run npm run dev, open local /tv, Ctrl+Shift+C, authenticate and select CHAPTER 8 - FINAL CINEMATIC. A fresh checkpoint selects version 6. Earlier stored runs intentionally keep their original cuts. scripts/verify-chapter8-finale-browser.mjs uses isolated local in-memory state and a silent phone; run scripts/verify-chapter8-narrator-browser.mjs alongside it to reproduce both screenshot pairs. Neither script contacts production Redis.
 
 Browser audio still requires the existing unlock gesture; buffering and device output latency remain browser constraints. A blocked warning waits to reveal SIGNAL LOST until native playback starts. Actual party-speaker loudness should be reviewed locally. Local implementation and validation preceded release authorization; production status is verified separately after deployment.
+
+The production release uses the existing Brookwood project. Read-only smoke checks fetch /tv and /join without executing game JavaScript, compare runtime files, and inspect media headers/ranges; they do not start or reset a session.

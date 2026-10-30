@@ -9,7 +9,7 @@ const browser=readdirSync(root).filter(f=>/\.(html|css|js)$/.test(f));
 function mediaFiles(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?mediaFiles(join(dir,entry.name)):[join(dir,entry.name).replaceAll('\\','/')]);}
 // The loose Chapter 1 draft is deliberately excluded: it is not part of the
 // approved playback and was already untracked at the checkpoint.
-const assets=mediaFiles('assets').filter(f=>/\.(png|mp3|wav|mp4)$/.test(f)&&f!=='assets/chapter1/narration.mp3');
+const assets=mediaFiles('assets').filter(f=>/\.(png|mp3|wav|mp4)$/.test(f)&&!['assets/chapter1/narration.mp3','assets/chapter8/collector-reveal.mp4'].includes(f));
 const inputs=[...browser,...assets];
 for(const file of [...browser.filter(f=>f.endsWith('.js')),...readdirSync('api').filter(f=>f.endsWith('.js')).map(f=>'api/'+f)]){
  const result=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});if(result.status!==0)throw Error(result.stderr);

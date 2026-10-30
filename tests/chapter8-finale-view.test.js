@@ -14,7 +14,7 @@ function harness(id='wife-05',{offset=0,started=null,deny=false,authenticated=tr
  }
  class Player{constructor(t){this.media=new Map(t.cues.map(c=>[c.id,Object.assign(new Media(),{src:c.src})]));}stop(){for(const a of this.media.values())a.pause();}}
  const root=new Media(),doc={createElement:()=>new Media(),getElementById:()=>root},calls=[];
- const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:5,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
+ const index=finaleCues.findIndex(c=>c.id===id),state={generation:'g',chapter8:{id:'c',startedAt:100000,step:'finale',sequence:index,finale:{id:'f',polishVersion:6,startedAt:100000,index,phaseAt:100000,deadline:null,mediaStartedAt:started}}};
  const view=new Chapter8Finale(doc,{elapsedNow:()=>now-100000},{Player,request:async(_p,b)=>{calls.push(b);if(b.action==='chapter8-finale-playing')state.chapter8.finale.mediaStartedAt??=now;return {state};},onState(){}});
  return {view,state,calls,update:()=>view.update(state,authenticated),at:n=>now=100000+n,allow:()=>deny=false,media:()=>view.entry?.media};
 }
@@ -72,4 +72,17 @@ test('wife screen shows the real game title and speaking waveform, returns cold,
  h.media().pause();h.update();assert(!h.view.wifeWave.className.includes('speaking'));
  const cold=harness('wife-14');cold.update();assert.equal(cold.view.wife.dataset.mood,'cold');assert.equal(cold.view.wife.hidden,false);
  for(const id of ['doorbell-before','garage-announcement']){const r=harness(id);r.update();assert.equal(r.view.root.dataset.visual,'grid');assert.equal(r.view.breach.hidden,id!=='garage-announcement');}
+});
+
+test('Collector refresh seeks one video, native ended alone advances, and cleanup unloads both videos',async()=>{
+ const h=harness('collector-reveal',{offset:30000,started:100000});h.view.collector.duration=104.022;h.update();await flush();const m=h.media();assert.equal(m,h.view.collector);assert.equal(m.currentTime,30);assert.equal(m.volume,1);assert.equal(m.loop,false);assert(!m.hidden);assert(h.view.video.hidden);assert(h.view.image.hidden);for(let i=0;i<10;i++)h.update();assert.equal(m.plays,1);assert.equal(h.calls.length,0);
+ h.at(104022);m.emit('ended');await flush();assert.equal(h.calls[0].action,'chapter8-finale-ended');h.view.stop();assert(m.paused);assert(!m.src);assert(!h.view.video.src);
+});
+
+test('main final song is a single nonlooping full-volume music cue on black; refresh and autoplay recovery retain the same element',async()=>{
+ const h=harness('final-song',{offset:60000,started:100000,deny:true});h.view.player.media.get('final-song').duration=251.6;h.update();await flush();assert(h.view.needsUnlock());assert.equal(h.view.root.dataset.visual,'black');assert(h.view.title.hidden);assert(h.view.collector.hidden);assert.equal(h.media().currentTime,60);assert.equal(h.media().volume,.8);assert.equal(h.media().loop,false);h.allow();h.view.unlock();await flush();for(let n=0;n<10;n++)h.update();assert.equal(h.media().plays,2);assert.equal([...h.view.player.media.values()].filter(m=>!m.paused).length,1);h.view.stop();assert([...h.view.player.media.values()].every(m=>m.paused));
+});
+
+test('HTML greeting removes the saved letter groups after refresh without showing any wife or camera background',()=>{
+ for(const [id,count] of [['ending',0],['ending-glitch-1',3],['ending-glitch-3',9],['ending-glitch-5',14]]){const h=harness(id,{offset:200});h.update();assert.equal(h.view.letters.filter(n=>n.dataset.gone==='true').length,count);assert(h.view.wife.hidden);assert(h.view.image.hidden);assert(h.view.video.hidden);assert(h.view.collector.hidden);assert.equal(h.view.title.dataset.glitch,String(finaleCues[h.state.chapter8.finale.index].glitch??0));h.view.stop();}
 });

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {finaleCues,version3FinaleCues,version4FinaleCues,finaleCue} from '../chapter8-finale-timing.js';
+import {version5FinaleCues as finaleCues,version3FinaleCues,version4FinaleCues,finaleCue} from '../chapter8-finale-timing.js';
 import {wifePresentation} from '../chapter8-presentation.js';
 import {narratorFrame} from '../chapter7-story-timing.js';
 const cue=id=>finaleCues.find(c=>c.id===id);

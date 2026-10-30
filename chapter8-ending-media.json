@@ -1,0 +1,57 @@
+[
+  {
+    "src": "/assets/chapter8/collector-reveal-web.mp4",
+    "bytes": 65016535,
+    "durationMs": 104000,
+    "fastStart": true,
+    "tracks": [
+      {
+        "kind": "vide",
+        "codec": "avc1.640032",
+        "durationSeconds": 104,
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "kind": "soun",
+        "codec": "mp4a",
+        "durationSeconds": 104.02133333333333,
+        "channels": 2,
+        "sampleRate": 48000
+      }
+    ],
+    "sha256": "e3cc6de46070cbfcad3d2d2997f16c1d9d505ec46d8740eabdf4e834d5fb6833",
+    "sourceSha256": "b0b60f925b4555626e120e507d23070860f7c64cc4d2190f8dc8e64213c70637",
+    "sourceBytes": 204196548,
+    "delivery": "1920x1080 H.264 delivery copy; original AAC stream copied unchanged",
+    "audioStreamHash": "SHA256=b4b715bc82aaed0928fcd9a09a5c22cd814f9d289b1adfcb9197b24a25c5738a"
+  },
+  {
+    "src": "/assets/chapter8/audio/final-credits.mp3",
+    "bytes": 10064457,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 2,
+    "bitrates": [
+      320
+    ],
+    "frames": 9632,
+    "samples": 11096064,
+    "durationMs": 251611.42857142858,
+    "sha256": "05986b82fc34e30ca16e1183a920aadd02342bd6c831faf7ad9583c1e982e04e"
+  },
+  {
+    "src": "/assets/chapter8/audio/fun-soundtrack.mp3",
+    "bytes": 3194880,
+    "encoding": "MPEG Layer III",
+    "sampleRate": 44100,
+    "channels": 2,
+    "bitrates": [
+      256
+    ],
+    "frames": 3822,
+    "samples": 4402944,
+    "durationMs": 99840,
+    "sha256": "00e7bf231389312b5e225499f9cab772d09ecc365b72d6f4bba91b50eeb4d96b"
+  }
+]

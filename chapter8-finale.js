@@ -4,6 +4,7 @@ import {Chapter8SoundDesign,soundLayers,primaryEffectGain} from './chapter8-soun
 import {allFinaleCues,finaleCue,cameras,NEWS_SRC,SCARE_MS,GAME_TITLE_AT_MS} from './chapter8-finale-timing.js';
 import {smooth} from './chapter8-puzzle.js';
 import {wifePresentation} from './chapter8-presentation.js';
+import {GREETING,greetingFrame,COLLECTOR_SRC} from './chapter8-ending.js';
 
 // Driven solely by the existing TV scheduler. No additional timers or RAFs.
 export class Chapter8Finale{
@@ -18,9 +19,12 @@ export class Chapter8Finale{
   this.interference=make('div','ch8-camera-interference');this.interference.setAttribute('aria-hidden','true');this.root.appendChild(this.interference);
   this.label=make('div','ch8-camera-label');this.root.appendChild(this.label);this.timestamp=make('div','ch8-camera-time');this.root.appendChild(this.timestamp);
   this.title=make('div','ch8-finale-title');this.root.appendChild(this.title);
+  this.greeting=make('div','ch8-halloween-words');this.greeting.setAttribute('aria-label',GREETING);this.letters=[];
+  for(const word of GREETING.split(' ')){const line=make('div','ch8-halloween-line');for(const letter of word){const span=make('span','ch8-halloween-letter');span.textContent=letter;span.setAttribute('aria-hidden','true');span.style.setProperty?.('--letter',this.letters.length);line.appendChild(span);this.letters.push(span);}this.greeting.appendChild(line);}
   this.narrator=new NarratorScreen(document,{theme:'wife'});this.wife=this.narrator.root;this.microphone=this.narrator.microphone;this.wifeWave=this.narrator.wave;this.gameTitle=this.narrator.title;this.root.appendChild(this.wife);
   this.breach=make('div','ch8-security-breach');this.breach.hidden=true;this.breach.textContent='SECURITY BREACH';this.breach.setAttribute('role','status');this.root.appendChild(this.breach);
   this.video=make('video','ch8-finale-news');this.video.preload='auto';this.video.playsInline=true;this.video.controls=false;this.video.src=NEWS_SRC;this.root.appendChild(this.video);
+  this.collector=make('video','ch8-finale-news');this.collector.preload='auto';this.collector.playsInline=true;this.collector.controls=false;this.collector.src=COLLECTOR_SRC;this.collector.hidden=true;this.root.appendChild(this.collector);
   // Only eight photographs; keep decoded images ready for immediate switching.
   this.preloads=Object.entries(cameras).map(([key,src])=>{const img=make('img','');img.src=src;return {key,img};});
  }
@@ -35,7 +39,7 @@ export class Chapter8Finale{
   const waitingForVoice=cue.syncVisualToAudio&&!(this.entry?.key===f.id+':'+c.sequence&&this.entry.started);
   const visual=waitingForVoice?'black':expiredScare?(f.polishVersion>=4?'black':'lost'):cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
   this.gridCanvas.hidden=!(visual==='grid'||cue.zoom);
-  this.image.hidden=!camera||visual==='grid';this.video.hidden=visual!=='news';this.interference.hidden=!camera&&visual!=='lost';
+  this.image.hidden=!camera||visual==='grid';this.video.hidden=visual!=='news';this.collector.hidden=visual!=='collector';this.interference.hidden=!camera&&visual!=='lost';
   if(camera&&this.image.getAttribute('src')!==cameras[visual])this.image.src=cameras[visual];
   // The reveal is abrupt. Other CCTV feed changes use a short fade from black.
   const frame=cameraFrame(cue,elapsed,f.deadline!==null,(this.document.defaultView?.innerWidth??1920)/(this.document.defaultView?.innerHeight??1080));
@@ -47,8 +51,15 @@ export class Chapter8Finale{
   if(cue.motion)this.label.textContent='MOTION DETECTED';
   this.root.dataset.motion=String(!!cue.motion&&visual==='grid');
   this.timestamp.hidden=!camera;this.timestamp.textContent='2026-10-31  '+new Date(Date.UTC(2026,9,31,22,14,0)+Math.max(0,this.now()-f.startedAt)).toISOString().slice(11,19);
-  this.title.hidden=!['party','news-intro','ending'].includes(visual);this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
+  const revisedEnding=f.polishVersion>=6&&visual==='ending';
+  this.title.hidden=!['party','news-intro','ending'].includes(visual);if(!revisedEnding)this.title.textContent=visual==='ending'?'HAPPY HALLOWEEN':visual==='news-intro'?'WESTMAN NEWS':'BROOKWOOD';
   this.title.style.opacity=String(visual==='ending'?1-smooth(Math.max(0,elapsed-1200)/1800):smooth(elapsed/1200));
+  this.title.classList.toggle('ch8-halloween',revisedEnding);
+  if(revisedEnding){
+   if(this.greeting.parentNode!==this.title)this.title.replaceChildren(this.greeting);
+   const frame=greetingFrame(cue,elapsed);this.title.dataset.glitch=String(frame.stage);this.title.dataset.black=String(frame.black);this.title.style.opacity=String(frame.opacity);this.greeting.style.transform='translateX('+frame.tear+'px)';
+   for(let n=0;n<this.letters.length;n++)this.letters[n].dataset.gone=String(frame.gone.has(n));
+  }else this.title.dataset.glitch='0';
   const wife=wifePresentation(c,this.now()),speaking=cue.kind==='narration'&&this.entry?.key===f.id+':'+c.sequence&&!this.entry.ended&&!this.entry.media.paused;
   this.narrator.update({...wife,speaking,title:wife.title||'BROOKWOOD FARM',eyebrow:'BROOKWOOD FARM · CASE FILE 1996',subtitle:wife.title?'':'THE QUESTIONS REMAIN.',titleOpacity:wife.title?smooth((wife.offset-GAME_TITLE_AT_MS)/500):1});
   this.breach.hidden=!(f.polishVersion>=1&&['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue.id));this.breach.style.opacity=String(.86+.14*(.5+.5*Math.sin(elapsed/650)));
@@ -62,7 +73,7 @@ export class Chapter8Finale{
   const key=f.id+':'+c.sequence;
   if(this.entry?.key!==key)this.release();
   if(this.entry){const e=this.entry;if(cue.offsetMs!=null&&!e.ended&&e.media.currentTime*1000>=cue.offsetMs+cue.durationMs){e.end();e.media.pause();}const progress=Math.max(0,e.media.currentTime*1000-(cue.offsetMs??0));e.media.volume=primaryEffectGain(cue,progress);if(cue.id==='whistle-approach')this.sound.approach(progress);if(this.entry.ended)this.ack('chapter8-finale-ended');else if(!this.entry.media.paused&&f.mediaStartedAt===null)this.ack('chapter8-finale-playing');return;}
-  const media=cue.kind==='video'?this.video:this.player.media.get(cue.id);
+  const media=cue.kind==='video'?(cue.id==='collector-reveal'?this.collector:this.video):this.player.media.get(cue.id);
   if(!media||media.readyState<2){this.blocked=!!media?.error;this.message=this.blocked?'MEDIA COULD NOT LOAD — RETRY':'PREPARING '+(cue.kind==='video'?'BROADCAST':'AUDIO');return;}
   if(cameras[cue.visual]&&(!this.image.complete||!this.image.naturalWidth))return;
   if(cue.id==='whistle-approach'&&!this.sound.prepareWhistle(media))return;
@@ -88,8 +99,8 @@ export class Chapter8Finale{
   e.acks.add(action);this.send(action).catch(()=>{if(this.entry===e){e.failed.add(action);this.blocked=true;this.message='RESUME FINALE TO RETRY';e.media.pause();}}).finally(()=>e.acks.delete(action));
  }
  play(){const e=this.entry;if(!e||e.pending||e.ended||!e.media.paused||e.attempted)return;e.attempted=true;e.pending=true;Promise.resolve(e.media.play()).catch(()=>{if(this.entry===e){this.blocked=true;this.message='ENABLE AUDIO / RESUME';}}).finally(()=>e.pending=false);}
- unlock(){this.sound.unlock();this.readyKey=null;const e=this.entry;if(!e){const cue=finaleCue(this.state?.chapter8),media=cue?.kind==='video'?this.video:this.player.media.get(cue?.id);if(media?.error)media.load();return;}e.failed.clear();e.attempted=false;if(e.media.error){e.media.load();this.release();return;}if(e.ended)this.ack('chapter8-finale-ended');else if(!e.media.paused)e.playing();else this.play();}
+ unlock(){this.sound.unlock();this.readyKey=null;const e=this.entry;if(!e){const cue=finaleCue(this.state?.chapter8),media=cue?.kind==='video'?(cue.id==='collector-reveal'?this.collector:this.video):this.player.media.get(cue?.id);if(media?.error)media.load();return;}e.failed.clear();e.attempted=false;if(e.media.error){e.media.load();this.release();return;}if(e.ended)this.ack('chapter8-finale-ended');else if(!e.media.paused)e.playing();else this.play();}
  needsUnlock(){return this.blocked||this.sound.blocked;}
  release(){const e=this.entry;if(!e)return;this.entry=null;for(const [name,fn] of [['playing',e.playing],['ended',e.end],['pause',e.pause],['error',e.error]])e.media.removeEventListener(name,fn);e.media.pause();this.blocked=false;this.message='';}
- stop(){this.epoch++;this.release();this.sound.stop();this.player.stop();for(const media of this.player.media.values()){media.removeAttribute('src');media.load();}this.video.pause();this.video.removeAttribute('src');this.video.load();this.state=null;this.root.hidden=true;this.root.remove();for(const {img} of this.preloads)img.removeAttribute('src');this.preloads=[];}
+ stop(){this.epoch++;this.release();this.sound.stop();this.player.stop();for(const media of [...this.player.media.values(),this.video,this.collector]){media.pause();media.removeAttribute('src');media.load();}this.state=null;this.root.hidden=true;this.root.remove();for(const {img} of this.preloads)img.removeAttribute('src');this.preloads=[];}
 }

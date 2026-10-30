@@ -31,3 +31,25 @@ body.chapter8-active #chapterSelectPanel{z-index:90}
 .ch8-camera-grid{position:absolute;width:min(100vw,200vh);aspect-ratio:2/1;left:50%;top:50%;transform:translate(-50%,-50%);will-change:transform}.ch8-camera-grid img{display:block;width:100%;height:100%;object-fit:contain}
 .ch8-finale .ch8-wife{position:absolute;inset:0;z-index:6}
 .ch8-camera-grid{z-index:0}.ch8-camera-image{z-index:1}.ch8-camera-interference{z-index:2}.ch8-camera-label,.ch8-camera-time,.ch8-finale-title{z-index:3}.ch8-security-breach{z-index:4}.ch8-finale-news{z-index:5}
+
+/* Enhance the existing HTML greeting, never the reserved credits artwork. */
+.ch8-finale-title.ch8-halloween{padding:5vw;background:radial-gradient(ellipse at 50% 48%,#44200d 0,#140d0b 44%,#000 80%);overflow:hidden}
+.ch8-halloween-words{position:relative;z-index:1;width:100%;filter:drop-shadow(0 12px 18px #000);animation:ch8-greeting-breathe 5s ease-in-out infinite}
+.ch8-halloween-line{white-space:nowrap;font:bold clamp(36px,9.6vw,184px)/1.15 Georgia,'Times New Roman',serif;letter-spacing:.045em}
+.ch8-halloween-line:first-child{font-size:clamp(40px,11vw,212px);letter-spacing:.12em}
+.ch8-halloween-letter{display:inline-block;color:#ffc06b;text-shadow:0 2px #e4903b,0 4px #a75021,0 7px #632b17,0 0 24px #f1853680;transition:none}
+.ch8-halloween-letter[data-gone=true]{visibility:hidden}
+.ch8-halloween:before,.ch8-halloween:after{content:'';position:absolute;inset:0;pointer-events:none}
+.ch8-halloween:before{background:radial-gradient(circle at 16% 65%,#e29b6255 0 1px,transparent 2px),radial-gradient(circle at 79% 27%,#ffd08b55 0 2px,transparent 3px),radial-gradient(circle at 86% 77%,#df8c3855 0 1px,transparent 3px),radial-gradient(circle at 28% 22%,#ffd08b33 0 2px,transparent 4px);animation:ch8-greeting-drift 9s ease-in-out infinite alternate}
+.ch8-halloween:not([data-glitch='0']){background:#060405}
+.ch8-halloween:not([data-glitch='0']) .ch8-halloween-words{animation:none;filter:drop-shadow(6px 0 #e0405070) drop-shadow(-6px 0 #43a3be80)}
+.ch8-halloween:not([data-glitch='0']):after{z-index:2;opacity:.28;background:repeating-linear-gradient(0deg,transparent 0 5px,#d9e9ef 6px,#000 8px);animation:ch8-ending-static 90ms steps(2,end) infinite}
+.ch8-halloween[data-glitch='3']:after,.ch8-halloween[data-glitch='4']:after{opacity:.5}
+.ch8-halloween[data-glitch='5']{background:#000}
+.ch8-halloween[data-glitch='5']:before{display:none}
+.ch8-halloween[data-glitch='5']:after{opacity:.7}
+.ch8-halloween[data-glitch='5'][data-black=true]:after{display:none}
+@keyframes ch8-greeting-breathe{50%{transform:translateY(-.7vh) scale(1.012)}}
+@keyframes ch8-greeting-drift{to{transform:translateY(-3vh);opacity:.4}}
+@keyframes ch8-ending-static{to{transform:translateY(9px) scaleY(1.04);clip-path:polygon(0 9%,100% 12%,100% 40%,0 32%,0 57%,100% 65%,100% 83%,0 90%)}}
+@media(prefers-reduced-motion:reduce){.ch8-halloween-words,.ch8-halloween:before,.ch8-halloween:after{animation:none!important}}

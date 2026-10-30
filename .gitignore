@@ -19,6 +19,8 @@ coverage/
 # Logs and caches
 logs/
 *.log
+# Preserve the full-quality local Collector source; deploy its 1080p delivery copy.
+assets/chapter8/collector-reveal.mp4
 .npm/
 .cache/
 *.tsbuildinfo
