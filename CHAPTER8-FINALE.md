@@ -221,3 +221,9 @@ Run npm run dev, open local /tv, Ctrl+Shift+C, authenticate and select CHAPTER 8
 Browser audio still requires the existing unlock gesture; buffering and device output latency remain browser constraints. A blocked warning waits to reveal SIGNAL LOST until native playback starts. Actual party-speaker loudness should be reviewed locally. Local implementation and validation preceded release authorization; production status is verified separately after deployment.
 
 The production release uses the existing Brookwood project. Read-only smoke checks fetch /tv and /join without executing game JavaScript, compare runtime files, and inspect media headers/ranges; they do not start or reset a session.
+
+## After-news Test Mode shortcut
+
+In Ctrl+Shift+C Chapter Select, an authenticated host already in a Chapter 8 finale test run can select Skip to After Breaking News. The option is hidden/disabled outside that test run, and the server separately rejects real-game use even if a request supplies testMode=true. It begins the complete wife-16 cheerful return, then follows the existing greeting, Collector and photo credits unchanged. Successful navigation disposes of the previous TV audio/video controller before rendering; saved participants, historical state and clues remain intact. The new run fences stale media acknowledgements and restores its cue normally after refresh.
+
+Shortcut validation: 3 focused tests passed (authorization/Test Mode, state/refresh preservation, prior media cleanup); production build passed, 250 files. No full regression suite or browser rehearsal was run for this shortcut-only change.

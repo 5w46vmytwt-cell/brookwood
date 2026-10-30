@@ -11,6 +11,7 @@ function enter(s,step,now){const c=s.chapter8;c.step=step;c.phaseAt=now;c.audioS
 export function makeChapter8Starter(body={},checkpoint=null){
  const id=randomUUID(),now=Date.now();return s=>{
   if(checkpoint&&!chapter8Checkpoints.includes(checkpoint))throw new LobbyError(400,'Unknown Chapter 8 checkpoint.');
+  if(checkpoint==='chapter8-finale-after-news'&&(!isChapter8(s)||s.chapter8?.finale?.testEntry!==true))throw new LobbyError(403,'Enable a Chapter 8 finale test checkpoint first.');
   if(!checkpoint){
    if(body.generation!==s.generation)throw new LobbyError(409,'The session changed.');
    if(isChapter8(s))return UNCHANGED;
@@ -19,7 +20,7 @@ export function makeChapter8Starter(body={},checkpoint=null){
   const target=checkpoint==='chapter8-puzzle'?'puzzle':'unexpected-evidence';
   if(!s.chapter8)s.chapter8={id,startedAt:now,step:target,phaseAt:now,audioStartedAt:null,deadline:null,sequence:0,revealedClues:[],photoSentAt:null,puzzleStartedAt:target==='puzzle'?now:null,completedAt:null};
   else {if(isChapter8(s)&&s.chapter8.step===target&&!finaleCheckpoints.includes(checkpoint))return UNCHANGED;enter(s,target,now);if(target==='puzzle')s.chapter8.puzzleStartedAt??=now;s.chapter8.completedAt=null;}
-  if(finaleCheckpoints.includes(checkpoint)){const index=finaleCues.findIndex(c=>c.id===(checkpoint==='chapter8-finale-news'?'breaking-news':checkpoint==='chapter8-finale-silence'?'living-silence':'handoff'));startFinale(s.chapter8,now,index);s.chapter8.finale.testEntry=true;}else if(checkpoint)delete s.chapter8.finale;
+  if(finaleCheckpoints.includes(checkpoint)){const index=finaleCues.findIndex(c=>c.id===(checkpoint==='chapter8-finale-after-news'?'wife-16':checkpoint==='chapter8-finale-news'?'breaking-news':checkpoint==='chapter8-finale-silence'?'living-silence':'handoff'));startFinale(s.chapter8,now,index);s.chapter8.finale.testEntry=true;}else if(checkpoint)delete s.chapter8.finale;
   s.phase='chapter8';
  };
 }

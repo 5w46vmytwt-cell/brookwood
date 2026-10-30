@@ -104,4 +104,4 @@ export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version
 export const finaleDurationMs=finaleCues.at(-1).end;
 export const cuesFor=c=>c?.finale?.polishVersion===7?finaleCues:c?.finale?.polishVersion===6?version6FinaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
-export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news'];
+export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news','chapter8-finale-after-news'];
