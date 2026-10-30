@@ -11,7 +11,7 @@ function enter(c,index,now){
 }
 export function startFinale(c,now,index=0){
  c.step='finale';c.phaseAt=now;c.audioStartedAt=null;c.deadline=null;c.completedAt=null;
- c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:7,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};enter(c,index,now);
+ c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:8,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};enter(c,index,now);
 }
 export function finaleHostAction(c,b,now){
  const f=c.finale,cue=finaleCue(c);
@@ -37,7 +37,7 @@ export function advanceFinale(c,now){
 export function validateFinale(c){
  const f=c.finale,time=n=>Number.isFinite(n)&&n>0,cue=finaleCue(c);
  if(!f||typeof f.id!=='string'||!f.id||!time(f.startedAt)||!time(f.phaseAt)||!Number.isInteger(f.index)||!cue||f.mediaStartedAt!==null&&(!time(f.mediaStartedAt)||f.mediaStartedAt<f.phaseAt||cue.kind==='hold')||f.completedAt!==null&&!time(f.completedAt)||f.testEntry!==undefined&&typeof f.testEntry!=='boolean')throw Error('Invalid Chapter 8 finale.');
- if(f.polishVersion!==undefined&&![1,2,3,4,5,6,7].includes(f.polishVersion))throw Error('Invalid finale polish version.');
+ if(f.polishVersion!==undefined&&![1,2,3,4,5,6,7,8].includes(f.polishVersion))throw Error('Invalid finale polish version.');
  if(f.soundAnchors&&(typeof f.soundAnchors!=='object'||Array.isArray(f.soundAnchors)||Object.entries(f.soundAnchors).some(([k,v])=>!['garage','sirens','news','happy','credits'].includes(k)||!time(v))))throw Error('Invalid finale sound anchor.');
  if(c.step==='finale'){
   if(cue.kind==='hold'){if(f.deadline!==null&&(!time(f.deadline)||f.deadline!==f.phaseAt+cue.durationMs)||f.deadline===null&&cue.id!=='living-silence'&&!cue.readyImage)throw Error('Invalid finale hold.');}

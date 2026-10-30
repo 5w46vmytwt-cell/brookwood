@@ -1,11 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import{createHash}from'node:crypto';
-import {finaleCues,version6FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
+import {version7FinaleCues as finaleCues,version6FinaleCues,finaleCue,cuesFor} from '../chapter8-finale-timing.js';
 import {creditPhotos,creditFrame,creditsVolume,Chapter8CreditsAudio,SHUTDOWN_MS} from '../chapter8-credits.js';
 import {makeChapter8Starter,chapter8HostAction,advanceChapter8,validateChapter8} from '../api/_chapter8.js';
 import {finalNarrationFixture} from './chapter7-fixture.js';import {UNCHANGED} from '../api/_state.js';
 import {fragmentedMp4Metadata} from './fragmented-mp4-metadata.js';
 const cue=id=>finaleCues.find(c=>c.id===id);
-function fixture(id){const s=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(s);const c=s.chapter8,f=c.finale;Object.assign(f,{index:finaleCues.findIndex(c=>c.id===id),phaseAt:100000,mediaStartedAt:null,deadline:cue(id).kind==='hold'&&!cue(id).readyImage?100000+cue(id).durationMs:null});return s;}
+function fixture(id){const s=finalNarrationFixture(Date.now()+2000);makeChapter8Starter({},'chapter8-finale')(s);const c=s.chapter8,f=c.finale;Object.assign(f,{polishVersion:7,index:finaleCues.findIndex(c=>c.id===id),phaseAt:100000,mediaStartedAt:null,deadline:cue(id).kind==='hold'&&!cue(id).readyImage?100000+cue(id).durationMs:null});return s;}
 const body=s=>({generation:s.generation,chapter8Id:s.chapter8.id,sequence:s.chapter8.sequence,finaleId:s.chapter8.finale.id,cueId:finaleCue(s.chapter8).id});
 test('supplied final1-final9 PNG bytes and dimensions are exact; shutdown is unchanged H264/AAC fragmented media',()=>{
  const media=JSON.parse(fs.readFileSync('chapter8-credits-media.json'));assert.equal(media.length,10);assert.deepEqual(media.slice(0,9).map(m=>m.src),creditPhotos.map(p=>p.src));for(const m of media){const b=fs.readFileSync('.'+m.src);assert.equal(b.length,m.bytes);assert.equal(createHash('sha256').update(b).digest('hex'),m.sha256);if(m.width){assert.equal(b.readUInt32BE(16),m.width);assert.equal(b.readUInt32BE(20),m.height);assert.equal(b.subarray(0,8).toString('hex'),'89504e470d0a1a0a');}else{assert.equal(fragmentedMp4Metadata(b).durationMs,SHUTDOWN_MS);assert.equal(m.durationMs,SHUTDOWN_MS);assert(m.fragmented);assert.equal(m.tracks[1].codec,'mp4a');assert.equal(m.tracks[1].sampleRate,32000);}}

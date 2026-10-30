@@ -2,7 +2,7 @@
 
 ## Review status
 
-Production baseline: 7cac329a802c224ba224845cd40bbbd3588d8e37. The user authorized the supplied photographic credits, validation, commit/push and production deployment through the existing GitHub main / Brookwood Vercel project. All earlier cinematic cues through native Collector completion, narration, camera assets, earlier chapters, player sessions, host authentication and Redis/environment configuration are preserved. Final9 is now approved for the permanent ending; no replacement artwork is generated. Production readiness is independently checked after release.
+Production baseline for the current credits polish: a52f50514a450cd496f5e4ea4c0731944391fb22. The user authorized the supplied photographic credits, validation, commit/push and production deployment through the existing GitHub main / Brookwood Vercel project. All earlier cinematic cues through native Collector completion, narration, camera assets, earlier chapters, player sessions, host authentication and Redis/environment configuration are preserved. Final9 is now approved for the permanent ending; no replacement artwork is generated. Production readiness is independently checked after release.
 
 ## Preserved CCTV polish
 
@@ -20,27 +20,27 @@ Production baseline: 7cac329a802c224ba224845cd40bbbd3588d8e37. The user authoriz
 - Collector reveal uses the supplied 104.000-second video with its native AAC audio at volume 1, contained fullscreen at its original 1920x1080 aspect ratio. Chrome measured its native duration at 104.000 seconds; the file's AAC track metadata includes a 21-ms encoder tail. Only native ended can advance; wall-clock expiry cannot cut it short. No bed, narration, siren or other effect plays over it.
 - Version-6 saves retain their original full, nonlooping final-credits.mp3 main-song cue on black at 80%. Fresh version-7 runs use the same unchanged main song for the photographic credits below, ending it with the requested fade after final8.
 - Reuse the existing TV clock, Player preload map, one cue entry per sequence, native playing/ended listeners, autoplay resume control, generation/run/sequence fences and atomic API progression. No extra timers, RAFs, pollers or phone audio are introduced. Refresh reconstructs letter state from the persisted cue and seeks each active media clock rather than replaying earlier cues. Leaving/reset/replay stops and unloads both videos and all audio.
-- Fresh runs select polishVersion 7. Stored version-6 and older runs retain their exact saved cue indices and timelines; no production session is migrated or reset.
+- Fresh runs select polishVersion 8. Stored version-7 and older runs retain their exact saved cue indices, photo durations and audio policy; no production session is migrated or reset.
 
 ### Media delivery
 
 The supplied collector-reveal.mp4 is 204196548 bytes, exceeding GitHub's ordinary 100-MiB file limit. The original stays untouched locally and is explicitly excluded from Git/build output. A 65016535-byte 1080p H.264 delivery copy, collector-reveal-web.mp4, is included and used by the cinematic. It retains the original frame rate, duration and aspect ratio; only video is encoded at a constrained 5-Mbit/s target. The original AAC stream is copied without re-encoding. Its demuxed compressed-audio SHA256 matches the source exactly: b4b715bc82aaed0928fcd9a09a5c22cd814f9d289b1adfcb9197b24a25c5738a. Source/delivery hashes and new audio metadata are in chapter8-ending-media.json. Both supplied MP3s remain byte-for-byte unchanged. No media is missing.
 
-## Photographic credits (version 7)
+## Photographic credits (version 8)
 
 Actual supplied filenames: final1.png through final9.png and shutdown.mp4. Every source byte is retained, with hashes and dimensions in chapter8-credits-media.json. No asset is renamed, regenerated or re-encoded. The unchanged final-credits.mp3 remains 320-kbit/s stereo, nonlooping at the established main music volume of 80%; no narration ducking or additional audio is applied.
 
 Native Collector completion automatically enters credits-intro. The existing Player's one final-song audio element starts at its beginning. Native playing plus the decoded first image arms the existing authenticated readiness action; this atomically saves soundAnchors.credits and the intro deadline. The centered HTML TO BE CONTINUED... presentation fades in for 500 ms, holds fully visible for 4000 ms, then fades to black over 1000 ms. Song playback is continuous when the first image appears.
 
-Photos final1 through final8 appear in numeric order using one reusable paper figure and image node. Each nine-second cue has a 900-ms soft entrance/slide/settle, 7000-ms full-opacity hold with a slow zoom, 900-ms sideways fade and 200-ms pure black interval. Alternating roughly -2.4/+2.4 degree angles settle naturally. A single pure creditFrame formula samples the existing TV clock; no separate timers, keyframe clocks or eight custom animation engines are added. Rotated bounds are fitted inside 88% viewport limits, including frame, zoom and motion margins. Thin warm off-white paper, border-only CSS texture and soft shadow do not cover or recolor the artwork. No captions or other overlays are shown. Reduced-motion mode keeps opacity changes with static positioning.
+Photos final1 through final8 appear in numeric order using one reusable paper figure and image node. Each eleven-second cue (exactly 2000 ms longer than version 7) has a 900-ms soft entrance/slide/settle, 9000-ms full-opacity hold with a slow zoom, 900-ms sideways fade and 200-ms pure black interval. Alternating roughly -2.4/+2.4 degree angles settle naturally. A single pure creditFrame formula samples the existing TV clock; no separate timers, keyframe clocks or eight custom animation engines are added. Rotated bounds are fitted inside 88% viewport limits, including frame, zoom and motion margins. Thin warm off-white paper, border-only CSS texture and soft shadow do not cover or recolor the artwork. No captions or other overlays are shown. Reduced-motion mode keeps opacity changes with static positioning.
 
 Each image is preloaded during the earlier finale and decoded before its persisted viewing interval begins. Only one figure exists, so photographs cannot crossfade over one another. Refresh waits for actual image readiness, then reconstructs its remaining canonical motion/hold rather than restarting. The song uses the saved credits anchor and the same element across every photo; refresh seeks the elapsed position once. Blocked audio uses the existing authenticated resume control. Read-only TVs cannot arm or advance the intro.
 
-After final8 has completely faded and its black interval finishes, credits-music-out holds black for 2500 ms while smoothly fading only the final song from 80% to zero. The element is then paused before shutdown begins. No song or earlier soundtrack/effect plays under shutdown. The source song is deliberately not played to its original full 251.611-second duration in this cut and is never looped.
+After final8 has completely faded and its black interval finishes, credits-music-out holds black for 2500 ms while smoothly fading only the final song from 80% to zero. In version 8 the same element continues playing even when that fade reaches zero; it is never paused or restarted at the fade boundary. At shutdown, muted is set before restoring its ordinary volume property to 80%, so only the native shutdown audio is audible. The song timeline continues without any play(), pause() or currentTime assignment at either shutdown or final9 transitions. Version-7 saves retain their former stop policy.
 
 Shutdown is the exact supplied fragmented MP4: H.264, 1344x768, original stereo AAC at 32 kHz. Its ordinary movie header is zero; fragment sample tables measure 5258.343750 ms and Chrome independently reports 5.258344 seconds. The source decodes fully. It is contained fullscreen, with native audio at volume 1 and no controls. Only native ended can advance; timer-only requests cannot cut it short. Existing playing/ended authorization, generation/run/sequence fences, seek recovery, preload and retry/unlock behavior are reused.
 
-Native shutdown completion enters final-image. The decoded final9.png fades in over 1200 ms, with contain sizing on black and no paper frame. The server then stores Chapter 8 complete, retaining this last visual. Completed-state TV mounting and refresh explicitly restore final9 indefinitely. No deadline, automatic lobby return, replay or additional audio follows. Chapter exit/reset cleans up all three videos, song listeners and audio, decoded images and presentation nodes; it does not modify player data.
+Native shutdown completion enters final-image. The decoded final9.png fades in over 1200 ms, with contain sizing on black and no paper frame. The server then stores Chapter 8 complete, retaining this last visual. Completed-state TV mounting and refresh explicitly restore final9 indefinitely. No deadline, automatic lobby return or replay follows. Version 8 unmutes the same song at its prior 80% normal volume after shutdown finishes, without restarting or seeking. The same song remains eligible in the completed visual state until its natural end; an ended flag and the saved anchor/duration guard prevent automatic replay, including after unlock or refresh. A refresh during shutdown reconstructs one muted element at its saved elapsed song position; a refresh after song completion creates no playback. No second music instance, narration or effects are added. Chapter exit/reset cleans up all three videos, song listeners and audio, decoded images and presentation nodes; it does not modify player data.
 
 ## Actual Chapter 7 renderer reused
 
@@ -116,7 +116,7 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 
 ## Complete current timeline
 
-85 cues; nominal finite runtime 591.943 seconds = 9 minutes 51.943 seconds, followed by final9 indefinitely. This measures the wife's takeover through the final image's fade, excluding the interactive puzzle before the cinematic. All earlier nominal windows through Collector are identical to version 6. Loading/decoding, native playback, acknowledgements and polling may extend wall-clock playback; no narration or video is shortened to meet this runtime.
+85 cues; nominal finite visual runtime 607.943 seconds = 10 minutes 7.943 seconds, followed by final9 indefinitely. Eight photo cues add exactly 16000 ms in total. The final song continues on its original 251.611-second media timeline, muted during shutdown and audible again over final9 until natural completion. This visual runtime excludes the earlier interactive puzzle and native loading/acknowledgement latency.
 
 | Cue | Nominal start - end (seconds) | View / transition |
 | --- | --- | --- |
@@ -194,17 +194,17 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 | collector-black | 400.484 - 401.484 | black |
 | collector-reveal | 401.484 - 505.484 | collector |
 | credits-intro | 505.484 - 510.984 | credits-intro |
-| credit-photo-1 | 510.984 - 519.984 | credit-photo / final1.png |
-| credit-photo-2 | 519.984 - 528.984 | credit-photo / final2.png |
-| credit-photo-3 | 528.984 - 537.984 | credit-photo / final3.png |
-| credit-photo-4 | 537.984 - 546.984 | credit-photo / final4.png |
-| credit-photo-5 | 546.984 - 555.984 | credit-photo / final5.png |
-| credit-photo-6 | 555.984 - 564.984 | credit-photo / final6.png |
-| credit-photo-7 | 564.984 - 573.984 | credit-photo / final7.png |
-| credit-photo-8 | 573.984 - 582.984 | credit-photo / final8.png |
-| credits-music-out | 582.984 - 585.484 | black |
-| shutdown | 585.484 - 590.743 | shutdown |
-| final-image | 590.743 - 591.943 | final9 |
+| credit-photo-1 | 510.984 - 521.984 | credit-photo / final1.png |
+| credit-photo-2 | 521.984 - 532.984 | credit-photo / final2.png |
+| credit-photo-3 | 532.984 - 543.984 | credit-photo / final3.png |
+| credit-photo-4 | 543.984 - 554.984 | credit-photo / final4.png |
+| credit-photo-5 | 554.984 - 565.984 | credit-photo / final5.png |
+| credit-photo-6 | 565.984 - 576.984 | credit-photo / final6.png |
+| credit-photo-7 | 576.984 - 587.984 | credit-photo / final7.png |
+| credit-photo-8 | 587.984 - 598.984 | credit-photo / final8.png |
+| credits-music-out | 598.984 - 601.484 | black |
+| shutdown | 601.484 - 606.743 | shutdown |
+| final-image | 606.743 - 607.943 | final9 |
 
 ## Validation
 
@@ -216,7 +216,7 @@ No requested asset is missing or format-unusable. The reused Chapter 6 sound is 
 
 ## Local preview and remaining limits
 
-Run npm run dev, open local /tv, Ctrl+Shift+C, authenticate and select CHAPTER 8 - FINAL CINEMATIC. A fresh checkpoint selects version 7. Earlier stored runs intentionally keep their original cuts. scripts/verify-chapter8-finale-browser.mjs uses isolated local in-memory state and a silent phone; run scripts/verify-chapter8-narrator-browser.mjs alongside it to reproduce both screenshot pairs. Neither script contacts production Redis.
+Run npm run dev, open local /tv, Ctrl+Shift+C, authenticate and select CHAPTER 8 - FINAL CINEMATIC. A fresh checkpoint selects version 8. Earlier stored runs intentionally keep their original cuts. scripts/verify-chapter8-finale-browser.mjs uses isolated local in-memory state and a silent phone; run scripts/verify-chapter8-narrator-browser.mjs alongside it to reproduce both screenshot pairs. Neither script contacts production Redis.
 
 Browser audio still requires the existing unlock gesture; buffering and device output latency remain browser constraints. A blocked warning waits to reveal SIGNAL LOST until native playback starts. Actual party-speaker loudness should be reviewed locally. Local implementation and validation preceded release authorization; production status is verified separately after deployment.
 
@@ -227,3 +227,9 @@ The production release uses the existing Brookwood project. Read-only smoke chec
 In Ctrl+Shift+C Chapter Select, Skip to After Breaking News is a normal visible option beside the other Chapter 8 checkpoints. It uses their existing authenticated test-navigation permissions and creates a finale test run. The former finale.testEntry visibility/prerequisite gate incorrectly hid it during opening and puzzle test runs and has been removed. Ordinary gameplay and phone actions do not invoke this explicit host testing action. It begins complete wife-16, with the existing media disposal, saved-state recovery, Collector and credits unchanged.
 
 Menu correction validation: 3 focused tests and the 250-file build passed. A short actual Chrome check opened Ctrl+Shift+C during an opening test run, showed the enabled option in the native dropdown, selected it with native keyboard input and clicked Go while news was playing. Previous media stopped/unloaded, wife-16 began, refresh restored its saved clock, players were preserved and phones remained silent. Screenshot: logs/ch8-after-news-native-menu.png. Evidence: logs/ch8-after-news-browser-proof.json. No full regression suite or lengthy cinematic rehearsal was run.
+
+## Targeted credits/music polish validation
+
+Skip to Final Credits is a visible, enabled option in the same Ctrl+Shift+C host-only test selector as the other Chapter 8 checkpoints. Selecting it stops prior controllers, starts a version-8 finale at credits-intro, and plays TO BE CONTINUED... with the existing final song. It is an explicit authenticated test-navigation action, not a normal gameplay button. Existing after-news testing remains available.
+
+Current validation: 5 focused tests passed for exact +2000-ms photo timing and retained animations, host-only checkpoint/state recovery, uninterrupted mute/unmute with zero transition pauses/replays/seeks, and natural-end/late-refresh non-restart behavior. Production build passed (250 files). A short Chrome test opened the native menu, selected Skip to Final Credits with keyboard input and clicked Go, verified the title plus one song at normal volume, prior media cleanup, preserved players and silent phones. Evidence: logs/ch8-final-credits-checkpoint-proof.json; screenshot logs/ch8-final-credits-native-menu.png. No full regression suite, exhaustive media checks or lengthy cinematic rehearsal was run for this polish. The earlier full-rehearsal results above document version 7.

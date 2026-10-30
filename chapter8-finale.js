@@ -51,7 +51,7 @@ export class Chapter8Finale{
   const credit=creditFrame(cue,elapsed,{width:creditView?.innerWidth??1920,height:creditView?.innerHeight??1080,armed:f.deadline!==null&&(!cue.photo||this.creditPhoto.complete&&this.creditPhoto.naturalWidth>0),reduced:creditView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false});
   this.photoPaper.style.width=credit.width+'px';this.photoPaper.style.padding=credit.padding+'px';this.photoPaper.style.opacity=String(credit.opacity);this.photoPaper.style.transform='translate(-50%, -50%) translate('+credit.x+'px,'+credit.y+'px) rotate('+credit.angle+'deg) scale('+credit.scale+')';
   this.finalImage.style.opacity=String(c.step==='complete'?1:f.deadline===null?0:smooth(elapsed/1200));
-  if(cue.credits)this.release();
+  if(cue.credits||cue.id==='final-image'&&f.polishVersion>=8)this.release();
   const creditReady=this.preloads.find(p=>p.key==='credit-1')?.img;this.creditsAudio.update(c,cue,this.now(),{ready:!!creditReady?.complete&&creditReady.naturalWidth>0,authenticated});
   if(camera&&this.image.getAttribute('src')!==cameras[visual])this.image.src=cameras[visual];
   // The reveal is abrupt. Other CCTV feed changes use a short fade from black.
