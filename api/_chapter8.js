@@ -11,7 +11,6 @@ function enter(s,step,now){const c=s.chapter8;c.step=step;c.phaseAt=now;c.audioS
 export function makeChapter8Starter(body={},checkpoint=null){
  const id=randomUUID(),now=Date.now();return s=>{
   if(checkpoint&&!chapter8Checkpoints.includes(checkpoint))throw new LobbyError(400,'Unknown Chapter 8 checkpoint.');
-  if(checkpoint==='chapter8-finale-after-news'&&(!isChapter8(s)||s.chapter8?.finale?.testEntry!==true))throw new LobbyError(403,'Enable a Chapter 8 finale test checkpoint first.');
   if(!checkpoint){
    if(body.generation!==s.generation)throw new LobbyError(409,'The session changed.');
    if(isChapter8(s))return UNCHANGED;
