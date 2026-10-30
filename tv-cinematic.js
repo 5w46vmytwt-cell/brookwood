@@ -1,6 +1,6 @@
 import {Chapter8View} from './chapter8.js';
 import { AbsoluteCueScheduler } from './cinematic-scheduler.js';
-import { CHAPTER1_END_MS } from './cinematic-timeline.js';
+import { CHAPTER1_END_MS, PHOTO_CHECKPOINT_MS } from './cinematic-timeline.js';
 import { chapter2Audio } from './chapter2-audio.js';
 import { chapter2Timeline } from './chapter2.js';
 import {Chapter3View} from './chapter3.js';
@@ -112,4 +112,4 @@ export class TVCinematicRuntime {
   unlockForTestJump(){if(this.state?.chapter8||this.state?.chapter7)return;this.audio.unlock({background:!this.state?.chapter6&&!chapter4Phases.includes(this.state?.phase)&&!chapter5Phases.includes(this.state?.phase)});this.unlockChapter3();this.unlockChapter4();this.unlockChapter5();this.unlockChapter6();}
 }
 // Classic Chapter 1 assets load first; the TV's following module uses this bridge.
-globalThis.BrookwoodTV={Runtime:TVCinematicRuntime,chapter7Checkpoints:storyCheckpoints};
+globalThis.BrookwoodTV={Runtime:TVCinematicRuntime,chapter7Checkpoints:storyCheckpoints,photoCheckpointMs:PHOTO_CHECKPOINT_MS};
