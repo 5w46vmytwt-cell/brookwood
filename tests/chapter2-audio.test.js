@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { chapter2Audio, chapter2Narration, partyTrack, partyVolume, duckWindows } from '../chapter2-audio.js';
 import { CHAPTER2_NARRATION, PHOTO_PROMPT_MS, PHOTO_CHECKPOINT_MS } from '../cinematic-timeline.js';
 import { wavMetadata } from './wav-metadata.js';
+import { mp3Metadata } from './mp3-metadata.js';
 const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
 function setup(){
   let elapsed=0;
@@ -20,14 +21,16 @@ function setup(){
     soundtrack:context.BrookwoodAudio.tvSoundtrack,audioExtension:chapter2Audio});
   return {p,track:p.tracks[0].audio,at(t,phase='opening',startedAt=100000,meta={}){elapsed=t;p.update({phase,startedAt},meta);}};
 }
-test('party MP3 contains only complete 256kbps 44100Hz joint-stereo MPEG-1 Layer III frames',()=>{
-  const b=fs.readFileSync(partyTrack.src.slice(1));let p=0,frames=0;
-  while(p<b.length){assert(p+4<=b.length);const h=b.readUInt32BE(p);
-    assert.equal(h>>>21,2047);assert.equal((h>>>19)&3,3);assert.equal((h>>>17)&3,1);
-    assert.equal((h>>>12)&15,13);assert.equal((h>>>10)&3,0);assert.equal((h>>>6)&3,1);
-    p+=Math.floor(144000*256/44100)+((h>>>9)&1);frames++;
-  }
-  assert.equal(p,b.length);assert.equal(frames,5519);assert.equal(partyTrack.durationMs,frames*1152/44100*1000);
+test('replacement party duration and Chapter 1 music gain preserve looping, native duration, voice and fade timing',()=>{
+  assert.equal(mp3Metadata(fs.readFileSync(partyTrack.src.slice(1))).durationMs,partyTrack.durationMs);
+  assert.equal(partyTrack.durationMs,182592);
+  const e=setup(),mix=e.p.timeline.scoreMix;
+  assert.deepEqual(JSON.parse(JSON.stringify(mix)),{openingVolume:.18,narrationVolume:.096,gapVolume:.144,windows:[{at:39000,end:42000,volume:.084}]});
+  assert.equal(e.track.loop,true);
+  assert.equal(chapter2Audio.backgroundVolumeAt(partyTrack.at),.144);
+  assert.equal(chapter2Audio.backgroundVolumeAt(partyTrack.at+3000),0);
+  e.at(8000);assert.equal(e.p.media.get('narration-01').volume,1);
+  e.track.duration=200;e.at(partyTrack.at+201000);assert.equal(e.track.currentTime,1);
 });
 test('party starts exactly at 50000, preloads and loops a single persistent element',()=>{
   const e=setup();assert.equal(e.track.preload,'auto');assert.equal(e.track.loop,true);

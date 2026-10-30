@@ -1,8 +1,8 @@
 import { CHAPTER2_NARRATION, CHAPTER2_START_MS, PHOTO_PROMPT_MS, PHOTO_CHECKPOINT_MS } from './cinematic-timeline.js';
 
-// Source frame metadata: 5519 MPEG-1 Layer III frames, 1152 samples at 44100 Hz.
+// Replacement source metadata; playback prefers the browser's native duration.
 export const partyTrack = Object.freeze({id:'chapter2-party', at:56925,
-  src:'/assets/chapter2/audio/halloweenbeat.mp3', durationMs:5519*1152/44100*1000});
+  src:'/assets/chapter2/audio/halloweenbeat.mp3', durationMs:182592});
 export const chapter2Narration = CHAPTER2_NARRATION.map(c=>Object.freeze({
   id:`chapter2-narration-${c.id}`, type:'narration', at:c.start, durationMs:c.duration,
   src:`/assets/chapter2/audio/narration-${c.id}.wav`
@@ -39,4 +39,4 @@ export function partyVolume(elapsed) {
 }
 export const chapter2Audio = Object.freeze({narration:chapter2Narration,tracks:[{...partyTrack,volumeAt:partyVolume}],
   persistPhases:['photo','photo-complete'],
-  backgroundVolumeAt:elapsed=>elapsed<CHAPTER2_START_MS?null:lerp(.12,0,(elapsed-CHAPTER2_START_MS)/3000)});
+  backgroundVolumeAt:elapsed=>elapsed<CHAPTER2_START_MS?null:lerp(.144,0,(elapsed-CHAPTER2_START_MS)/3000)});

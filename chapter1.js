@@ -4,7 +4,7 @@
  */
 (() => {
  const chapter1Timeline={id:'chapter1',end:56925,
-  scoreMix:{openingVolume:.15,narrationVolume:.08,gapVolume:.12,windows:[{at:39000,end:42000,volume:.07}]},
+  scoreMix:{openingVolume:.18,narrationVolume:.096,gapVolume:.144,windows:[{at:39000,end:42000,volume:.084}]},
   sections:[{id:'opening',at:0,end:7000},{id:'historical-sequence',at:7000,end:48925},{id:'welcome',at:48925,end:56925}],
   cues:[
    {id:'narration-01',type:'narration',at:8000,src:'/assets/chapter1/audio/narration-01.wav',durationMs:3775},
