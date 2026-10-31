@@ -18,6 +18,7 @@ test('valid session restores READY without a PIN and late authentication cannot 
 test('cast presentation keeps original card assets, removes round counter, and deals on the canonical clock',()=>{
  const html=fs.readFileSync('tv.html','utf8'),source=fs.readFileSync('chapter5.js','utf8'),css=fs.readFileSync('chapter5.css','utf8');
  assert(!html.includes('id="chapter5-roundProgress"'));assert(!source.includes("'ROUND '"));assert(html.includes('Who would be perfect for that role?'));assert(!source.includes("?'WAITING FOR THE HOST'"));
+ assert(!html.includes('The same person can win more than one role.'));assert(html.includes('No self-voting. One vote per role.'));assert(!source.includes('CASTING IN PROGRESS'));
  for(const name of ['01-the-screamer.png','02-the-terrible-decision-make.png','03-the-tripper.png','04-the-denier.png','05-the-sacrifice.png','06-the-killer.png'])assert(html.includes('/assets/chapter5/'+name));
  assert(source.includes('--cast-deal-clock'));assert(css.includes('animation-play-state:paused'));assert(css.includes('prefers-reduced-motion'));assert(css.includes('background:#000'));
 });

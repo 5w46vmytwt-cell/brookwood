@@ -87,8 +87,8 @@
 #chapter5TV #chapter5-winnerName{font-family:var(--party-font);color:var(--party-coral);font-weight:700;letter-spacing:-.035em;text-shadow:none}
 #chapter5TV #chapter5-cast h1{font:700 clamp(32px,3.7vw,60px)/1.2 var(--party-font);letter-spacing:-.025em;color:var(--party-white);text-shadow:none;margin:0 0 2vh}
 #chapter5-cast .cast-fan{display:flex;align-items:center;justify-content:center;width:92vw;height:58vh;gap:0;isolation:isolate}
-#chapter5-cast .cast-fan figure{--angle:-9deg;--lift:3vh;--deal-at:0ms;flex:0 0 23vw;min-width:0;margin:0 0 0 -11vw;padding:0;border:0;background:transparent;box-shadow:none;position:relative}
-#chapter5-cast .cast-fan figure:first-child{margin-left:0;flex-basis:30.5vw}
+#chapter5-cast .cast-fan figure{--angle:-9deg;--lift:3vh;--deal-at:0ms;flex:0 0 15vw;min-width:0;margin:0 0 0 -.6vw;padding:0;border:0;background:transparent;box-shadow:none;position:relative}
+#chapter5-cast .cast-fan figure:first-child{margin-left:0}
 #chapter5-cast .cast-fan figure:nth-child(2){--angle:-5.5deg;--lift:1.4vh;--deal-at:120ms}
 #chapter5-cast .cast-fan figure:nth-child(3){--angle:-2deg;--lift:0vh;--deal-at:240ms}
 #chapter5-cast .cast-fan figure:nth-child(4){--angle:2deg;--lift:0vh;--deal-at:360ms}
