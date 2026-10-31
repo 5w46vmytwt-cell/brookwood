@@ -32,14 +32,14 @@ function setup(score=false){
     opacity(id){return Number(nodes.get(id).style.opacity);}};
 }
 
-test('photo checkpoint alone plays the looping track at exactly 0.105, including refresh',()=>{
+test('photo checkpoint alone plays the looping track at exactly 0.075, including refresh',()=>{
   const e=setup(true);
   e.accept(timing.PHOTO_CHECKPOINT_MS,{phase:'photo'});
-  assert.equal(e.runtime.audio.tracks[0].gain,.105/.13);
+  assert.equal(e.runtime.audio.tracks[0].gain,.075/.13);
   const track=e.runtime.audio.tracks[0].audio;e.frame(20);
-  assert.equal(track.volume,.105);
+  assert.equal(track.volume,.075);
   e.accept(timing.PHOTO_CHECKPOINT_MS+100,{phase:'photo-complete'});
-  assert.equal(e.runtime.audio.tracks[0].gain,.105/.13);
+  assert.equal(e.runtime.audio.tracks[0].gain,.075/.13);
   e.accept(1000,{phase:'opening'});assert.equal(e.runtime.audio.tracks[0].gain,1);
 });
 test('locked timing constants are adjacent and keep a 1500ms photo prompt gap',()=>{
