@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { TVCinematicRuntime } from '../tv-cinematic.js';
 import {PhoneChapter3Runtime} from '../phone-chapter3.js';
 import {castingRoles} from '../chapter5-timing.js';
+import {installCastControls} from '../chapter5-controls.js';
 
 const inline = file => [...fs.readFileSync(file, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(s => s.trim()).join('\n');
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -69,13 +70,14 @@ test('casting phones wait through host pause/rules and activate only on authorit
   state={...state,chapter5:{...state.chapter5,round:{...state.chapter5.round,votingActive:true}}};await poll();assert(!e.document.getElementById('castingSubmit').classList.contains('hidden'));
 });
 
-test('TV host-ready control sends entered authorization and current run once, never assumes a player is host',async()=>{
+test('TV host-ready control requires an authenticated session and sends the current run once',async()=>{
   const e=returnEnvironment();await flush();const calls=[];
   e.context.state={phase:'chapter5-waiting',startedAt:1,serverNow:5063154,players:[],chapter5:{audioVersion:1,startedAt:5000000,readyAt:5063154,rulesStartedAt:null,roundIndex:0,castStartedAt:null,completedAt:null,winners:[],round:{id:'screamer',startedAt:null,completedAt:null,voteCount:0,votingActive:false,winner:null}}};
-  vm.runInContext('render(state)',e.context);assert.equal(e.document.getElementById('chapter5ReadyButton').hidden,false);
-  e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true};};e.document.getElementById('chapter5HostCode').value='entered-host';
+  vm.runInContext('render(state)',e.context);await flush();assert.equal(e.document.getElementById('chapter5ReadyButton').hidden,true);
+  e.context.lobbyRequest=async(url,body)=>{calls.push({url,body});return {ok:true,authenticated:true};};e.document.getElementById('chapter5HostCode').value='entered-host';
+  await e.document.getElementById('chapter5HostLogin').onclick();calls.length=0;assert.equal(e.document.getElementById('chapter5ReadyButton').hidden,false);
   vm.runInContext('castingEveryoneReady();castingEveryoneReady()',e.context);await flush();assert.equal(calls.length,1);
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),{url:'/api/host',body:{action:'casting-ready',code:'entered-host',chapter5StartedAt:5000000}});
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),{url:'/api/host',body:{action:'casting-ready',chapter5StartedAt:5000000}});
   assert(!fs.readFileSync('tv.html','utf8').includes('HOST_KEY'));
 });
 
@@ -84,7 +86,7 @@ test('TV host-ready readback renders rules immediately and a late waiting poll c
   const waiting={phase:'chapter5-waiting',startedAt:1,serverNow:5063154,players:[],chapter5:{audioVersion:1,startedAt:5000000,readyAt:5063154,rulesStartedAt:null,roundIndex:0,castStartedAt:null,completedAt:null,winners:[],round:{id:'screamer',startedAt:null,completedAt:null,voteCount:0,votingActive:false,winner:null}}};
   e.context.state=waiting;vm.runInContext('render(state)',e.context);
   const rules={...waiting,phase:'chapter5-rules',chapter5:{...waiting.chapter5,rulesStartedAt:5063154}};
-  e.context.lobbyRequest=async()=>({ok:true,state:rules});await vm.runInContext('castingEveryoneReady()',e.context);
+  await flush();e.context.lobbyRequest=async(url,body)=>body.action==='maze-login'?{authenticated:true}:{ok:true,state:rules};e.document.getElementById('chapter5HostCode').value='entered-host';await e.document.getElementById('chapter5HostLogin').onclick();await vm.runInContext('castingEveryoneReady()',e.context);
   assert.equal(vm.runInContext('last.phase',e.context),'chapter5-rules');vm.runInContext('render(state)',e.context);assert.equal(vm.runInContext('last.phase',e.context),'chapter5-rules');
   assert.equal(e.document.getElementById('chapter5ReadyButton').hidden,true);
   assert(fs.readFileSync('chapter5.css','utf8').includes('pointer-events:none'));
@@ -210,7 +212,7 @@ function environment(stored = null) {
       classList: { add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c), toggle(c, yes) { if (yes) classes.add(c); else classes.delete(c); } },
       replaceChildren(...nodes) { this.children=[...nodes]; }, focus() { this.focused=true; }, addEventListener(name, cb) { this.events[name] = cb; }, appendChild(node) { this.children.push(node); }, querySelector: element };
   }
-  const document = { events: {}, addEventListener(name,cb) { this.events[name]=cb; }, getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }, createElement: element };
+  const document = { body: element(), events: {}, addEventListener(name,cb) { this.events[name]=cb; }, getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); }, createElement: element };
   const context = vm.createContext({ performance:{now:()=>perf}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, document, location: { origin: 'https://brookwood.example' },
     localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
     setTimeout(cb) { const id = ++serial; timers.set(id, cb); return id; }, clearTimeout(id) { timers.delete(id); },
@@ -218,8 +220,9 @@ function environment(stored = null) {
   vm.runInContext(fs.readFileSync('cinematic-engine.js','utf8'), context);
   vm.runInContext(fs.readFileSync('chapter1.js','utf8'), context);
   vm.runInContext(fs.readFileSync('cinematic-audio.js','utf8'), context);
-  context.BrookwoodTV={Runtime:class extends TVCinematicRuntime {constructor(options){super({...options,Renderer:context.BrookwoodTimeline.Renderer,Player:context.BrookwoodAudio.Player,soundtrack:context.BrookwoodAudio.tvSoundtrack,now:context.performance.now,requestFrame:context.requestAnimationFrame,cancelFrame:context.cancelAnimationFrame});}}};
+  context.BrookwoodTV={...globalThis.BrookwoodTV,Runtime:class extends TVCinematicRuntime {constructor(options){super({...options,Renderer:context.BrookwoodTimeline.Renderer,Player:context.BrookwoodAudio.Player,soundtrack:context.BrookwoodAudio.tvSoundtrack,now:context.performance.now,requestFrame:context.requestAnimationFrame,cancelFrame:context.cancelAnimationFrame});}}};
   context.BrookwoodPrivatePhone={Runtime:class extends PhoneChapter3Runtime{constructor(options){super({...options,now:context.performance.now,requestFrame:context.requestAnimationFrame,cancelFrame:context.cancelAnimationFrame});}}};
+  context.BrookwoodCastControls={install:options=>installCastControls({...options,now:context.performance.now})};
   return { context, document, timers, storage, setPerformance(value){perf=value;} };
 }
 

@@ -101,9 +101,10 @@ export class Chapter5View{
       }
     }
     this.document.getElementById('chapter5-itemHolder').textContent=state.package?.holderPlayer?.name||'';
-    this.document.getElementById('chapter5-waitingCopy').textContent=waiting||(intro&&c.audioVersion===1&&this.clock.elapsedNow()>=chapter5IntroDuration(c))?'WAITING FOR THE HOST':'';
-    this.document.getElementById('chapter5-roundProgress').textContent='ROUND '+(c.roundIndex+1)+' / 6';
+    this.document.getElementById('chapter5-waitingCopy').textContent='';
     this.document.getElementById('chapter5-timeToVote').hidden=!r.votingActive;
+    this.document.getElementById('chapter5-voteQuestion').hidden=!r.votingActive;
+    surface.style.setProperty?.('--cast-deal-clock',`${-Math.max(0,elapsed-(c.castStartedAt??c.startedAt)+c.startedAt)}ms`);
     this.document.getElementById('chapter5-voteCount').textContent='CASTING IN PROGRESS... '+r.voteCount+' / 12 HAVE VOTED';
     this.document.getElementById('chapter5-winnerRole').textContent=role.title;
     this.document.getElementById('chapter5-winnerName').textContent=r.winner?.name||'';

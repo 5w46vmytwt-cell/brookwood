@@ -113,7 +113,7 @@ test('zero-life narration completes before the silent transition and never repla
  assert.deepEqual(phaseCues(s.chapter6),[]);const resumed=structuredClone(s);advance(resumed);
  assert.equal(resumed.chapter6.game,3);assert(resumed.chapter6.zeroConsumed);assert(!phaseCues(resumed.chapter6).some(x=>x.number===32));
 });
-test('host login sets a private cookie without Redis writes; cookie authorizes only Chapter 6 and survives refresh',async()=>{
+test('host login sets a private cookie without Redis writes; casting still requires its valid phase and run',async()=>{
  const s=fixture();advance(s);raw=JSON.stringify(s);const before=raw;
  const login=await call(host,{action:'maze-login',code:'maze-host'},'POST',{'x-forwarded-proto':'https'});
  assert.equal(login.status,200);assert.equal(raw,before);
@@ -121,7 +121,7 @@ test('host login sets a private cookie without Redis writes; cookie authorizes o
  assert(!JSON.stringify(login.data).includes('maze-host'));const cookie=setCookie.split(';')[0],headers={cookie,host:'brookwood.vercel.app',origin:'https://brookwood.vercel.app'};
  assert.equal((await call(host,{action:'maze-session'},'POST',headers)).status,200);assert.equal(raw,before);
  assert.equal((await call(host,{action:'reset'},'POST',headers)).status,403);assert.equal(raw,before);
- assert.equal((await call(host,{action:'casting-ready'},'POST',headers)).status,403);
+ assert.equal((await call(host,{action:'casting-ready'},'POST',headers)).status,409);
  const result=await call(host,request(s,'maze-answer',{answer:'black'}),'POST',headers);assert.equal(result.status,200);
  assert.equal(JSON.parse(raw).chapter6.results.length,1);
  assert.equal((await call(host,{action:'maze-session'},'POST',{...headers,origin:'https://attacker.invalid'})).status,403);

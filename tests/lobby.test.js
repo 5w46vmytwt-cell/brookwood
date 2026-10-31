@@ -999,6 +999,16 @@ test('casting waits indefinitely and only the existing authenticated host can st
     const after=raw;await castingReady();assert.equal(raw,after);
   });
 });
+test('casting READY accepts the existing authenticated cookie, rejects anonymous viewers and remains idempotent',async()=>{
+ await packageTestRun('chapter5');const start=state().chapter5.startedAt;
+ await serverClock(start+CHAPTER5_INTRO_MS,async()=>{
+  await call('progress');let cookie;
+  await host({method:'POST',body:{action:'maze-login',code:'test-host'},headers:{}},{status(){return this;},setHeader(k,v){if(k==='Set-Cookie')cookie=v.split(';')[0];},json(){}});
+  assert(cookie);assert.equal((await call('host',{action:'casting-ready',chapter5StartedAt:start})).status,403);
+  const invoke=async origin=>{let status;await host({method:'POST',body:{action:'casting-ready',chapter5StartedAt:start},headers:{cookie,host:'brookwood.example',origin}},{status(s){status=s;return this;},setHeader(){},json(){}});return status;};
+  assert.equal(await invoke('https://other.example'),403);assert.equal(await invoke('https://brookwood.example'),200);const saved=raw;assert.equal(await invoke('https://brookwood.example'),200);assert.equal(raw,saved);assert.equal(state().phase,'chapter5-rules');
+ });
+});
 
 test('rules narration and all six role narrations finish before server permits a single ballot',async()=>{
   await packageTestRun('chapter5');await serverClock(state().chapter5.startedAt+CHAPTER5_INTRO_MS,async()=>{await call('progress');await castingReady();});
