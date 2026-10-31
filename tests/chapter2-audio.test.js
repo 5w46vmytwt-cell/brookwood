@@ -23,7 +23,7 @@ function setup(){
 }
 test('replacement party duration and Chapter 1 music gain preserve looping, native duration, voice and fade timing',()=>{
   assert.equal(mp3Metadata(fs.readFileSync(partyTrack.src.slice(1))).durationMs,partyTrack.durationMs);
-  assert.equal(partyTrack.durationMs,182592);
+  assert.equal(partyTrack.durationMs,119040);
   const e=setup(),mix=e.p.timeline.scoreMix;
   assert.deepEqual(JSON.parse(JSON.stringify(mix)),{openingVolume:.18,narrationVolume:.096,gapVolume:.144,windows:[{at:39000,end:42000,volume:.084}]});
   assert.equal(e.track.loop,true);
