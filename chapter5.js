@@ -3,8 +3,8 @@ import {castingRoles,CHAPTER5_LEGACY_INTRO_MS,CHAPTER5_FINALE_MS,castingCompleti
 import {chapter5OpeningFor,chapter5IntroDuration,ITEM_ACQUIRED_FADE_MS,CHAPTER5_RULES_MS} from './chapter5-audio-timing.js';
 const text=(id,at,end,target,copy,extra={})=>({id,type:'text',at,end,visual:{target,...(copy?{text:copy}:{}),...extra}});
 const legacyIntroTimeline={id:'chapter5-legacy-intro',end:CHAPTER5_LEGACY_INTRO_MS,cues:[text('intro',0,10000,'chapter5-intro',null,{fadeOut:[9300,10000]})]};
-export function chapter5IntroTimelineFor(c){const chapter5Opening=chapter5OpeningFor(c),signoffAt=chapter5Opening[1].at,signoffEnd=chapter5Opening[1].end,wifeAt=chapter5Opening[2].at;return {id:'chapter5-opening',end:chapter5IntroDuration(c),cues:[
-  text('item',0,chapter5Opening[0].end,'chapter5-item',null,{fadeOut:[chapter5Opening[0].end-(c?.itemPacingVersion===1?ITEM_ACQUIRED_FADE_MS:500),chapter5Opening[0].end]}),
+export function chapter5IntroTimelineFor(c){const chapter5Opening=chapter5OpeningFor(c),signoffAt=chapter5Opening[1].at,signoffEnd=c?.itemPacingVersion>=2?signoffAt+chapter5Opening[1].durationMs:chapter5Opening[1].end,wifeAt=chapter5Opening[2].at;return {id:'chapter5-opening',end:chapter5IntroDuration(c),cues:[
+  text('item',0,chapter5Opening[0].end,'chapter5-item',null,{fadeOut:[chapter5Opening[0].end-(c?.itemPacingVersion>=1?ITEM_ACQUIRED_FADE_MS:500),chapter5Opening[0].end]}),
   text('radio',signoffAt,signoffEnd,'chapter5-radio',null,{darken:{range:[signoffAt+16000,signoffEnd],amount:.82}}),
   text('complaint',signoffAt,signoffAt+5000,'chapter5-complaint'),
   text('overruled',signoffAt+5000,signoffAt+10000,'chapter5-overruled'),

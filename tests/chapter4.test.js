@@ -7,7 +7,7 @@ import {chapter4Timeline,chapter4AudioTimeline,packageResultFrame} from '../chap
 import {castingRoles} from '../chapter5-timing.js';
 import {chapter4Scenes,CHAPTER4_VOTING_MS} from '../chapter4-timing.js';
 import {TVCinematicRuntime} from '../tv-cinematic.js';
-import {chapter4Score,chapter4ScoreVolume} from '../chapter4-audio.js';
+import {chapter4Score,chapter4ScoreVolume,packageHandoffScoreVolume} from '../chapter4-audio.js';
 function setup(elapsed=0,blocked=false,perElementUnlock=false){
   let perf=0,gesture=false;const nodes=new Map(),warnings=[];
   class Audio{constructor(src){this.src=src;this.readyState=1;this.currentTime=0;this.paused=true;this.plays=0;this.listeners={};}addEventListener(n,cb){this.listeners[n]=cb;}load(){}play(){this.plays++;if(gesture&&!this.muted)this.unlocked=true;if(blocked||(perElementUnlock&&this.src===chapter4Score.src&&!gesture&&!this.unlocked)){this.paused=true;return Promise.reject(Error('autoplay blocked'));}this.paused=false;return Promise.resolve();}pause(){this.paused=true;}}
@@ -107,6 +107,15 @@ test('TV-only hold survives early package confirmation without server changes or
   e.frame(3399);assert.equal(e.runtime.holdingPackageResult(),true);
   e.frame(1);assert.equal(e.runtime.holdingPackageResult(),false);assert.equal(e.nodes.get('chapter5TV').hidden,false);
   const narration=e.runtime.chapter5Audio.player.active;assert(narration);assert.equal(narration.audio.currentTime,0);assert.equal(s.chapter5.startedAt,421000);
+});
+test('same package score continues through item and handoff, fades only at handoff end, and refresh recovers it',()=>{
+ const e=setup(120000),track=e.runtime.chapter4Audio.tracks[0].audio,plays=track.plays;
+ const s={phase:'chapter5-intro',startedAt:100000,serverNow:430000,chapter4:{startedAt:300000,completedAt:420000,complete:true,selectedPlayer:{id:'winner',name:'Alex'}},chapter5:{startedAt:430000,itemPacingVersion:2,audioVersion:1,roundIndex:0,round:{...castingRoles[0],startedAt:null,completedAt:null,voteCount:0},winners:[],rulesStartedAt:null,castStartedAt:null,readyAt:null},package:{holderPlayer:{name:'Alex'}}};
+  e.runtime.acceptState(s,{hard:true});assert.equal(e.runtime.chapter4Audio.tracks[0].audio,track);assert.equal(track.plays,plays);assert.equal(track.paused,false);assert.equal(track.volume,.14);
+ e.frame(15000);assert.equal(track.volume,.14);e.frame(10000);assert.equal(track.volume,.14);
+ for(const [at,volume]of [[37125,.14],[37625,.07],[38125,0],[40000,0]])assert.equal(packageHandoffScoreVolume(at,s.chapter5),volume);
+ e.runtime.acceptState({...s,serverNow:430000+37625},{hard:true});assert.equal(track.volume,.07);assert.equal(track.plays,plays);
+ e.runtime.acceptState({...s,serverNow:430000+39000},{hard:true});assert.equal(track.volume,0);
 });
 
 test('Chapter 4 reuses the original score and reconstructs its loop from the canonical clock',()=>{

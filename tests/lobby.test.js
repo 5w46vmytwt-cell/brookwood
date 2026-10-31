@@ -893,7 +893,7 @@ test('Chapter 5 intro is server-time gated and ignores client clocks/phase param
 });
 test('item pacing version preserves old narrated runs and projects the new timing only for fresh runs',async()=>{
   await packageTestRun('chapter5');const start=state().chapter5.startedAt;
-  assert.equal(state().chapter5.itemPacingVersion,1);assert.equal((await call('state',{},'GET')).data.chapter5.itemPacingVersion,1);
+  assert.equal(state().chapter5.itemPacingVersion,2);assert.equal((await call('state',{},'GET')).data.chapter5.itemPacingVersion,2);
   const old=state();delete old.chapter5.itemPacingVersion;raw=JSON.stringify(old);
   await serverClock(start+63154,async()=>{assert.equal((await call('progress')).status,200);});
   assert.equal(state().phase,'chapter5-waiting');assert.equal(state().chapter5.readyAt,start+63154);

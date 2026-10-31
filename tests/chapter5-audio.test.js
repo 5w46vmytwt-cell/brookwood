@@ -123,3 +123,9 @@ test('paced item narration finishes before three seconds of true black and the u
  for(const t of [15250,16000,18249]){e.at(t,s);assert([...e.audio.player.media.values()].every(a=>a.paused));assert.equal(e.media('husband-signoff').plays,0);assert.equal(e.score.plays,0);}
  e.at(18250,s);assert.equal(e.media('husband-signoff').plays,1);assert.equal(e.media('husband-signoff').currentTime,0);assert.equal(cues[1].durationMs,chapter5Opening[1].durationMs);assert.equal(cues[2].at-chapter5Opening[2].at,3000);
 });
+test('handoff pacing adds two seconds before the wife and starts her narration and score at the same cue',()=>{
+ const e=setup(),s=state();s.chapter5.itemPacingVersion=2;const cues=chapter5OpeningFor(s.chapter5);
+ assert.equal(cues[1].at,18250);assert.equal(cues[1].at+cues[1].durationMs,38125);assert.equal(cues[2].at,40325);assert.equal(chapter5IntroDuration(s.chapter5),68154);
+ e.at(38125,s);for(const t of [38325,39000,40324]){e.at(t,s);assert([...e.audio.player.media.values()].every(a=>a.paused));assert.equal(e.score.plays,0);}
+ e.at(40325,s);assert.equal(e.media('wife-intro').plays,1);assert.equal(e.media('wife-intro').currentTime,0);assert.equal(e.score.plays,1);
+});

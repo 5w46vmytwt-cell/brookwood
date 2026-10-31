@@ -1,4 +1,5 @@
 import {chapter4Scenes,CHAPTER4_VOTING_MS} from './chapter4-timing.js';
+import {chapter5OpeningFor} from './chapter5-audio-timing.js';
 
 const lerp=(from,to,t)=>from+(to-from)*Math.max(0,Math.min(1,t));
 // Chapter 4-relative automation. The approved scene intervals are also the
@@ -8,6 +9,10 @@ const levels=[
   [77575,.13],[79575,.035],[95300,.035],[96800,.115],
   [103450,.14],[108450,0]
 ];
+export function packageHandoffScoreVolume(elapsed,chapter5){
+  const line=chapter5OpeningFor(chapter5)[1],end=line.at+line.durationMs;
+  return lerp(levels.at(-2)[1],0,(elapsed-(end-1000))/1000);
+}
 export function chapter4ScoreVolume(elapsed){
   if(elapsed>=CHAPTER4_VOTING_MS)return lerp(0,levels.at(-2)[1],(elapsed-CHAPTER4_VOTING_MS)/1000);
   if(elapsed<=0||elapsed>=chapter4Scenes.at(-1).end)return 0;

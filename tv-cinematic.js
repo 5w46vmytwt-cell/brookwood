@@ -8,7 +8,7 @@ import {chapter3AudioTimeline,chapter3PartyGain} from './chapter3-audio.js';
 import {chapter3Phases} from './chapter3-timing.js';
 import {chapter4Phases,CHAPTER4_VOTING_MS} from './chapter4-timing.js';
 import {Chapter4View,chapter4AudioTimeline,PACKAGE_RESULT_HOLD_MS,PACKAGE_RESULT_FADE_MS} from './chapter4.js';
-import {chapter4Audio,chapter4Score} from './chapter4-audio.js';
+import {chapter4Audio,chapter4Score,chapter4ScoreVolume,packageHandoffScoreVolume} from './chapter4-audio.js';
 import {chapter5Phases} from './chapter5-timing.js';
 import {Chapter5View} from './chapter5.js';
 import {COMPLETE_CAST_END_MS} from './chapter5-reveal-timing.js';
@@ -35,6 +35,7 @@ export class TVCinematicRuntime {
         if(this.state?.chapter7){this.chapter7Visuals.update(this.state);this.onElapsed(elapsed,this.state);return;}
         if(this.state?.chapter6){this.chapter6Visuals.update(this.state,meta);this.onElapsed(elapsed,this.state);return;}
         if(chapter5Phases.includes(this.state?.phase)){
+          if(this.keepPackageMusic())this.chapter4Audio.update({phase:'opening',startedAt:this.state.chapter4.startedAt},meta);
           const held=this.holdingPackageResult();
           this.document.getElementById('chapter4TV').hidden=!held;this.document.getElementById('chapter5TV').hidden=held;
           if(held){this.chapter4Visuals.update(this.state,this.state.chapter5.startedAt+elapsed);this.chapter5Audio.stop();return;}
@@ -69,7 +70,7 @@ export class TVCinematicRuntime {
     this.audio=new Player(timeline,{...clock,elapsedNow:()=>this.originalElapsedNow(),soundtrack,audioExtension:chapter2Audio,canSync:()=>!this.scheduler.recovering});
     this.chapter3Audio=new Player(chapter3AudioTimeline,{...clock,canSync:()=>!this.scheduler.recovering});
     this.chapter4Visuals=new Chapter4View(document,Renderer,clock);
-    this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,audioExtension:chapter4Audio,
+    this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,elapsedNow:()=>this.state?.chapter5?this.state.chapter5.startedAt+this.scheduler.elapsedNow()-this.state.chapter4.startedAt:this.scheduler.elapsedNow(),audioExtension:{...chapter4Audio,tracks:[{...chapter4Score,volumeAt:elapsed=>this.keepPackageMusic()?packageHandoffScoreVolume(Math.max(0,this.scheduler.elapsedNow()-this.packageIntroDelay()),this.state.chapter5):chapter4ScoreVolume(elapsed)}]},
       trackMedia:new Map([[chapter4Score.id,this.audio.soundtrack?.audio]]),canSync:()=>!this.scheduler.recovering});
     const castClock={...clock,elapsedNow:()=>Math.max(0,this.scheduler.elapsedNow()-this.packageIntroDelay())};
     this.chapter5Visuals=new Chapter5View(document,Renderer,castClock);
@@ -92,20 +93,21 @@ export class TVCinematicRuntime {
     if(chapter6){this.audio.stop();this.chapter3Audio.stop();this.chapter3Visuals.stop();this.chapter4Audio.stop();this.chapter4Visuals.stop();this.chapter5Audio.stop();this.chapter5Visuals.stop();const score=this.audio.soundtrack;if(score?.audio){score.audio.pause();score.target=0;score.ramp=null;score.audio.volume=0;}}
     else if(['chapter5-finale','chapter5-complete'].includes(state.phase)){this.chapter6Visuals.stopNarration();if(previous?.chapter6||!['chapter5-finale','chapter5-complete'].includes(previous?.phase))this.chapter6Visuals.ambient.stop(true);}
     else if(!state.chapter7)this.chapter6Visuals.stop(true);
-    if(chapter4||chapter5){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
-    if(chapter5&&!chapter5Phases.includes(previous?.phase)){
+    if(chapter4||chapter5){this.audio.stop();const score=this.audio.soundtrack;if(score?.audio&&!this.keepPackageMusic()){score.target=0;score.ramp=null;score.audio.volume=0;}this.chapter3Audio.stop();this.chapter3Visuals.stop();}
+    if(chapter5&&!chapter5Phases.includes(previous?.phase)&&!this.keepPackageMusic()){
       const score=this.audio.soundtrack;
       if(score?.audio){score.audio.pause();score.attempted=false;}
     }
     if(!this.scheduler.acceptState(state.chapter7?{...state,startedAt:state.chapter7.startedAt}:chapter6?{...state,startedAt:state.chapter6.startedAt}:chapter5?{...state,startedAt:state.chapter5.startedAt}:chapter4?{...state,startedAt:state.chapter4.startedAt}:chapter3?{...state,startedAt:state.chapter3.startedAt}:state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
     if(!chapter5){this.chapter5Visuals.stop();this.chapter5Audio.stop();}
-    if(!chapter4){this.chapter4Audio.stop();this.chapter4Visuals.stop();}
+    if(!chapter4){if(!this.keepPackageMusic())this.chapter4Audio.stop();this.chapter4Visuals.stop();}
     if(!chapter3){this.chapter3Audio.stop();this.chapter3Visuals.stop();this.audio.setTrackGain(['photo','photo-complete'].includes(state.phase)?.075/.13:1);}
     if(state.phase!=='opening'){
       this.visuals.stop();this.chapter2Visuals.stop();if(!state.chapter7&&!chapter3&&!chapter4&&!chapter5&&!chapter6)this.audio.update(state);
     }
   }
   suspend(){this.scheduler.recovering=true;}
+  keepPackageMusic(){return this.state?.phase==='chapter5-intro'&&this.state.chapter5?.itemPacingVersion>=2&&Number.isFinite(this.state.chapter4?.startedAt);}
   packageIntroDelay(){const s=this.state;return s?.phase==='chapter5-intro'&&Number.isFinite(s.chapter4?.completedAt)?Math.max(0,s.chapter4.completedAt+PACKAGE_RESULT_HOLD_MS+PACKAGE_RESULT_FADE_MS-s.chapter5.startedAt):0;}
   holdingPackageResult(){return this.packageIntroDelay()>this.scheduler.elapsedNow();}
   elapsedNow(){return this.scheduler.elapsedNow();}

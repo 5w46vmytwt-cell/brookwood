@@ -5,7 +5,7 @@ import {CHAPTER5_RULES_MS,roleNarrationOffset,chapter5IntroDuration} from '../ch
 
 export const isChapter5=s=>chapter5Phases.includes(s.phase);
 const positive=t=>Number.isFinite(t)&&t>0;
-const freshChapter5=startedAt=>({eligibilityVersion:1,audioVersion:1,revealVersion:1,itemPacingVersion:1,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
+const freshChapter5=startedAt=>({eligibilityVersion:1,audioVersion:1,revealVersion:1,itemPacingVersion:2,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
 export const castingCandidates=s=>s.players.filter(p=>!s.chapter5.rounds.slice(0,s.chapter5.roundIndex).some(r=>r.winnerPlayerId===p.id));
 const version=c=>c.audioVersion===1?1:0;
 export function validatePackage(s){
@@ -15,7 +15,7 @@ export function validateChapter5(s){
   validateChapter4({...s,phase:'door-vote-complete'});validatePackage(s);
   const c=s.chapter5,cast=new Set(s.players.map(p=>p.id));
   if(!validChapter3Cast(s)||!c||!positive(c.startedAt)||c.startedAt<s.packageOpenedAt||!Array.isArray(c.rounds)||c.rounds.length!==6||!Number.isInteger(c.roundIndex)||c.roundIndex<0||c.roundIndex>5)throw Error('Invalid Chapter 5 state.');
-  if(c.itemPacingVersion!==undefined&&c.itemPacingVersion!==1)throw Error('Unsupported item pacing version.');
+  if(c.itemPacingVersion!==undefined&&![1,2].includes(c.itemPacingVersion))throw Error('Unsupported item pacing version.');
   if(c.audioVersion!==undefined&&c.audioVersion!==1)throw Error('Unsupported casting audio version.');
   if(c.revealVersion!==undefined&&c.revealVersion!==1)throw Error('Unsupported casting reveal version.');
   if(c.eligibilityVersion!==undefined&&c.eligibilityVersion!==1)throw Error('Unsupported casting eligibility version.');

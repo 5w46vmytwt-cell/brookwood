@@ -1,7 +1,7 @@
 import {revealTiming,POLISHED_FINALE_MS} from './chapter5-reveal-timing.js';
-import {CHAPTER5_READY_MS,ITEM_ACQUIRED_BLACK_MS,roleVotingOffset} from './chapter5-audio-timing.js';
+import {CHAPTER5_READY_MS,ITEM_ACQUIRED_BLACK_MS,WIFE_HANDOFF_SILENCE_MS,roleVotingOffset} from './chapter5-audio-timing.js';
 export const chapter5Phases=['chapter5-intro','chapter5-waiting','chapter5-rules','chapter5-casting','chapter5-finale','chapter5-complete'];
-export const CHAPTER5_INTRO_MS=CHAPTER5_READY_MS+ITEM_ACQUIRED_BLACK_MS;
+export const CHAPTER5_INTRO_MS=CHAPTER5_READY_MS+ITEM_ACQUIRED_BLACK_MS+WIFE_HANDOFF_SILENCE_MS;
 export const CHAPTER5_LEGACY_INTRO_MS=10000;
 export const CHAPTER5_FINALE_MS=30100;
 export const castingRoles=[

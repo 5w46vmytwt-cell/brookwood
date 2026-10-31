@@ -125,3 +125,8 @@ test('paced item scene fades for 2500ms and stays completely black for 3000ms be
  for(const t of [15250,16000,18249])assert(Object.values(e.resolve(timeline,t)).every(v=>v.opacity===0));assert.equal(e.resolve(timeline,18250).radio.opacity,1);
  assert.equal(chapter5IntroTimeline.cues.find(c=>c.id==='radio').at,15250);
 });
+test('wife presentation starts only with her narration after the handoff silence',()=>{
+ const e=fixture(),timeline=chapter5IntroTimelineFor({itemPacingVersion:2});
+ for(const t of [38125,38325,39000,40324])assert(Object.values(e.resolve(timeline,t)).every(v=>v.opacity===0));
+ assert.equal(timeline.cues.find(c=>c.id==='wife').at,40325);assert.equal(timeline.cues.find(c=>c.id==='party').at,40325);
+});

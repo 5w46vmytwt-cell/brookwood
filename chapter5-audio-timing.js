@@ -20,9 +20,11 @@ export const chapter5Opening=chapter5Recordings.slice(0,4).map(c=>{
 export const CHAPTER5_READY_MS=openingAt;
 export const ITEM_ACQUIRED_FADE_MS=2500;
 export const ITEM_ACQUIRED_BLACK_MS=3000;
+export const WIFE_HANDOFF_SILENCE_MS=2000;
 const pacedOpening=chapter5Opening.map((c,index)=>index?{...c,at:c.at+ITEM_ACQUIRED_BLACK_MS,end:c.end+ITEM_ACQUIRED_BLACK_MS}:c);
-export const chapter5OpeningFor=c=>c?.itemPacingVersion===1?pacedOpening:chapter5Opening;
-export const chapter5IntroDuration=c=>CHAPTER5_READY_MS+(c?.itemPacingVersion===1?ITEM_ACQUIRED_BLACK_MS:0);
+const handoffOpening=pacedOpening.map((c,index)=>index>=2?{...c,at:c.at+WIFE_HANDOFF_SILENCE_MS,end:c.end+WIFE_HANDOFF_SILENCE_MS}:c);
+export const chapter5OpeningFor=c=>c?.itemPacingVersion===2?handoffOpening:c?.itemPacingVersion===1?pacedOpening:chapter5Opening;
+export const chapter5IntroDuration=c=>CHAPTER5_READY_MS+(c?.itemPacingVersion>=1?ITEM_ACQUIRED_BLACK_MS:0)+(c?.itemPacingVersion>=2?WIFE_HANDOFF_SILENCE_MS:0);
 export const CHAPTER5_RULES_MS=narrationGate('wife-rules');
 export const roleNarrationOffset=id=>id==='killer'?2500:1200;
 export const roleVotingOffset=id=>roleNarrationOffset(id)+narrationGate(id);
