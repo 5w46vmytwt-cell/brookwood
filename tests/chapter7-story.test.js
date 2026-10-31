@@ -13,11 +13,12 @@ import progress from '../api/progress.js';import host from '../api/host.js';impo
 let now,raw,realDate,realFetch;
 beforeEach(()=>{now=10000000;raw=null;realDate=Date.now;realFetch=global.fetch;Date.now=()=>now;process.env.HOST_KEY='story-host';process.env.KV_REST_API_URL='https://redis.invalid';process.env.KV_REST_API_TOKEN='test';global.fetch=async(_url,options)=>{const a=JSON.parse(options.body);let result;if(a[0]==='GET')result=raw;else{assert.equal(a[0],'EVAL');assert.equal(a[1],CAS_SCRIPT);result=(raw??'')===a[4]?1:0;if(result)raw=a[5];}return {ok:true,json:async()=>({result})};};});
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
-function fixture(real=4,simulated=false){const s=finalNarrationFixture(now);s.players.forEach((p,i)=>p.simulated=i>=real);if(!simulated)s.players=s.players.slice(0,real);makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);endAudio(s);advance(s);return s;}
+// Default fixtures represent already-saved three-theory runs.
+function fixture(real=4,simulated=false,legacy=true){const s=finalNarrationFixture(now);s.players.forEach((p,i)=>p.simulated=i>=real);if(!simulated)s.players=s.players.slice(0,real);makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);if(legacy)delete s.chapter7.investigation.theoryVersion;endAudio(s);advance(s);return s;}
 const inv=s=>s.chapter7.investigation;
 const body=(s,action,extra={})=>({action,generation:s.generation,broadcastId:s.chapter7.id,investigationId:inv(s).id,sequence:inv(s).sequence,...extra});
 function jump(s,checkpoint,extra={}){makeBroadcastTestSelector(checkpoint,extra)(s);validateChapter7(s);}
-function endAudio(s){const cue=storyRecording(inv(s).step);investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=Math.ceil(narrationDuration(inv(s))-inv(s).offsetMs)+1;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));validateChapter7(s);}
+function endAudio(s){const cue=storyRecording(inv(s).step,inv(s));investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=Math.ceil(narrationDuration(inv(s))-inv(s).offsetMs)+1;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));validateChapter7(s);}
 function advance(s){now=inv(s).deadline;advanceInvestigation(s);validateChapter7(s);}
 function finishIncoming(s){assert.equal(inv(s).step,'incoming');endAudio(s);assert.equal(inv(s).step,'ring-gap');advance(s);assert.equal(inv(s).step,'incoming-second');endAudio(s);assert.equal(inv(s).step,'envelope-instructions');assert.equal(investigationProgress(s).election,null);endAudio(s);}
 function photoOpening(s){assert.equal(inv(s).step,'photo-appearance');endAudio(s);assert.equal(inv(s).step,'photo-delay');advance(s);assert.equal(inv(s).step,'photograph');}
@@ -190,4 +191,34 @@ test('native camera start persists once, then a visible photo delay gates narrat
 test('an early camera refresh still waits until the original start plus 1500ms and retained polls stay locked during new rings',()=>{
  const s=fixture(2,true);jump(s,'chapter7-envelope-vote');const e=inv(s).testElections.envelope;jump(s,'chapter7-message');assert.throws(()=>investigationVote(s,'p0','p2',body(s,'investigation-vote',{election:'envelope',electionId:e.id})));assert.throws(()=>investigationHostAction(s,body(s,'investigation-close-voting')));assert.throws(()=>investigationHostAction(s,body(s,'investigation-test-vote',{election:'envelope',electionId:e.id,votes:{p2:'p3'}})));
  jump(s,'chapter7-photo',{testMode:true,testRetrieverId:'p2'});investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cameraCue.id}));const start=now;now+=100;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cameraCue.id}));assert.equal(inv(s).deadline,start+1500);validateChapter7(s);now=start+1499;assert.equal(advanceInvestigation(s),UNCHANGED);now++;advanceInvestigation(s);assert.equal(inv(s).step,'photograph');
+});
+
+test('new possession-only run keeps complete recordings, then unchanged envelope vote and photograph flow',()=>{
+ const s=fixture(4,false,false),heard=[],steps=[];assert.equal(inv(s).theoryVersion,1);
+ endAudio(s);advance(s);assert.equal(inv(s).step,'podcast-intro');
+ while(inv(s).step!=='incoming'){
+  const i=inv(s);steps.push(i.step);const cue=storyRecording(i.step,i);
+  if(cue){heard.push(cue.src);const clone=structuredClone(s);validateChapter7(clone);assert.equal(inv(clone).theoryVersion,1);assert.equal(advanceInvestigation(s),UNCHANGED);endAudio(s);}else advance(s);
+  assert(steps.length<20);
+ }
+ assert.deepEqual(heard,[
+  '/assets/chapter7/audio/theories_possession_intro.wav',
+  storyRecording('possession').src,storyRecording('officer').src,storyRecording('reaction').src
+ ]);
+ assert(!steps.some(step=>['premeditation','accomplice','vote-intro','theory-vote','spoken','theory2-transition','theory3-transition','narrator-transition'].includes(step)));
+ assert(!inv(s).elections.theory);assert(!inv(s).testElections?.theory);
+ assert.equal(steps.at(-1),'envelope-transition');assert.equal(sceneDuration(inv(s),'envelope-transition'),1600);
+ finishIncoming(s);assert.equal(inv(s).step,'envelope-vote');assert.deepEqual(investigationProgress(s,'p0').election.candidates.map(p=>p.id),['p2','p3']);
+ for(const p of s.players)vote(s,p.id,'p2','envelope');advance(s);assert.equal(inv(s).step,'envelope-waiting');
+ investigationHostAction(s,body(s,'investigation-envelope-return'));advance(s);photoOpening(s);assert.equal(inv(s).step,'photograph');
+});
+test('new introduction metadata matches original supplied WAV bytes; fixed runtime removes all discarded cues',()=>{
+ const bytes=fs.readFileSync('assets/chapter7/audio/theories_possession_intro.wav'),m=wavMetadata(bytes);
+ assert.equal(createHash('sha256').update(bytes).digest('hex'),'62184ed97cc3f522d37317578dc02923a397935f105965ef0aa67fc9eeb3caeb');
+ assert.equal(m.encoding,3);assert.equal(m.sampleRate,24000);assert.equal(m.channels,1);assert.equal(m.bits,32);
+ assert.equal(storyRecording('podcast-intro',{theoryVersion:1}).durationMs,m.durationMs);assert.equal(m.durationMs,14475);
+ const i={polishVersion:5},voice=steps=>steps.reduce((sum,step)=>sum+narrationDuration({...i,step}),0);
+ const previous=voice(['podcast-intro','possession','officer','reaction','premeditation','accomplice','vote-intro'])+['theory1-transition','theory2-transition','theory3-transition','narrator-transition','vote-fade','spoken','theory-reveal','theory-fade','silent-black'].reduce((sum,step)=>sum+sceneDuration(i,step),0)+2700;
+ const updated=['podcast-intro','possession','officer','reaction'].reduce((sum,step)=>sum+narrationDuration({...i,theoryVersion:1,step}),0)+9000+1800+1600;
+ assert(Math.abs(previous-401131.85714285716)<.001);assert(Math.abs(updated-186901.85714285713)<.001);assert(Math.abs(previous-updated-214230)<.001);
 });

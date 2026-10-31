@@ -7,7 +7,7 @@ const logos={
  'THE UNSEEN':'<path d="M8 32 Q32 4 56 32 Q32 60 8 32Z"/><circle cx="32" cy="32" r="9"/><path d="M32 6V0 M32 64V58 M6 32H0 M64 32H58"/>',
  'COLD EVIDENCE':'<rect x="14" y="6" width="36" height="52" rx="2"/><path d="M22 17H42 M22 23H42 M23 43 Q20 31 32 31 Q44 31 41 45 M28 46 Q25 36 32 36 Q39 36 36 49 M32 41V51"/>',
  'THE MISSING PIECE':'<circle cx="25" cy="22" r="10"/><circle cx="42" cy="25" r="9"/><path d="M5 55 Q6 34 25 34 Q43 34 44 55 M35 38 Q58 35 59 55"/>'};
-const podcasts={possession:['THE UNSEEN','POSSESSION','A PARANORMAL THEORY'],officer:['BROOKWOOD FARM','POLICE RADIO','ARCHIVED TRANSMISSION · OCTOBER 31, 1996'],prophecy:['BROOKWOOD FARM','POLICE RADIO','ARCHIVED TRANSMISSION - OCTOBER 31, 1996'],reaction:['THE UNSEEN','POSSESSION','AN UNRESOLVED QUESTION'],premeditation:['COLD EVIDENCE','PREMEDITATION','A SKEPTICAL THEORY'],accomplice:['THE MISSING PIECE','ACCOMPLICE','AN INVESTIGATIVE THEORY']};
+const podcasts={'envelope-transition':['THE UNSEEN','POSSESSION','AN UNRESOLVED QUESTION'],possession:['THE UNSEEN','POSSESSION','A PARANORMAL THEORY'],officer:['BROOKWOOD FARM','POLICE RADIO','ARCHIVED TRANSMISSION · OCTOBER 31, 1996'],prophecy:['BROOKWOOD FARM','POLICE RADIO','ARCHIVED TRANSMISSION - OCTOBER 31, 1996'],reaction:['THE UNSEEN','POSSESSION','AN UNRESOLVED QUESTION'],premeditation:['COLD EVIDENCE','PREMEDITATION','A SKEPTICAL THEORY'],accomplice:['THE MISSING PIECE','ACCOMPLICE','AN INVESTIGATIVE THEORY']};
 export class Chapter7Investigation{
  constructor(document,clock,{request,onState,Player}={}){
   this.document=document;this.clock=clock;this.request=request;this.onState=onState;this.state=null;this.id=null;this.authenticated=false;this.epoch=0;this.pending=false;
@@ -26,13 +26,14 @@ export class Chapter7Investigation{
   if(this.clock.canSync?.()===false)return;
   if(i.step==='photo-appearance'&&!this.node('ch7Original').getAttribute('src'))this.node('ch7Original').src='/assets/chapter7/ch7_group_photo_1996.png';
   this.audio.update(state,{photoReady:!!(this.node('ch7Original').complete&&this.node('ch7Original').naturalWidth>0)});
-  const now=c.startedAt+this.clock.elapsedNow(),elapsed=Math.max(0,now-i.phaseAt),cue=storyRecording(i.step),position=this.audio.entry?this.audio.position():i.offsetMs+(i.audioStartedAt===null?0:Math.max(0,now-i.audioStartedAt));
+  const now=c.startedAt+this.clock.elapsedNow(),elapsed=Math.max(0,now-i.phaseAt),cue=storyRecording(i.step,i),position=this.audio.entry?this.audio.position():i.offsetMs+(i.audioStartedAt===null?0:Math.max(0,now-i.audioStartedAt));
   const node=this.node,scene=node('ch7Scene'),stage=node('ch7PhotoStage');
   node('chapter7Investigation').hidden=false;scene.hidden=false;scene.style.opacity='1';stage.hidden=true;stage.style.opacity='1';node('ch7Transition').hidden=true;node('ch7Date').hidden=true;node('ch7Connection').hidden=true;node('ch7Curtain').style.opacity='0';
   node('ch7Options').replaceChildren();node('ch7Progress').textContent='';node('ch7Waveform').hidden=!cue||cue.type!=='narration';node('ch7Waveform').classList.toggle('speaking',!!this.audio.entry&&!(this.audio.entry.secondary??this.audio.entry.audio).paused&&!this.audio.entry.ended);
   const root=node('chapter7Investigation');root.dataset.scene=i.step;root.dataset.voice=podcasts[i.step]?.[0]??'narrator';
   let eyebrow='BROOKWOOD FARM · CASE FILE 1996',title='',subtitle='';
   if(i.step==='narrator'){const f=narratorFrame(position);scene.style.opacity=String(f.scene);title='BROOKWOOD FARM';subtitle='THE QUESTIONS REMAIN.';}
+  if(i.step==='envelope-transition')scene.style.opacity=String(1-smooth(elapsed/sceneDuration(i)));
   if(i.step==='podcast-intro'){title='THREE THEORIES';subtitle='ONE NIGHT. THREE POSSIBLE EXPLANATIONS.';}
   let identity=podcasts[i.step]?.[0];
   if(podcasts[i.step])[eyebrow,title,subtitle]=podcasts[i.step];

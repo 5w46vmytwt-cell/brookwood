@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {InvestigationAudio} from '../chapter7-story-audio.js';
 import {storyRecording,PROPHECY_AT_MS,TRANSMISSION_MS,cameraCue,prophecyAt} from '../chapter7-story-timing.js';
 const flush=()=>new Promise(r=>setImmediate(r));
-function harness({step='narrator',ready=4,deny=false,startedAt=null,offsetMs=0,polishVersion=2,deferPlay=false}={}){
+function harness({step='narrator',ready=4,deny=false,startedAt=null,offsetMs=0,polishVersion=2,theoryVersion=0,deferPlay=false}={}){
  let now=100000,denied=deny;const calls=[],accepted=[];
  class Audio{
   constructor(cue){this.src=cue.src;this.duration=cue.durationMs/1000;this.readyState=ready;this.currentTime=0;this.paused=true;this.ended=false;this.listeners=new Map();this.plays=0;}
@@ -13,9 +13,9 @@ function harness({step='narrator',ready=4,deny=false,startedAt=null,offsetMs=0,p
   pause(){const playing=!this.paused;this.paused=true;if(playing)this.emit('pause');}
  }
  class Player{constructor(timeline){this.media=new Map(timeline.cues.map(c=>[c.id,new Audio(c)]));}stop(){for(const a of this.media.values())a.pause();}}
- const state={phase:'chapter7',generation:'g',chapter7:{id:'broadcast',startedAt:1000,investigation:{polishVersion,id:'story',step,phaseAt:now,sequence:1,audioStartedAt:startedAt,offsetMs}}};
+ const state={phase:'chapter7',generation:'g',chapter7:{id:'broadcast',startedAt:1000,investigation:{theoryVersion,polishVersion,id:'story',step,phaseAt:now,sequence:1,audioStartedAt:startedAt,offsetMs}}};
  const channel=new InvestigationAudio({elapsedNow:()=>now-1000},{Player,request:async(_path,b)=>{calls.push(b);if(b.action==='investigation-audio-playing')state.chapter7.investigation.audioStartedAt=now;const playSound=b.action==='investigation-photo-sound'&&state.chapter7.investigation.photoSoundPlayedAt==null;if(playSound)state.chapter7.investigation.photoSoundPlayedAt=now;return {state:structuredClone(state),playSound};},onState:s=>{accepted.push(s);channel.update(s);}});
- return {channel,state,calls,accepted,at:n=>now=n,audio:()=>channel.player.media.get(storyRecording(step).id)};
+ return {channel,state,calls,accepted,at:n=>now=n,audio:()=>channel.player.media.get(storyRecording(step,{theoryVersion}).id)};
 }
 test('delayed narration loading starts at its first word and full supplied level, not a metadata offset',async()=>{
  const h=harness({ready:0});h.channel.update(h.state);assert.equal(h.audio().plays,0);h.at(150000);h.audio().readyState=4;h.channel.update(h.state);await flush();assert.equal(h.audio().currentTime,0);assert.equal(h.audio().volume,1);assert.equal(h.audio().muted,false);assert.equal(h.calls[0].action,'investigation-audio-playing');assert.equal(h.state.chapter7.investigation.audioStartedAt,150000);
@@ -67,4 +67,12 @@ test('refresh during second ring resumes that ring; completed camera never repla
  const photo=harness({step:'photo-appearance'});photo.channel.update(photo.state,{photoReady:false});await flush();assert.equal(photo.audio().plays,0);photo.channel.update(photo.state,{photoReady:true});await flush();assert.equal(photo.audio().plays,1);assert.equal(photo.audio().volume,cameraCue.volume);
  const refreshed=harness({step:'photo-appearance',startedAt:95000});refreshed.channel.update(refreshed.state);await flush();assert.equal(refreshed.audio().plays,0);assert.equal(refreshed.calls[0].action,'investigation-audio-ended');
  const narration=harness({step:'envelope-instructions',startedAt:90000});narration.channel.update(narration.state);await flush();assert.equal(narration.audio().currentTime,10);assert.equal(narration.audio().volume,1);assert.equal(narration.audio().plays,1);
+});
+
+test('possession intro refresh seeks the new full-volume WAV and only native ended can finish it',async()=>{
+ const h=harness({step:'podcast-intro',theoryVersion:1,startedAt:90000});h.channel.update(h.state);await flush();const audio=h.audio();
+ assert.equal(audio.src,'/assets/chapter7/audio/theories_possession_intro.wav');assert.equal(audio.currentTime,10);assert.equal(audio.volume,1);
+ for(let i=0;i<10;i++)h.channel.update(h.state);assert.equal(audio.plays,1);assert.equal(h.calls.length,0);
+ h.at(104000);audio.currentTime=14;h.channel.update(h.state);assert(!audio.paused);assert(!h.calls.some(b=>b.action==='investigation-audio-ended'));
+ h.at(104475);audio.currentTime=14.475;audio.ended=true;audio.paused=true;audio.emit('ended');audio.emit('ended');await flush();assert.equal(h.calls.filter(b=>b.action==='investigation-audio-ended').length,1);h.channel.stop();
 });

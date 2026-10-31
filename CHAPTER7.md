@@ -163,3 +163,50 @@ The browser script uses Chrome, the existing isolated-memory dev server and a fi
 The build copies MP4 files byte for byte. Release uses the existing GitHub → Vercel project; do not change Redis, environment variables or production game state. Production verification must be read-only.
 
 Local validation on 2026-10-16: 24/24 focused tests passed; the single production build passed with 164 static files. One native-speed browser rehearsal verified Recording 31 completion, a 3037-ms blackout, 51305 ms from video playing to ended, embedded audio signal, a completely black waiting screen, playback refresh, both authenticated checkpoints and two silent phones, with zero runtime exceptions. Built runtime files and the MP4 match source byte for byte. The measured movie presentation duration was subsequently aligned to Chrome's 51.202 seconds (the encoded audio track contains an edit offset); focused tests and the build use that exact value.
+# Possession-only theory sequence (2026-10-31)
+
+New investigations persist `theoryVersion: 1`. Existing saved investigations
+without this version retain the original three-podcast/theory-vote route and
+their original introduction recording. Existing theory results are not cleared
+or replaced. Original media and host testing checkpoints remain available.
+
+The supplied `assets/theories_possession_intro.wav` was moved unchanged to
+`assets/chapter7/audio/theories_possession_intro.wav`. It is mono IEEE float WAV,
+32-bit, 24,000 Hz, 1,389,600 data bytes, exactly **14,475 ms**. SHA-256:
+`62184ed97cc3f522d37317578dc02923a397935f105965ef0aa67fc9eeb3caeb`.
+
+The existing narrator/date return remains intact. The new introduction uses the
+existing narrator screen, followed by the existing Theory 01 transition and
+THE UNSEEN. Possession audio, police/prophecy overlap, visual identity and
+reaction are unchanged. Native reaction completion starts a 1,600-ms visual
+fade of the existing podcast screen directly into the incoming envelope flow.
+Premeditation, accomplice, narrator voting introduction, theory election and
+verdict are not entered in new runs. The user explicitly approved skipping the
+theory election while preserving envelope retrieval voting and host return.
+
+The existing double ring, envelope instructions, exclusions, simulated ballots,
+host return confirmation, camera sound/delay, photograph narration and enhanced
+window timing are unchanged. No independent timer or new voting rule is used.
+
+Fixed runtime from the start of the theory introduction to the incoming-message
+stage, excluding human voting time and network/media-acknowledgment latency:
+
+| Route | Duration |
+|---|---:|
+| Previous three-theory route, including verdict transitions | 401,131.857 ms (6:41.132) |
+| Possession-only route | 186,901.857 ms (3:06.902) |
+| Fixed time saved | 214,230 ms (3:34.230) |
+
+The removed theory-voting wait is an additional variable saving. Envelope
+retrieval and subsequent photo timings are identical and excluded from both
+comparison bounds.
+
+Validation: 53 focused story/audio tests pass, including legacy-run recovery,
+new route order, exact asset hash/format/duration, native completion, refresh,
+unchanged retrieval and photograph progression. The isolated local TV/two-phone
+rehearsal (`scripts/verify-chapter7-possession-browser.mjs`) passed full native
+new-intro playback, radio refresh, original podcast endings, omitted theory
+media, twelve-person retrieval voting, host return, photograph start, and silent
+phones. Long unchanged clips were sampled and sought near their native endings
+for the targeted rehearsal; the new introduction ran to completion. Reports are
+in `logs/chapter7-possession-browser-report.json`.

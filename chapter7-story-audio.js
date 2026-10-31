@@ -1,4 +1,4 @@
-import {storyRecordings,storyRecording,narrationDuration,prophecyAt,cameraCue} from './chapter7-story-timing.js';
+import {storyRecordings,storyRecording,narrationDuration,prophecyAt,cameraCue,possessionIntroRecording} from './chapter7-story-timing.js';
 import {ConnectionPlayback} from './chapter7-connection.js';
 import {InvestigationAmbient} from './chapter7-ambient.js';
 
@@ -6,7 +6,7 @@ import {InvestigationAmbient} from './chapter7-ambient.js';
 // rather than a guessed deadline, authorizes each scene's next transition.
 export class InvestigationAudio{
  constructor(clock,{Player=globalThis.BrookwoodAudio.Player,request,onState,Connection=ConnectionPlayback}={}){
-  this.Connection=Connection;this.clock=clock;this.request=request;this.onState=onState;this.player=new Player({id:'chapter7-story',cues:[...storyRecordings,cameraCue].map(r=>({...r,at:0}))},{externallyDriven:true,elapsedNow:()=>clock.elapsedNow(),canSync:()=>!clock.recovering});
+  this.Connection=Connection;this.clock=clock;this.request=request;this.onState=onState;this.player=new Player({id:'chapter7-story',cues:[...storyRecordings,possessionIntroRecording,cameraCue].map(r=>({...r,at:0}))},{externallyDriven:true,elapsedNow:()=>clock.elapsedNow(),canSync:()=>!clock.recovering});
   this.photoClaims=new Set();this.epoch=0;this.entry=null;this.state=null;this.message='';this.blocked=false;
   this.ambient=new InvestigationAmbient(clock,{Player});
  }
@@ -15,7 +15,7 @@ export class InvestigationAudio{
  now(){return this.state.chapter7.startedAt+this.clock.elapsedNow();}
  position(){const e=this.entry;return e?.secondary?prophecyAt(this.state.chapter7.investigation)+e.secondary.currentTime*1000:e?.audio.currentTime*1000??0;}
  update(state,{photoReady=true}={}){
-  this.state=state;const i=state.chapter7.investigation,cue=storyRecording(i.step),key=i.id+':'+i.sequence;
+  this.state=state;const i=state.chapter7.investigation,cue=storyRecording(i.step,i),key=i.id+':'+i.sequence;
   if(this.entry?.key!==key)this.release();
   if(i.step==='connection'&&i.polishVersion<3)return;
   if(i.step==='connection'&&!this.connection){this.connection=new this.Connection();this.player.media.set(cue.id,this.connection);}
