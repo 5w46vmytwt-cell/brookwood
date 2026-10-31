@@ -12,7 +12,7 @@
 #photoCheckpoint{position:fixed;inset:0;z-index:5;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5vw;font-family:Arial,sans-serif}
 #photoCheckpoint h2{max-width:1100px;font-size:clamp(30px,4vw,60px);font-weight:normal;letter-spacing:.12em;line-height:1.5;margin:0 0 5vh}
 #photoCheckpoint p{font-size:clamp(17px,2vw,28px);line-height:1.8;color:#ddd;margin:0}
-#photoHeading .photo-emphasis{color:#C94A4A;font-weight:700}
-#photoCheckpoint .photo-confirm-instruction{font-size:.9em;color:#C94A4A}
+#photoHeading .photo-emphasis{color:#E53935;font-weight:700}
+#photoCheckpoint .photo-confirm-instruction{font-size:.81em;color:#E53935}
 #photoCounter{font-size:clamp(14px,1.8vw,24px);letter-spacing:.14em;color:#dfc5a6;margin-top:6vh}
 @media(prefers-reduced-motion:reduce){.chapter2-image{transform:none!important}}
