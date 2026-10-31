@@ -17,6 +17,7 @@ export function chapter5IntroTimelineFor(c){const chapter5Opening=chapter5Openin
 ]};}
 export const chapter5IntroTimeline=chapter5IntroTimelineFor({});
 const waitingTimeline={id:'chapter5-waiting',end:Infinity,cues:[text('party',0,Infinity,'chapter5-party'),text('waiting',0,Infinity,'chapter5-ready')]};
+const introTargets=[...new Set([...legacyIntroTimeline.cues,...chapter5IntroTimeline.cues].map(c=>c.visual.target))];
 export const chapter5RulesTimeline={id:'chapter5-rules',end:CHAPTER5_RULES_MS,cues:[text('rules',0,CHAPTER5_RULES_MS,'chapter5-gameIntro',null,{fadeOut:[CHAPTER5_RULES_MS-700,CHAPTER5_RULES_MS]})]};
 export function castingCardTimeline(role){
   const killer=role.id==='killer',at=killer?0:500,fadeEnd=killer?1500:1200;
@@ -58,7 +59,7 @@ export function polishedFinaleTimeline(){
   return {id:'chapter5-narrated-finale',end:POLISHED_FINALE_MS,cues:[{...chapter5FinaleTimeline.cues[0],end:COMPLETE_CAST_END_MS,visual:{...chapter5FinaleTimeline.cues[0].visual,fadeOut:[COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS]}},...messages]};
 }
 export class Chapter5View{
-  constructor(document,Renderer,clock){this.document=document;this.Renderer=Renderer;this.clock=clock;this.renderer=null;this.key=null;this.state=null;}
+  constructor(document,Renderer,clock){this.document=document;this.Renderer=Renderer;this.clock=clock;this.renderer=null;this.key=null;this.state=null;this.sceneLayers=document.querySelectorAll?[...document.querySelectorAll('#chapter5TV > .chapter5-layer')].map(node=>[node.id,node]):introTargets.map(id=>[id,document.getElementById(id)]);}
   update(state){
     const previous=this.state?.chapter5,next=state.chapter5;
     // Ignore stale polling responses: a completed round can never become a card again.
@@ -112,6 +113,10 @@ export class Chapter5View{
     this.document.getElementById('chapter5-killerNote').hidden=role.id!=='killer';
     for(const role of castingRoles)this.document.getElementById('chapter5-cast-'+role.id).textContent=c.winners.find(w=>w.roleId===role.id)?.player.name||'';
     this.renderer?.update({phase:'opening',startedAt:c.startedAt});
+    // Retire inactive full-screen surfaces, including the animated cast fan.
+    // Opacity alone leaves those surfaces on the TV's compositing stack.
+    const sceneTime=this.renderer?.elapsedNow()??0,activeTargets=new Set((this.renderer?.timeline.cues??[]).filter(cue=>sceneTime>=cue.at&&sceneTime<cue.end).map(cue=>cue.visual.target));
+    for(const [id,node] of this.sceneLayers){const active=activeTargets.has(id);node.hidden=!active;node.style.visibility=active?'visible':'hidden';node.style.zIndex=active?'1':'';}
     // Scheduler elapsed may reach the winner boundary before the next safe
     // server projection includes its name. Keep the existing suspense visible;
     // never paint the winner heading alone or disclose a result early.
@@ -119,7 +124,7 @@ export class Chapter5View{
     const suspense=this.document.getElementById('chapter5-revealRole');
     if(!this.renderer?.timeline.cues.some(cue=>cue.visual?.target==='chapter5-revealRole'))suspense.style.opacity=0;
     if(!intro&&!waiting&&!rules&&!finale&&r.completedAt!==null&&!r.winner&&Number(winner.style.opacity)>0){
-      winner.style.opacity=0;suspense.textContent=role.title+' IS...';suspense.style.opacity=1;
+      winner.style.opacity=0;winner.hidden=true;suspense.textContent=role.title+' IS...';suspense.style.opacity=1;suspense.hidden=false;suspense.style.visibility='visible';suspense.style.zIndex='1';
     }
   }
   progressDue(elapsed,state){
@@ -132,6 +137,7 @@ export class Chapter5View{
   }
   stop(){
     if(this.renderer){for(const {node} of this.renderer.layers)node.style.opacity=0;this.renderer.stop();}
+    for(const [,node] of this.sceneLayers){node.hidden=true;node.style.visibility='hidden';node.style.zIndex='';}
     this.renderer=null;this.key=null;
   }
 }

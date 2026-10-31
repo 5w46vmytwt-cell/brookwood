@@ -130,3 +130,13 @@ test('wife presentation starts only with her narration after the handoff silence
  for(const t of [38125,38325,39000,40324])assert(Object.values(e.resolve(timeline,t)).every(v=>v.opacity===0));
  assert.equal(timeline.cues.find(c=>c.id==='wife').at,40325);assert.equal(timeline.cues.find(c=>c.id==='party').at,40325);
 });
+test('item, narrator, wife takeover and READY own separate visible layers across polls and refresh',()=>{
+ const e=fixture();const ids=['intro','item','radio','complaint','overruled','unauthorized','approved','disconnected','party','wife','ready','cast','card'];
+ e.document.querySelectorAll=()=>ids.map(id=>{const node=e.document.getElementById('chapter5-'+id);node.id='chapter5-'+id;return node;});
+ let time=0;const clock={externallyDriven:true,elapsedNow:()=>time};let view=new Chapter5View(e.document,e.Renderer,clock);
+ const s={phase:'chapter5-intro',chapter5:{startedAt:100000,itemPacingVersion:2,audioVersion:1,revealVersion:1,roundIndex:0,round:{...castingRoles[0],startedAt:null,completedAt:null,votingActive:false,voteCount:0},winners:[],castStartedAt:null,completedAt:null},package:{holderPlayer:{name:'Actual Selected Player'}}};
+ const paint=(at,visible)=>{time=at;view.update(s);for(const id of ['item','radio','wife','ready'])assert.equal(e.document.getElementById('chapter5-'+id).hidden,!visible.includes(id),id+' at '+at);};
+ paint(4000,['item']);assert(e.document.getElementById('chapter5-cast').hidden);paint(15250,[]);paint(18250,['radio']);e.document.getElementById('chapter5-item').style.opacity=1;paint(20000,['radio']);assert(e.document.getElementById('chapter5-item').hidden);paint(38125,[]);paint(40325,['wife']);paint(50000,['wife']);paint(61606,['ready']);
+ view.stop();view=new Chapter5View(e.document,e.Renderer,clock);paint(50000,['wife']);paint(50000,['wife']);assert.equal(e.document.getElementById('chapter5-ready').hidden,true);
+ s.phase='chapter5-waiting';paint(70000,['ready']);assert.equal(e.document.getElementById('chapter5-itemHolder').textContent,'Actual Selected Player');
+});
