@@ -1,0 +1,33 @@
+/* TV lobby only. Cinematic layers, phone styles and host actions are unchanged. */
+#tvLobby{display:none}
+body.lobby-active{background:#130b0e url('/assets/lobby/lobby_background.png') center center/cover no-repeat fixed}
+.lobby-active #tvLobby{--card-width:clamp(148px,9.375vw,180px);--card-height:clamp(54px,6.85vh,74px);--card-gap:clamp(8px,1.1vh,12px);display:flex;align-items:center;width:76vw;max-width:1120px;height:100vh;height:100dvh;margin:0 auto;padding:13vh 12px 3vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#fff6ed}
+#tvLobby .top{position:relative;width:100%;justify-content:center;text-align:center;align-items:center;border:0;padding:0;gap:0}
+#tvLobby .title{font:700 clamp(26px,2.3vw,42px)/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:.07em;margin:5px 0 10px;text-shadow:0 2px 12px #000}
+#tvLobby .eyebrow{font-size:11px;letter-spacing:.19em;color:#d4b6a4}
+#tvLobby .lobby-waiting{font-size:13px;letter-spacing:.22em;color:#f3d5bc;text-shadow:0 2px 6px #000}
+#tvLobby .room{position:absolute;right:0;top:0;font-size:11px;color:#d4b6a4}
+#tvLobby .room b{font-size:24px;margin-top:5px}
+#tvLobby .join{width:100%;justify-content:center;gap:18px;margin:14px 0;min-height:76px}
+#tvLobby .joinUrl{font-size:14px;color:#fff1e6;overflow-wrap:anywhere}
+#tvLobby .qr{width:76px;height:76px;padding:5px;border-radius:6px}
+#tvLobby .count{display:block;color:#d4b6a4;font-size:12px;white-space:nowrap}
+#tvLobby .count strong{font-size:22px;color:#fff6ed}
+#tvLobby .grid{display:flex;flex:0 0 auto;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--card-gap);width:calc(var(--columns,5)*var(--card-width) + (var(--columns,5) - 1)*var(--card-gap));max-width:100%;min-height:var(--card-height);overflow:visible;margin:auto 0}
+#tvLobby .grid .card{flex:0 0 var(--card-width);width:var(--card-width);height:var(--card-height);min-height:0;padding:8px 10px;border:1px solid #9f482f;border-radius:12px;background:rgba(43,13,24,.82);box-shadow:0 4px 14px #0004;display:flex;align-items:center;justify-content:center;text-align:center}
+#tvLobby .grid .name{font-size:clamp(15px,1.05vw,20px);font-weight:650;line-height:1.2;margin:0;color:#fff6ed;overflow-wrap:anywhere;max-width:100%}
+#tvLobby .host{width:100%;justify-content:center;gap:8px;border:0;padding:0;margin-top:16px}
+#tvLobby .host input,#tvLobby .host button{border-radius:9px;border-color:#8b4934;background:rgba(37,12,20,.9);color:#fff0e4;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;min-height:44px;padding:8px 12px}
+#tvLobby .host input{width:120px}
+#tvLobby #lockRoom,#tvLobby #startSession,#tvLobby #testFillAdd{background:#bf7145;color:#fff;border-color:#dc9b6c}
+#tvLobby .host button:hover:not(:disabled){background:#8b402e}
+#tvLobby .host button:active:not(:disabled){transform:translateY(1px)}
+#tvLobby .host button:focus-visible,#tvLobby .host input:focus-visible{outline:2px solid #ffd1a0;outline-offset:3px}
+#tvLobby #testFillControls{color:#e2c0aa;font-size:11px}
+#tvLobby #testFillStatus{margin-top:3px}
+#tvLobby .msg{width:100%;text-align:center;margin:6px 0 0;color:#ffd0b0}
+.lobby-arrival{animation:lobby-arrive 450ms ease-out both}
+@keyframes lobby-arrive{from{opacity:0;box-shadow:0 0 16px #ed8b3b99}to{opacity:1;box-shadow:0 4px 14px #0004}}
+@media(max-height:760px){#tvLobby .join{margin:10px 0;min-height:64px}#tvLobby .qr{width:64px;height:64px}#tvLobby .host{margin-top:10px;gap:6px}#tvLobby .title{margin-bottom:7px}}
+@media(max-width:900px){.lobby-active #tvLobby{width:96vw;--card-width:clamp(90px,16vw,148px)}#tvLobby .room{position:static;margin-left:16px}#tvLobby .grid .name{font-size:14px}#tvLobby .joinUrl{font-size:12px}}
+@media(prefers-reduced-motion:reduce){#tvLobby .lobby-arrival{animation:none}}

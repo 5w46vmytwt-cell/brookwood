@@ -1,0 +1,43 @@
+// Local isolated-memory verification only. Never contacts production Redis.
+import {spawn} from 'node:child_process';
+import {readFileSync,writeFileSync,mkdirSync,mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';import {join} from 'node:path';import assert from 'node:assert/strict';
+const base='http://127.0.0.1:3088',debug='http://127.0.0.1:9348',pause=ms=>new Promise(r=>setTimeout(r,ms));mkdirSync('logs',{recursive:true});
+const seed="const nativeFetch=global.fetch;let raw=null,timeOffset=0;";
+writeFileSync('logs/tv-lobby-local-server.mjs',readFileSync('scripts/dev.mjs','utf8').replace('const nativeFetch=global.fetch;let raw=null,timeOffset=0;',seed));
+const server=spawn(process.execPath,['logs/tv-lobby-local-server.mjs',...(process.argv.includes('--built')?['--built']:[])],{env:{...process.env,PORT:'3088'},windowsHide:true,stdio:['ignore','pipe','pipe']});let serverLog='';server.stdout.on('data',b=>serverLog+=b);server.stderr.on('data',b=>serverLog+=b);
+const browser=spawn(process.env.BROOKWOOD_CHROME??'C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--remote-debugging-port=9348','--user-data-dir='+mkdtempSync(join(tmpdir(),'brookwood-tv-lobby-')),'--no-first-run','--no-default-browser-check','--disable-background-networking','--autoplay-policy=no-user-gesture-required','about:blank'],{windowsHide:true,stdio:'ignore'});
+let ws,id=0;const pending=new Map(),errors=[],report={};
+try{
+ let version;for(let n=0;n<100;n++){if(server.exitCode!==null)throw Error(serverLog);try{version=await(await fetch(debug+'/json/version')).json();if((await fetch(base+'/api/state')).ok)break;}catch{}await pause(100);}
+ assert(version);ws=new WebSocket(version.webSocketDebuggerUrl);await new Promise((yes,no)=>{ws.onopen=yes;ws.onerror=no;});
+ ws.onmessage=e=>{const j=JSON.parse(e.data);if(j.id){const p=pending.get(j.id);pending.delete(j.id);j.error?p.reject(Error(j.error.message)):p.resolve(j.result);}else if(j.method==='Runtime.exceptionThrown')errors.push(j.params.exceptionDetails.exception?.description??j.params.exceptionDetails.text);};
+ const send=(method,params={},sessionId)=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});ws.send(JSON.stringify({id:n,method,params,...(sessionId?{sessionId}:{})}));});
+ const evaluate=async(session,expression)=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true},session);if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description??r.exceptionDetails.text);return r.result.value;};
+ const state=async()=>await(await fetch(base+'/api/state')).json();
+ async function until(check,label,timeout=15000){const start=Date.now();while(Date.now()-start<timeout){const r=await check();if(r)return r;await pause(100);}throw Error('Timed out: '+label+'\n'+JSON.stringify(await state()));}
+ const instrument="window.__audio=[];const NativeAudio=window.Audio;window.Audio=function(...args){const a=new NativeAudio(...args);window.__audio.push(a);return a;};";
+ async function page(path,phoneId){const context=await send('Target.createBrowserContext'),target=await send('Target.createTarget',{url:'about:blank',browserContextId:context.browserContextId}),attached=await send('Target.attachToTarget',{targetId:target.targetId,flatten:true}),session=attached.sessionId;await send('Runtime.enable',{},session);await send('Page.enable',{},session);await send('Page.addScriptToEvaluateOnNewDocument',{source:instrument+(phoneId?"localStorage.setItem('brookwood-player-v3',JSON.stringify({id:'p0',token:'t0'}));":'')},session);await send('Page.navigate',{url:base+path},session);await until(()=>evaluate(session,"document.readyState==='complete'&&typeof lobbyRequest==='function'"),'page ready');return session;}
+ async function reload(session){const origin=await evaluate(session,'performance.timeOrigin');await send('Page.reload',{},session);await until(()=>evaluate(session,"document.readyState==='complete'&&performance.timeOrigin!=="+origin),'new document loaded');}
+ async function screenshot(session,name){const r=await send('Page.captureScreenshot',{format:'png'},session);writeFileSync('logs/tv-'+name+'.png',Buffer.from(r.data,'base64'));}
+ const tv=await page('/tv');await evaluate(tv,"lobbyRequest('/api/host',{action:'maze-login',code:'1031'})");
+ report.layouts=[];
+ for(const count of [1,2,6,12,20,25]){
+  await evaluate(tv,"lobbyRequest('/api/host',{action:'reset',code:'1031'})");
+  const joined=await evaluate(tv,"lobbyRequest('/api/join',{name:'Alexandria Montgomery XX'})");
+  const phone=await page('/join');await evaluate(phone,"localStorage.setItem('brookwood-player-v3',JSON.stringify("+JSON.stringify(joined.player)+"))");await reload(phone);await until(()=>evaluate(phone,"document.getElementById('playerName').textContent==='Alexandria Montgomery XX'"),'real phone reconnect');
+  if(count>1)await evaluate(tv,"lobbyRequest('/api/host',{action:'test-fill',code:'1031',generation:'"+(await state()).generation+"',count:"+(count-1)+",requestId:crypto.randomUUID()})");
+  await until(()=>evaluate(tv,"document.querySelectorAll('#grid .card').length==="+count),'player count');
+  for(const [width,height] of [[1920,1080],[1280,720]]){
+   await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false},tv);await pause(500);
+   const layout=await evaluate(tv,`(()=>{const cards=[...document.getElementById('grid').children],r=cards.map(n=>{const b=n.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height,right:b.right,bottom:b.bottom}}),host=document.querySelector('#tvLobby .host').getBoundingClientRect();return {r,host:{y:host.y,bottom:host.bottom},overflow:document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth,bg:getComputedStyle(document.body).backgroundImage}})()`);
+   assert.equal(layout.overflow,false);assert(layout.bg.includes('lobby_background.png'));assert(layout.r.every(r=>r.w<=190&&r.h<=75&&r.bottom<layout.host.y&&r.right<=width));assert(layout.host.bottom<=height);assert.equal(new Set(layout.r.map(r=>r.w+':'+r.h)).size,1);assert(await evaluate(tv,"[...document.querySelectorAll('#grid .name')].every(n=>n.scrollHeight<=n.parentElement.clientHeight&&n.scrollWidth<=n.clientWidth)"));
+   if(count===25)assert.equal(new Set(layout.r.map(r=>r.y)).size,5);
+   report.layouts.push({count,width,height,card:layout.r[0]});await screenshot(tv,'lobby-'+count+'-'+width);
+  }
+  await evaluate(tv,"window.savedCard=document.querySelector('#grid .card')");await pause(1500);assert(await evaluate(tv,"window.savedCard===document.querySelector('#grid .card')"));
+ }
+ await evaluate(tv,"document.getElementById('code').value='1031';authenticateLobbyHost()");await until(()=>evaluate(tv,"!document.getElementById('lockRoom').hidden"),'host buttons');await screenshot(tv,'lobby-host-25-1280');assert(await evaluate(tv,"document.querySelector('#tvLobby .host').getBoundingClientRect().bottom<=innerHeight&&document.documentElement.scrollHeight<=innerHeight"));await evaluate(tv,"lobbyRequest('/api/host',{action:'reset',code:'1031'})");await until(()=>evaluate(tv,"document.getElementById('count').textContent==='0'"),'empty test lobby');await evaluate(tv,"while(Number(document.getElementById('testFillQuantity').value)<6)document.getElementById('testFillPlus').click();while(Number(document.getElementById('testFillQuantity').value)>6)document.getElementById('testFillMinus').click();document.getElementById('testFillAdd').click()");await until(()=>evaluate(tv,"document.getElementById('count').textContent==='6'"),'test fill UI adds six');await evaluate(tv,"document.getElementById('lockRoom').click()");await until(async()=>(await state()).roomLocked,'lock');await until(()=>evaluate(tv,"!document.getElementById('startSession').disabled"),'start enabled');await evaluate(tv,"document.getElementById('startSession').click()");await until(async()=>(await state()).phase==='opening','start');await until(()=>evaluate(tv,"!document.body.classList.contains('lobby-active')"),'cinematic handoff');assert.deepEqual(errors,[]);report.status='PASS';writeFileSync('logs/tv-lobby-browser.json',JSON.stringify(report,null,2));console.log('PASS: 1/2/6/12/20/25 players at 1080p and 720p; compact cards, no overflow, stable polling, test fill, host lock/start, no console errors');
+}catch(error){writeFileSync('logs/tv-lobby-browser-failure.json',JSON.stringify({message:error.message,report,errors,serverLog},null,2));throw error;}
+finally{ws?.close();browser.kill();server.kill();}
+
