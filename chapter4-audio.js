@@ -1,4 +1,4 @@
-import {chapter4Scenes} from './chapter4-timing.js';
+import {chapter4Scenes,CHAPTER4_VOTING_MS} from './chapter4-timing.js';
 
 const lerp=(from,to,t)=>from+(to-from)*Math.max(0,Math.min(1,t));
 // Chapter 4-relative automation. The approved scene intervals are also the
@@ -9,6 +9,7 @@ const levels=[
   [103450,.14],[108450,0]
 ];
 export function chapter4ScoreVolume(elapsed){
+  if(elapsed>=CHAPTER4_VOTING_MS)return lerp(0,levels.at(-2)[1],(elapsed-CHAPTER4_VOTING_MS)/1000);
   if(elapsed<=0||elapsed>=chapter4Scenes.at(-1).end)return 0;
   const next=levels.findIndex(([at])=>at>elapsed),a=levels[next-1],b=levels[next];
   const bed=lerp(a[1],b[1],(elapsed-a[0])/(b[0]-a[0]));

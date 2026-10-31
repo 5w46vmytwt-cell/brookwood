@@ -1,11 +1,11 @@
 import {randomInt} from 'node:crypto';
 import {LobbyError,UNCHANGED,validChapter3Cast,validateChapter4,makeTestChapterSelector} from './_state.js';
-import {castingRoles,chapter5Phases,CHAPTER5_INTRO_MS,CHAPTER5_LEGACY_INTRO_MS,castingVotingOffset,castingRevealOffset,castingCompletionMs,castingFinaleMs} from '../chapter5-timing.js';
-import {CHAPTER5_RULES_MS,roleNarrationOffset} from '../chapter5-audio-timing.js';
+import {castingRoles,chapter5Phases,CHAPTER5_LEGACY_INTRO_MS,castingVotingOffset,castingRevealOffset,castingCompletionMs,castingFinaleMs} from '../chapter5-timing.js';
+import {CHAPTER5_RULES_MS,roleNarrationOffset,chapter5IntroDuration} from '../chapter5-audio-timing.js';
 
 export const isChapter5=s=>chapter5Phases.includes(s.phase);
 const positive=t=>Number.isFinite(t)&&t>0;
-const freshChapter5=startedAt=>({eligibilityVersion:1,audioVersion:1,revealVersion:1,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
+const freshChapter5=startedAt=>({eligibilityVersion:1,audioVersion:1,revealVersion:1,itemPacingVersion:1,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
 export const castingCandidates=s=>s.players.filter(p=>!s.chapter5.rounds.slice(0,s.chapter5.roundIndex).some(r=>r.winnerPlayerId===p.id));
 const version=c=>c.audioVersion===1?1:0;
 export function validatePackage(s){
@@ -15,6 +15,7 @@ export function validateChapter5(s){
   validateChapter4({...s,phase:'door-vote-complete'});validatePackage(s);
   const c=s.chapter5,cast=new Set(s.players.map(p=>p.id));
   if(!validChapter3Cast(s)||!c||!positive(c.startedAt)||c.startedAt<s.packageOpenedAt||!Array.isArray(c.rounds)||c.rounds.length!==6||!Number.isInteger(c.roundIndex)||c.roundIndex<0||c.roundIndex>5)throw Error('Invalid Chapter 5 state.');
+  if(c.itemPacingVersion!==undefined&&c.itemPacingVersion!==1)throw Error('Unsupported item pacing version.');
   if(c.audioVersion!==undefined&&c.audioVersion!==1)throw Error('Unsupported casting audio version.');
   if(c.revealVersion!==undefined&&c.revealVersion!==1)throw Error('Unsupported casting reveal version.');
   if(c.eligibilityVersion!==undefined&&c.eligibilityVersion!==1)throw Error('Unsupported casting eligibility version.');
@@ -22,7 +23,7 @@ export function validateChapter5(s){
   if(c.revealVersion===1&&c.audioVersion!==1)throw Error('Narrated reveals require casting audio.');
   if(version(c)){
     const introductory=['chapter5-intro','chapter5-waiting'].includes(s.phase);
-    if(s.phase==='chapter5-intro'?c.readyAt!==null:c.readyAt!==c.startedAt+CHAPTER5_INTRO_MS)throw Error('Invalid host-ready clock.');
+    if(s.phase==='chapter5-intro'?c.readyAt!==null:c.readyAt!==c.startedAt+chapter5IntroDuration(c))throw Error('Invalid host-ready clock.');
     if(introductory?c.rulesStartedAt!==null:!positive(c.rulesStartedAt)||c.rulesStartedAt<c.readyAt)throw Error('Invalid casting rules clock.');
     if(['chapter5-waiting','chapter5-rules'].includes(s.phase)&&(c.roundIndex!==0||c.rounds.some(r=>r.startedAt!==null)))throw Error('Premature casting round.');
   }else if(['chapter5-waiting','chapter5-rules'].includes(s.phase))throw Error('Missing casting audio version.');
@@ -65,7 +66,7 @@ export function advanceCasting(s){
   if(!isChapter5(s)||s.phase==='chapter5-complete')return UNCHANGED;
   const c=s.chapter5,now=Date.now();
   if(s.phase==='chapter5-intro'){
-    const duration=version(c)?CHAPTER5_INTRO_MS:CHAPTER5_LEGACY_INTRO_MS;
+    const duration=version(c)?chapter5IntroDuration(c):CHAPTER5_LEGACY_INTRO_MS;
     if(now<c.startedAt+duration)return UNCHANGED;
     if(version(c)){c.readyAt=c.startedAt+duration;s.phase='chapter5-waiting';}
     else{c.rounds[0].startedAt=c.startedAt+duration;s.phase='chapter5-casting';}
@@ -123,7 +124,7 @@ export function chapter5Progress(s,playerId){
   if(!isChapter5(s))return null;
   const c=s.chapter5,now=Date.now(),r=c.rounds[c.roundIndex],player=id=>{const p=s.players.find(p=>p.id===id);return p?{id:p.id,name:p.name}:null;};
   const revealed=round=>round.completedAt!==null&&now>=round.completedAt+castingRevealOffset(round.id,c.revealVersion);
-  return {navigationId:c.navigationId??null,candidateIds:castingCandidates(s).map(p=>p.id),duplicateAssignments:new Set(c.rounds.map(r=>r.winnerPlayerId).filter(Boolean)).size!==c.rounds.filter(r=>r.winnerPlayerId).length,audioVersion:version(c),revealVersion:c.revealVersion??0,startedAt:c.startedAt,readyAt:c.readyAt??null,rulesStartedAt:c.rulesStartedAt??null,roundIndex:c.roundIndex,castStartedAt:c.castStartedAt,completedAt:c.completedAt,
+  return {navigationId:c.navigationId??null,candidateIds:castingCandidates(s).map(p=>p.id),duplicateAssignments:new Set(c.rounds.map(r=>r.winnerPlayerId).filter(Boolean)).size!==c.rounds.filter(r=>r.winnerPlayerId).length,itemPacingVersion:c.itemPacingVersion??0,audioVersion:version(c),revealVersion:c.revealVersion??0,startedAt:c.startedAt,readyAt:c.readyAt??null,rulesStartedAt:c.rulesStartedAt??null,roundIndex:c.roundIndex,castStartedAt:c.castStartedAt,completedAt:c.completedAt,
     round:{id:r.id,title:castingRoles[c.roundIndex].title,setup:castingRoles[c.roundIndex].setup,question:castingRoles[c.roundIndex].question,startedAt:r.startedAt,completedAt:r.completedAt,narrationStartedAt:version(c)&&r.startedAt!==null?r.startedAt+roleNarrationOffset(r.id):null,votingOpensAt:r.startedAt!==null?r.startedAt+castingVotingOffset(r.id,version(c)):null,votingActive:s.phase==='chapter5-casting'&&r.completedAt===null&&now>=r.startedAt+castingVotingOffset(r.id,version(c)),
       voteCount:Object.keys(r.votes).length,winner:revealed(r)?player(r.winnerPlayerId):null,...(playerId?{voted:Object.hasOwn(r.votes,playerId)}:{})},
     winners:c.rounds.filter(revealed).map(r=>({roleId:r.id,title:castingRoles.find(role=>role.id===r.id).title,player:player(r.winnerPlayerId)}))};

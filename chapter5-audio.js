@@ -1,5 +1,5 @@
 import {chapter5Reveals,completeCastRecording,revealTiming,COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS} from './chapter5-reveal-timing.js';
-import {chapter5Recordings,chapter5Opening,castBackground,roleNarrationOffset} from './chapter5-audio-timing.js';
+import {chapter5Recordings,chapter5OpeningFor,castBackground,roleNarrationOffset} from './chapter5-audio-timing.js';
 const clamp=t=>Math.max(0,Math.min(1,t));
 const lerp=(a,b,t)=>a+(b-a)*clamp(t);
 const castAt=c=>c.castStartedAt??(c.revealVersion===1&&c.round.id==='killer'&&c.round.completedAt!==null?c.round.completedAt+revealTiming('killer').end:null);
@@ -8,7 +8,7 @@ export function chapter5Narration(state){
   const opening=chapter5Recordings.map((cue,index)=>{
     let at=Infinity;
     if(c?.audioVersion===1){
-      if(index<4)at=chapter5Opening[index].at;
+      if(index<4)at=chapter5OpeningFor(c)[index].at;
       else if(index===4&&c.rulesStartedAt!==null)at=c.rulesStartedAt-c.startedAt;
       else if(c.round.id===cue.id.slice('chapter5-'.length)&&c.round.startedAt!==null)at=c.round.startedAt-c.startedAt+roleNarrationOffset(c.round.id);
     }
@@ -20,7 +20,8 @@ export function chapter5Narration(state){
 }
 export function chapter5ScoreVolume(elapsed,state){
   const c=state?.chapter5;
-  if(c?.audioVersion!==1||state.phase==='chapter5-complete'||elapsed<castBackground.at)return 0;
+  const scoreAt=chapter5OpeningFor(c)[2].at;
+  if(c?.audioVersion!==1||state.phase==='chapter5-complete'||elapsed<scoreAt)return 0;
   let bed=.14,gain=1;
   if(c.round.id==='killer')bed=lerp(.14,.08,(elapsed-(c.round.startedAt-c.startedAt))/1500);
   for(const cue of chapter5Narration(state)){
@@ -30,7 +31,7 @@ export function chapter5ScoreVolume(elapsed,state){
     else if(elapsed>=cue.at&&elapsed<end+100)gain=Math.min(gain,.4);
     else if(elapsed>=end+100&&elapsed<end+350)gain=Math.min(gain,lerp(.4,1,(elapsed-end-100)/250));
   }
-  const entrance=clamp((elapsed-castBackground.at)/1000);
+  const entrance=clamp((elapsed-scoreAt)/1000);
   // The cast summary fades its score before the silent final mystery turn.
   const fadeAt=c.revealVersion===1?COMPLETE_CAST_HOLD_MS:5500,fadeEnd=c.revealVersion===1?COMPLETE_CAST_END_MS:8500;
   if(c.castStartedAt!==null)bed=c.revealVersion===1?lerp(.08,.14,(elapsed-(c.castStartedAt-c.startedAt))/1000):.14;
@@ -42,7 +43,8 @@ export function chapter5ScoreVolume(elapsed,state){
 export class Chapter5Audio{
   constructor(Player,clock){
     this.clock=clock;this.state=null;
-    const score={...castBackground,volumeAt:elapsed=>chapter5ScoreVolume(elapsed,this.state)};
+    const owner=this;
+    const score={...castBackground,get at(){return chapter5OpeningFor(owner.state?.chapter5)[2].at;},volumeAt:elapsed=>chapter5ScoreVolume(elapsed,this.state)};
     this.player=new Player({id:'chapter5-audio',cues:[...chapter5Recordings,...chapter5Reveals,completeCastRecording].map(c=>({...c,at:Infinity}))},{...clock,audioExtension:{tracks:[score]}});
   }
   update(state,meta={}){

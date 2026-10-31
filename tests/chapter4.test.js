@@ -64,13 +64,13 @@ test('door/package reveal uses the approved image and exact HTML copy only at th
   assert.equal(image.subarray(1,4).toString(),'PNG');
   const vote=html.match(/<div id="chapter4-vote"[\s\S]*?<\/div>/)[0];
   assert(vote.includes('src="/assets/chapter4/doorbell-package.png"'));
-  assert(vote.includes('<h2>SOMEONE LEFT A PACKAGE AT YOUR DOORSTEP</h2>'));
+  assert(vote.includes('<h2>SOMEONE LEFT A PACKAGE FOR YOU</h2>'));
   assert(vote.includes('ONLY ONE PERSON CAN RETRIEVE IT'));
-  assert(vote.includes('Decide as a group who should go'));
+  assert(!vote.includes('Decide as a group who should go'));assert(!html.includes('id="chapter4-count"'));
   assert(vote.includes('VOTE ON YOUR PHONE'));
   assert(vote.includes('FRONT DOOR CAMERA'));
   const cue=chapter4Timeline.cues.find(c=>c.id==='vote');assert.equal(cue.at,114474);
-  assert.deepEqual(cue.visual.content.map(c=>c.text),['SOMEONE LEFT A PACKAGE AT YOUR DOORSTEP','Decide as a group who should go']);
+  assert.deepEqual(cue.visual.content.map(c=>c.text),['SOMEONE LEFT A PACKAGE FOR YOU']);
   for(const at of [108450,111449,111450,112500,114473])assert.equal(setup(at).opacity('vote'),0);
   assert.equal(setup(114474).opacity('vote'),1);
   assert.equal(chapter4AudioTimeline.cues.at(-1).at,111450);assert.equal(chapter4AudioTimeline.cues.at(-1).durationMs,3024);
@@ -84,27 +84,27 @@ test('voting refresh reconstructs the door/package reveal and current aggregate 
     chapter3:{startedAt:200000,completedAt:220000,readCount:12},
     chapter4:{startedAt:300000,active:true,complete:false,voteCount:7,selectedPlayer:null}};
   e.runtime.acceptState(state,{hard:true});assert.equal(e.opacity('vote'),1);
-  assert.equal(e.nodes.get('chapter4-count').textContent,'7 / 12 VOTES RECORDED');
+  assert.equal(e.runtime.state.chapter4.voteCount,7);
   assert.equal(e.nodes.get('chapter4-cinematic').hidden,false);assert.equal(e.nodes.get('chapter4-result').hidden,true);
   assert.equal(e.audio('chapter4-doorbell').plays,0);
   e.runtime.acceptState({...state,chapter4:{...state.chapter4,voteCount:8}});assert.equal(e.opacity('vote'),1);
-  assert.equal(e.nodes.get('chapter4-count').textContent,'8 / 12 VOTES RECORDED');
+  assert.equal(e.runtime.state.chapter4.voteCount,8);
   e.runtime.acceptState({...state,phase:'door-vote-complete',chapter4:{...state.chapter4,complete:true,selectedPlayer:{id:'persisted',name:'Alexandra Long Name'}}});
   assert.equal(e.nodes.get('chapter4-selected').textContent,'Alexandra Long Name');
   assert.equal(e.nodes.get('chapter4-result').hidden,false);
   assert.equal(e.nodes.get('chapter4-cinematic').hidden,true);
 });
-test('package result uses finalized server time for exactly three seconds of suspense and a 400ms reveal',()=>{
-  const c={completedAt:420000};assert.deepEqual(packageResultFrame(c,422999),{visible:false,opacity:0});
-  assert.deepEqual(packageResultFrame(c,423000),{visible:true,opacity:0});assert.equal(packageResultFrame(c,423200).opacity,.5);assert.equal(packageResultFrame(c,423400).opacity,1);
-  const e=setup(123200);e.runtime.acceptState({phase:'door-vote-complete',startedAt:100000,serverNow:423200,chapter4:{startedAt:300000,completedAt:420000,complete:true,voteCount:12,selectedPlayer:{id:'winner',name:'W'.repeat(24)}}},{hard:true});
+test('package result uses finalized server time for exactly four seconds of suspense and a 400ms reveal',()=>{
+  const c={completedAt:420000};assert.deepEqual(packageResultFrame(c,423999),{visible:false,opacity:0});
+  assert.deepEqual(packageResultFrame(c,424000),{visible:true,opacity:0});assert.equal(packageResultFrame(c,424200).opacity,.5);assert.equal(packageResultFrame(c,424400).opacity,1);
+  const e=setup(123200);e.runtime.acceptState({phase:'door-vote-complete',startedAt:100000,serverNow:424200,chapter4:{startedAt:300000,completedAt:420000,complete:true,voteCount:12,selectedPlayer:{id:'winner',name:'W'.repeat(24)}}},{hard:true});
   assert.equal(e.nodes.get('chapter4-selected').textContent,'W'.repeat(24));assert.equal(e.nodes.get('chapter4-resultDetails').style.opacity,.5);
 });
 test('TV-only hold survives early package confirmation without server changes or skipping item narration',()=>{
   const e=setup(120000),s={phase:'chapter5-intro',startedAt:100000,serverNow:421000,chapter4:{startedAt:300000,completedAt:420000,complete:true,selectedPlayer:{id:'winner',name:'Alex'}},chapter5:{startedAt:421000,audioVersion:1,roundIndex:0,round:{...castingRoles[0],startedAt:null,completedAt:null,voteCount:0},rulesStartedAt:null,castStartedAt:null,readyAt:null},package:{holderPlayer:{name:'Alex'}}};
   s.chapter5.winners=[];
   e.runtime.acceptState(s,{hard:true});assert.equal(e.runtime.holdingPackageResult(),true);assert.equal(e.nodes.get('chapter4-selected').textContent,'');
-  e.frame(2399);assert.equal(e.runtime.holdingPackageResult(),true);
+  e.frame(3399);assert.equal(e.runtime.holdingPackageResult(),true);
   e.frame(1);assert.equal(e.runtime.holdingPackageResult(),false);assert.equal(e.nodes.get('chapter5TV').hidden,false);
   const narration=e.runtime.chapter5Audio.player.active;assert(narration);assert.equal(narration.audio.currentTime,0);assert.equal(s.chapter5.startedAt,421000);
 });
@@ -139,12 +139,15 @@ test('Chapter 4 score ducks from locked narration intervals and uses smooth sect
   for(let t=0;t<=120000;t+=25){assert(Number.isFinite(chapter4ScoreVolume(t)));assert(chapter4ScoreVolume(t)>=0&&chapter4ScoreVolume(t)<=.14);}
 });
 
-test('Chapter 4 final fade is silent at 108450 and throughout black, doorbell and voting',()=>{
+test('Chapter 4 final fade is silent through the doorbell, then restores the same score in one second',()=>{
   assert(chapter4ScoreVolume(104000)>chapter4ScoreVolume(107000));assert(chapter4ScoreVolume(108449)>0);
-  for(const at of [108450,109000,111449,111450,112000,114473,114474,120000]){
+  for(const at of [108450,109000,111449,111450,112000,114473,114474]){
     const e=setup(at);assert.equal(chapter4ScoreVolume(at),0);assert.equal(e.runtime.chapter4Audio.tracks[0].audio.volume,0);
     e.runtime.unlockBackground();assert.equal(e.runtime.chapter4Audio.tracks[0].audio.volume,0);
   }
+  assert.equal(chapter4ScoreVolume(114974),.07);assert.equal(chapter4ScoreVolume(115474),.14);
+  const e=setup(114474),track=e.runtime.chapter4Audio.tracks[0].audio,position=track.currentTime;
+  e.frame(500);assert.equal(track.volume,.07);assert.equal(e.runtime.chapter4Audio.tracks[0].audio,track);assert.equal(track.plays,1);assert.equal(track.currentTime,position);
 });
 
 test('Chapter 4 score autoplay failure retries on interaction without disrupting narration or visuals',async()=>{

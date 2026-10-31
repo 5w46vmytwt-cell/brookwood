@@ -891,6 +891,14 @@ test('Chapter 5 intro is server-time gated and ignores client clocks/phase param
   await serverClock(start+CHAPTER5_INTRO_MS,async()=>{overlapReads(4);const result=await Promise.all(Array.from({length:4},()=>call('progress')));assert(result.every(r=>r.status===200));});
   assert.equal(state().phase,'chapter5-waiting');assert.equal(state().chapter5.readyAt,start+CHAPTER5_INTRO_MS);assert.equal(state().chapter5.rounds[0].startedAt,null);assert.equal(persisted.length,1);
 });
+test('item pacing version preserves old narrated runs and projects the new timing only for fresh runs',async()=>{
+  await packageTestRun('chapter5');const start=state().chapter5.startedAt;
+  assert.equal(state().chapter5.itemPacingVersion,1);assert.equal((await call('state',{},'GET')).data.chapter5.itemPacingVersion,1);
+  const old=state();delete old.chapter5.itemPacingVersion;raw=JSON.stringify(old);
+  await serverClock(start+63154,async()=>{assert.equal((await call('progress')).status,200);});
+  assert.equal(state().phase,'chapter5-waiting');assert.equal(state().chapter5.readyAt,start+63154);
+  assert.equal((await call('state',{},'GET')).data.chapter5.itemPacingVersion,0);
+});
 
 test('casting validates tokens, self-votes, current targets, current run/round and server voting activation',async()=>{
   const real=await castingRun(),before=raw;

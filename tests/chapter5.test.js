@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {castingRoles,castingVotingOffset,castingCompletionMs,CHAPTER5_FINALE_MS} from '../chapter5-timing.js';
-import {Chapter5View,chapter5IntroTimeline,castingCardTimeline,castingResultTimeline,chapter5FinaleTimeline} from '../chapter5.js';
+import {Chapter5View,chapter5IntroTimeline,chapter5IntroTimelineFor,castingCardTimeline,castingResultTimeline,chapter5FinaleTimeline} from '../chapter5.js';
 import {TVCinematicRuntime} from '../tv-cinematic.js';
 import {chapter5Opening,narrationGate,CHAPTER5_READY_MS} from '../chapter5-audio-timing.js';
 function fixture(){
@@ -117,4 +117,11 @@ test('TV scheduler changes to Chapter 5 clock, silences obsolete audio and recon
   runtime.acceptState(fresh,{hard:true});assert.equal(runtime.elapsedNow(),0);assert.equal(Number(e.nodes.get('chapter5-card').style.opacity),0);assert.equal(Number(e.nodes.get('chapter5-intro').style.opacity),1);
   runtime.acceptState({phase:'lobby',startedAt:null,serverNow:700000},{hard:true});
   assert.equal(runtime.audio.soundtrack.audio.paused,false);assert(runtime.chapter5Audio.player.tracks[0].audio.paused);
+});
+
+test('paced item scene fades for 2500ms and stays completely black for 3000ms before male return',()=>{
+ const e=fixture(),timeline=chapter5IntroTimelineFor({itemPacingVersion:1}),item=timeline.cues.find(c=>c.id==='item'),radio=timeline.cues.find(c=>c.id==='radio');
+ assert.deepEqual(item.visual.fadeOut,[12750,15250]);assert.equal(radio.at,18250);assert.equal(e.resolve(timeline,12750).item.opacity,1);assert.equal(e.resolve(timeline,14000).item.opacity,.5);
+ for(const t of [15250,16000,18249])assert(Object.values(e.resolve(timeline,t)).every(v=>v.opacity===0));assert.equal(e.resolve(timeline,18250).radio.opacity,1);
+ assert.equal(chapter5IntroTimeline.cues.find(c=>c.id==='radio').at,15250);
 });

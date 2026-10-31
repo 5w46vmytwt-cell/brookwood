@@ -1,11 +1,10 @@
 import {revealTiming,COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS,POLISHED_FINALE_MS} from './chapter5-reveal-timing.js';
-import {castingRoles,CHAPTER5_INTRO_MS,CHAPTER5_LEGACY_INTRO_MS,CHAPTER5_FINALE_MS,castingCompletionMs,castingFinaleMs} from './chapter5-timing.js';
-import {chapter5Opening,CHAPTER5_RULES_MS} from './chapter5-audio-timing.js';
+import {castingRoles,CHAPTER5_LEGACY_INTRO_MS,CHAPTER5_FINALE_MS,castingCompletionMs,castingFinaleMs} from './chapter5-timing.js';
+import {chapter5OpeningFor,chapter5IntroDuration,ITEM_ACQUIRED_FADE_MS,CHAPTER5_RULES_MS} from './chapter5-audio-timing.js';
 const text=(id,at,end,target,copy,extra={})=>({id,type:'text',at,end,visual:{target,...(copy?{text:copy}:{}),...extra}});
 const legacyIntroTimeline={id:'chapter5-legacy-intro',end:CHAPTER5_LEGACY_INTRO_MS,cues:[text('intro',0,10000,'chapter5-intro',null,{fadeOut:[9300,10000]})]};
-const signoffAt=chapter5Opening[1].at,signoffEnd=chapter5Opening[1].end,wifeAt=chapter5Opening[2].at;
-export const chapter5IntroTimeline={id:'chapter5-opening',end:CHAPTER5_INTRO_MS,cues:[
-  text('item',0,chapter5Opening[0].end,'chapter5-item',null,{fadeOut:[chapter5Opening[0].end-500,chapter5Opening[0].end]}),
+export function chapter5IntroTimelineFor(c){const chapter5Opening=chapter5OpeningFor(c),signoffAt=chapter5Opening[1].at,signoffEnd=chapter5Opening[1].end,wifeAt=chapter5Opening[2].at;return {id:'chapter5-opening',end:chapter5IntroDuration(c),cues:[
+  text('item',0,chapter5Opening[0].end,'chapter5-item',null,{fadeOut:[chapter5Opening[0].end-(c?.itemPacingVersion===1?ITEM_ACQUIRED_FADE_MS:500),chapter5Opening[0].end]}),
   text('radio',signoffAt,signoffEnd,'chapter5-radio',null,{darken:{range:[signoffAt+16000,signoffEnd],amount:.82}}),
   text('complaint',signoffAt,signoffAt+5000,'chapter5-complaint'),
   text('overruled',signoffAt+5000,signoffAt+10000,'chapter5-overruled'),
@@ -15,7 +14,8 @@ export const chapter5IntroTimeline={id:'chapter5-opening',end:CHAPTER5_INTRO_MS,
   text('party',wifeAt,Infinity,'chapter5-party'),
   text('wife',wifeAt,chapter5Opening[2].end,'chapter5-wife',null,{fadeIn:[wifeAt,wifeAt+1000]}),
   text('ready',chapter5Opening[3].at,Infinity,'chapter5-ready')
-]};
+]};}
+export const chapter5IntroTimeline=chapter5IntroTimelineFor({});
 const waitingTimeline={id:'chapter5-waiting',end:Infinity,cues:[text('party',0,Infinity,'chapter5-party'),text('waiting',0,Infinity,'chapter5-ready')]};
 export const chapter5RulesTimeline={id:'chapter5-rules',end:CHAPTER5_RULES_MS,cues:[text('rules',0,CHAPTER5_RULES_MS,'chapter5-gameIntro',null,{fadeOut:[CHAPTER5_RULES_MS-700,CHAPTER5_RULES_MS]})]};
 export function castingCardTimeline(role){
@@ -68,6 +68,7 @@ export class Chapter5View{
       state={...state,chapter5:{...next,round:{...next.round,winner:previous.round.winner}}};
     }
     this.state=state;const c=state.chapter5,r=c.round,role=castingRoles[c.roundIndex],intro=state.phase==='chapter5-intro',finale=['chapter5-finale','chapter5-complete'].includes(state.phase);
+    const chapter5Opening=chapter5OpeningFor(c),signoffAt=chapter5Opening[1].at,wifeAt=chapter5Opening[2].at;
     // Paused CSS animation sampling follows the same authoritative elapsed
     // clock as scene cues, including arbitrary refresh and reconstruction.
     const surface=this.document.getElementById('chapter5TV');
@@ -83,7 +84,7 @@ export class Chapter5View{
     if(key!==this.key){
       this.stop();this.key=key;
       if(state.phase==='chapter5-complete')return;
-      const timeline=intro?(c.audioVersion===1?chapter5IntroTimeline:legacyIntroTimeline):waiting?waitingTimeline:rules?chapter5RulesTimeline:finale?(c.revealVersion===1?polishedFinaleTimeline():chapter5FinaleTimeline):r.completedAt!==null?castingResultTimeline(role,c.revealVersion):castingCardTimeline(role);
+      const timeline=intro?(c.audioVersion===1?chapter5IntroTimelineFor(c):legacyIntroTimeline):waiting?waitingTimeline:rules?chapter5RulesTimeline:finale?(c.revealVersion===1?polishedFinaleTimeline():chapter5FinaleTimeline):r.completedAt!==null?castingResultTimeline(role,c.revealVersion):castingCardTimeline(role);
       this.renderer=new this.Renderer(this.document,timeline,{...this.clock,elapsedNow:()=>{
         const current=this.state.chapter5,base=['chapter5-intro','chapter5-waiting'].includes(this.state.phase)?current.startedAt:this.state.phase==='chapter5-rules'?current.rulesStartedAt:['chapter5-finale','chapter5-complete'].includes(this.state.phase)?current.castStartedAt:current.round.completedAt??current.round.startedAt;
         return Math.max(0,this.clock.elapsedNow()-(base-current.startedAt));
@@ -100,7 +101,7 @@ export class Chapter5View{
       }
     }
     this.document.getElementById('chapter5-itemHolder').textContent=state.package?.holderPlayer?.name||'';
-    this.document.getElementById('chapter5-waitingCopy').textContent=waiting||(intro&&c.audioVersion===1&&this.clock.elapsedNow()>=CHAPTER5_INTRO_MS)?'WAITING FOR THE HOST':'';
+    this.document.getElementById('chapter5-waitingCopy').textContent=waiting||(intro&&c.audioVersion===1&&this.clock.elapsedNow()>=chapter5IntroDuration(c))?'WAITING FOR THE HOST':'';
     this.document.getElementById('chapter5-roundProgress').textContent='ROUND '+(c.roundIndex+1)+' / 6';
     this.document.getElementById('chapter5-timeToVote').hidden=!r.votingActive;
     this.document.getElementById('chapter5-voteCount').textContent='CASTING IN PROGRESS... '+r.voteCount+' / 12 HAVE VOTED';
@@ -122,7 +123,7 @@ export class Chapter5View{
   }
   progressDue(elapsed,state){
     const c=state.chapter5;
-    if(state.phase==='chapter5-intro')return elapsed>=(c.audioVersion===1?CHAPTER5_INTRO_MS:CHAPTER5_LEGACY_INTRO_MS);
+    if(state.phase==='chapter5-intro')return elapsed>=(c.audioVersion===1?chapter5IntroDuration(c):CHAPTER5_LEGACY_INTRO_MS);
     if(state.phase==='chapter5-rules')return elapsed>=c.rulesStartedAt-c.startedAt+CHAPTER5_RULES_MS;
     if(state.phase==='chapter5-finale')return elapsed>=c.castStartedAt-c.startedAt+castingFinaleMs(c.revealVersion);
     if(state.phase==='chapter5-casting'&&c.round.completedAt!==null)return elapsed>=c.round.completedAt-c.startedAt+castingCompletionMs(c.round.id,c.revealVersion);

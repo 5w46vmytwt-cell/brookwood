@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {Chapter5Audio,chapter5Narration,chapter5ScoreVolume} from '../chapter5-audio.js';
-import {chapter5Recordings,chapter5Opening,castBackground,CHAPTER5_READY_MS,CHAPTER5_RULES_MS,narrationGate,roleNarrationOffset,roleVotingOffset} from '../chapter5-audio-timing.js';
+import {chapter5Recordings,chapter5Opening,chapter5OpeningFor,chapter5IntroDuration,castBackground,CHAPTER5_READY_MS,CHAPTER5_RULES_MS,narrationGate,roleNarrationOffset,roleVotingOffset} from '../chapter5-audio-timing.js';
 import {wavMetadata} from './wav-metadata.js';
 import {mp3Metadata} from './mp3-metadata.js';
 const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
@@ -114,4 +114,12 @@ test('new startedAt rearms audio, old-run play completion cannot alter a new run
   s.chapter5.startedAt=200000;e.at(0,s);await flush();assert.equal(original.currentTime,0);assert.equal(original.plays,2);
   e.audio.stop();assert([...e.audio.player.media.values()].every(a=>a.paused));assert(e.score.paused);
   e.at(400000,state('chapter5-complete'));assert([...e.audio.player.media.values()].every(a=>a.paused));assert(e.score.paused);
+});
+
+test('paced item narration finishes before three seconds of true black and the untouched male return',()=>{
+ const e=setup(),s=state();s.chapter5.itemPacingVersion=1;const cues=chapter5OpeningFor(s.chapter5);
+ assert.equal(cues[0].durationMs,15050);assert.equal(cues[0].end,15250);assert.equal(cues[1].at,18250);assert.equal(cues[1].at-cues[0].end,3000);assert.equal(chapter5IntroDuration(s.chapter5),66154);assert.equal(chapter5IntroDuration({}),63154);
+ e.at(0,s);assert.equal(e.media('item-acquired').plays,1);e.at(15050,s);assert(e.media('item-acquired').paused);
+ for(const t of [15250,16000,18249]){e.at(t,s);assert([...e.audio.player.media.values()].every(a=>a.paused));assert.equal(e.media('husband-signoff').plays,0);assert.equal(e.score.plays,0);}
+ e.at(18250,s);assert.equal(e.media('husband-signoff').plays,1);assert.equal(e.media('husband-signoff').currentTime,0);assert.equal(cues[1].durationMs,chapter5Opening[1].durationMs);assert.equal(cues[2].at-chapter5Opening[2].at,3000);
 });

@@ -18,6 +18,11 @@ export const chapter5Opening=chapter5Recordings.slice(0,4).map(c=>{
   return {...c,at,end:openingAt};
 });
 export const CHAPTER5_READY_MS=openingAt;
+export const ITEM_ACQUIRED_FADE_MS=2500;
+export const ITEM_ACQUIRED_BLACK_MS=3000;
+const pacedOpening=chapter5Opening.map((c,index)=>index?{...c,at:c.at+ITEM_ACQUIRED_BLACK_MS,end:c.end+ITEM_ACQUIRED_BLACK_MS}:c);
+export const chapter5OpeningFor=c=>c?.itemPacingVersion===1?pacedOpening:chapter5Opening;
+export const chapter5IntroDuration=c=>CHAPTER5_READY_MS+(c?.itemPacingVersion===1?ITEM_ACQUIRED_BLACK_MS:0);
 export const CHAPTER5_RULES_MS=narrationGate('wife-rules');
 export const roleNarrationOffset=id=>id==='killer'?2500:1200;
 export const roleVotingOffset=id=>roleNarrationOffset(id)+narrationGate(id);
