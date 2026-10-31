@@ -8,13 +8,13 @@ Manual Vercel package for the existing `project-4c89w` project.
 - Room code: `1031`
 
 ## Features
-- 12-player cast
+- 6-25 independent participants; real and simulated players share the same capacity
 - Duplicate-name protection
-- Couple/partner pairing
-- Private phone status (ALIVE, 3 hearts, partner, inventory, ready)
-- TV cast board with partner + readiness
-- Host-only Start Final Session and Reset Lobby
-- Start requires exactly 12 players, six couples, everyone ready
+- No mandatory pairing or lobby readiness
+- Private phone status and session-token recovery
+- Independent TV participant board and authenticated additive test-player selector
+- Host-only Lock Room, Start Final Session, Add Test Players, and Reset Lobby
+- Start requires a locked room and at least 6 participants; registration and test fills share the atomic 25-player cap
 - Synchronized opening transition on TV and phones
 - Redis state key is versioned (`brookwood:1031:v3:state`) so old test state does not carry over
 
@@ -51,3 +51,6 @@ implementing the Lua compare-and-set contract; they do not contact a live databa
 They cover forced overlapping joins, pairing/readiness, stale writes and reads
 around reset, fresh-lobby startup, authentication, error handling, polling, and
 syntax. Validate the actual Redis/Vercel integration before deployment.
+
+## Current participant and testing behavior
+See [PARTICIPANTS.md](PARTICIPANTS.md) for additive test controls, capacity enforcement, private-message privacy, six-player casting compatibility, and focused validation.

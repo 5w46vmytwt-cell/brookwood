@@ -115,16 +115,17 @@ function renderCast(j){
   const key=c.startedAt+':'+r.id,selector=document.getElementById('castingTarget'),previous=castingSelectionRun===key?selector.value:'';
   selector.innerHTML='';const prompt=document.createElement('option');prompt.value='';prompt.textContent='Choose another player';selector.appendChild(prompt);
   for(const p of j.others.filter(p=>!c.candidateIds||c.candidateIds.includes(p.id))){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;selector.appendChild(option);}selector.value=previous;castingSelectionRun=key;
-  const canVote=!intro&&!finale&&r.votingActive&&!r.voted;
+  const canVote=!intro&&!finale&&r.votingActive&&!r.voted&&r.canVote!==false;
   selector.classList.toggle('hidden',!canVote);const button=document.getElementById('castingSubmit');button.classList.toggle('hidden',!canVote);button.disabled=castingPending||!!c.blockedReason;
   document.getElementById('castingTitle').textContent=waiting?'READY FOR A LITTLE FUN?':intro?'THE CAST':finale?'THE CAST IS COMPLETE':r.winner?r.title:r.voted?'VOTE RECORDED':r.title;
   document.getElementById('castingCopy').textContent=intro?'The original Brookwood group cast their own horror movie before entering haunted houses. Six roles. No self-voting. One vote per role. Each player may win one role.':finale?c.winners.map(w=>w.title+': '+w.player.name).join('\n'):r.winner?r.winner.name:r.voted?'Waiting for everyone else...':r.setup;
   document.getElementById('castingCopy').style.whiteSpace='pre-line';
   if(waiting)document.getElementById('castingCopy').textContent='WAITING FOR THE HOST';
+  else if(!intro&&!finale&&r.canVote===false&&!r.winner)document.getElementById('castingCopy').textContent=r.completedAt!==null?'Voting is complete. Waiting for the result':'Only your name remains eligible for this role. The other players are voting';
   else if(!intro&&!finale&&!r.votingActive&&!r.voted&&!r.winner)document.getElementById('castingCopy').textContent='Listen to the narrator. Voting opens when this role is introduced.';
   document.getElementById('castingQuestion').textContent=!intro&&!finale&&!r.voted?r.question:'';
   if(c.blockedReason)document.getElementById('castingCopy').textContent=c.blockedReason;
-  document.getElementById('castingCount').textContent=intro||finale?'':'CASTING IN PROGRESS... '+r.voteCount+' / '+j.participantCount+' HAVE VOTED';
+  document.getElementById('castingCount').textContent=intro||finale?'':'CASTING IN PROGRESS... '+r.voteCount+' / '+(r.voterCount??j.participantCount)+' HAVE VOTED';
 }
 async function openPhysicalPackage(){
   if(packagePending||!auth||!canOpenPackage(me))return;packagePending=true;

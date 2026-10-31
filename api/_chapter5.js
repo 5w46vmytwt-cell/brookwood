@@ -5,8 +5,17 @@ import {CHAPTER5_RULES_MS,roleNarrationOffset,chapter5IntroDuration} from '../ch
 
 export const isChapter5=s=>chapter5Phases.includes(s.phase);
 const positive=t=>Number.isFinite(t)&&t>0;
-const freshChapter5=startedAt=>({transitionVersion:1,eligibilityVersion:1,audioVersion:1,revealVersion:1,itemPacingVersion:2,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
+const freshChapter5=startedAt=>({transitionVersion:1,eligibilityVersion:2,audioVersion:1,revealVersion:1,itemPacingVersion:2,startedAt,readyAt:null,rulesStartedAt:null,roundIndex:0,rounds:castingRoles.map(r=>({id:r.id,startedAt:null,votes:{},winnerPlayerId:null,completedAt:null})),castStartedAt:null,completedAt:null});
 export const castingCandidates=s=>s.players.filter(p=>!s.chapter5.rounds.slice(0,s.chapter5.roundIndex).some(r=>r.winnerPlayerId===p.id));
+// A sole remaining candidate cannot cast a legal no-self ballot. Other voters
+// still decide the round; no ballot or role assignment is fabricated.
+export function castingVoterIds(s,index=s.chapter5.roundIndex){
+ const c=s.chapter5;if(c.eligibilityVersion!==2)return s.players.map(p=>p.id);
+ const candidates=s.players.filter(p=>!c.rounds.slice(0,index).some(r=>r.winnerPlayerId===p.id));
+ return s.players.filter(p=>candidates.some(q=>q.id!==p.id)).map(p=>p.id);
+}
+
+export const castingRecoveryDue=s=>s.phase==='chapter5-casting'&&s.players.length===6&&s.chapter5.eligibilityVersion===1&&s.chapter5.roundIndex===5&&s.chapter5.rounds[5].completedAt===null;
 const version=c=>c.audioVersion===1?1:0;
 export function validatePackage(s){
   if(!positive(s.packageOpenedAt)||s.macheteHolderPlayerId!==s.chapter4?.selectedPlayerId||s.packageOpenedAt<s.chapter4.completedAt)throw Error('Invalid package confirmation.');
@@ -19,8 +28,8 @@ export function validateChapter5(s){
   if(c.itemPacingVersion!==undefined&&![1,2].includes(c.itemPacingVersion))throw Error('Unsupported item pacing version.');
   if(c.audioVersion!==undefined&&c.audioVersion!==1)throw Error('Unsupported casting audio version.');
   if(c.revealVersion!==undefined&&c.revealVersion!==1)throw Error('Unsupported casting reveal version.');
-  if(c.eligibilityVersion!==undefined&&c.eligibilityVersion!==1)throw Error('Unsupported casting eligibility version.');
-  if(c.eligibilityVersion===1){const winners=c.rounds.map(r=>r.winnerPlayerId).filter(Boolean);if(new Set(winners).size!==winners.length)throw Error('Duplicate casting role assignment.');}
+  if(c.eligibilityVersion!==undefined&&![1,2].includes(c.eligibilityVersion))throw Error('Unsupported casting eligibility version.');
+  if(c.eligibilityVersion>=1){const winners=c.rounds.map(r=>r.winnerPlayerId).filter(Boolean);if(new Set(winners).size!==winners.length)throw Error('Duplicate casting role assignment.');}
   if(c.revealVersion===1&&c.audioVersion!==1)throw Error('Narrated reveals require casting audio.');
   if(version(c)){
     const introductory=['chapter5-intro','chapter5-waiting'].includes(s.phase);
@@ -31,14 +40,14 @@ export function validateChapter5(s){
   for(const [i,r] of c.rounds.entries()){
     if(r.id!==castingRoles[i].id||!r.votes||Array.isArray(r.votes)||typeof r.votes!=='object')throw Error('Invalid casting round.');
     const entries=Object.entries(r.votes);
-    if(entries.some(([v,t])=>!cast.has(v)||!cast.has(t)||v===t))throw Error('Invalid casting ballot.');
-    if(c.eligibilityVersion===1&&entries.some(([,target])=>c.rounds.slice(0,i).some(prior=>prior.winnerPlayerId===target)))throw Error('Casting ballot targets an assigned player.');
+    if(entries.some(([v,t])=>!cast.has(v)||!cast.has(t)||v===t||!castingVoterIds(s,i).includes(v)))throw Error('Invalid casting ballot.');
+    if(c.eligibilityVersion>=1&&entries.some(([,target])=>c.rounds.slice(0,i).some(prior=>prior.winnerPlayerId===target)))throw Error('Casting ballot targets an assigned player.');
     if(r.startedAt===null){if(entries.length||r.completedAt!==null||r.winnerPlayerId!==null)throw Error('Invalid future round.');}
     else if(!positive(r.startedAt)||r.startedAt<(i===0?(version(c)?c.rulesStartedAt+CHAPTER5_RULES_MS:c.startedAt+CHAPTER5_LEGACY_INTRO_MS):c.rounds[i-1].completedAt+castingCompletionMs(c.rounds[i-1].id,c.revealVersion)-(c.revealVersion===1||r.id==='killer'?0:500)))throw Error('Invalid casting clock.');
-    if(r.completedAt===null){if(entries.length>=s.players.length||r.winnerPlayerId!==null)throw Error('Invalid incomplete casting round.');}
+    if(r.completedAt===null){if(entries.length>=castingVoterIds(s,i).length||r.winnerPlayerId!==null)throw Error('Invalid incomplete casting round.');}
     else{
       const counts=new Map();for(const [,id] of entries)counts.set(id,(counts.get(id)||0)+1);
-      if(entries.length!==s.players.length||!positive(r.completedAt)||r.startedAt===null||r.completedAt<r.startedAt+castingVotingOffset(r.id,version(c))||!cast.has(r.winnerPlayerId)||counts.get(r.winnerPlayerId)!==Math.max(...counts.values()))throw Error('Invalid casting winner.');
+      if(entries.length!==castingVoterIds(s,i).length||!positive(r.completedAt)||r.startedAt===null||r.completedAt<r.startedAt+castingVotingOffset(r.id,version(c))||!cast.has(r.winnerPlayerId)||counts.get(r.winnerPlayerId)!==Math.max(...counts.values()))throw Error('Invalid casting winner.');
     }
     if(i<c.roundIndex&&r.completedAt===null)throw Error('Missing prior casting result.');
     if(i>c.roundIndex&&r.startedAt!==null)throw Error('Started future casting round.');
@@ -66,6 +75,13 @@ export function openPackage(s,playerId,run,now=Date.now()){
 export function advanceCasting(s){
   if(!isChapter5(s)||s.phase==='chapter5-complete')return UNCHANGED;
   const c=s.chapter5,now=Date.now();
+  if(castingRecoveryDue(s)){
+    // Recover the impossible sixth ballot without changing existing ballots,
+    // assigned roles, narration clocks, or completed results.
+    c.eligibilityVersion=2;const r=c.rounds[5],remaining=castingCandidates(s);
+    if(remaining.length===1&&Object.keys(r.votes).length===castingVoterIds(s).length){r.winnerPlayerId=remaining[0].id;r.completedAt=now;}
+    return;
+  }
   if(s.phase==='chapter5-intro'){
     const duration=version(c)?chapter5IntroDuration(c):CHAPTER5_LEGACY_INTRO_MS;
     if(now<c.startedAt+duration)return UNCHANGED;
@@ -106,14 +122,14 @@ export function makeCastingVoter(choose=randomInt){
     const r=s.chapter5.rounds[s.chapter5.roundIndex],cast=new Set(s.players.map(p=>p.id));
     if(roleId!==r.id)throw new LobbyError(409,'The casting round changed.');
     if(Date.now()<r.startedAt+castingVotingOffset(r.id,version(s.chapter5)))throw new LobbyError(409,'Wait for the role narration to finish.');
-    if(entries.some(([v,t])=>typeof t!=='string'||!cast.has(v)||!cast.has(t)||v===t))throw new LobbyError(400,'Choose another current player.');
+    if(entries.some(([v,t])=>!castingVoterIds(s).includes(v)||typeof t!=='string'||!cast.has(v)||!cast.has(t)||v===t))throw new LobbyError(400,'Choose another current player.');
     const pending=entries.filter(([id])=>!Object.hasOwn(r.votes,id));if(!pending.length)return UNCHANGED;
     const eligible=new Set(castingCandidates(s).map(p=>p.id));
     if(pending.some(([,target])=>!eligible.has(target)))throw new LobbyError(409,'That player already has a casting role. Choose another player.');
     if(Object.values(r.votes).some(id=>!eligible.has(id)))throw new LobbyError(409,'This legacy round contains votes for an assigned player. Existing votes are preserved; use the host final-cast checkpoint to review the cast.');
     if(r.completedAt!==null)throw new LobbyError(409,'Casting is complete for this role.');
     for(const [id,target] of pending)r.votes[id]=target;
-    if(Object.keys(r.votes).length===s.players.length){
+    if(Object.keys(r.votes).length===castingVoterIds(s).length){
       const counts=new Map();for(const id of Object.values(r.votes))counts.set(id,(counts.get(id)||0)+1);
       const max=Math.max(...counts.values()),leaders=[...counts].filter(([,n])=>n===max).map(([id])=>id).sort(),key=r.id+JSON.stringify(leaders);
       if(!decisions.has(key))decisions.set(key,leaders[choose(leaders.length)]);
@@ -125,10 +141,10 @@ export function chapter5Progress(s,playerId){
   if(!isChapter5(s))return null;
   const c=s.chapter5,now=Date.now(),r=c.rounds[c.roundIndex],player=id=>{const p=s.players.find(p=>p.id===id);return p?{id:p.id,name:p.name}:null;};
   const revealed=round=>round.completedAt!==null&&now>=round.completedAt+castingRevealOffset(round.id,c.revealVersion);
-  const candidates=castingCandidates(s),blockedReason=s.phase==='chapter5-casting'&&s.players.some(p=>!candidates.some(q=>q.id!==p.id))?'Casting is paused: at least one participant has no eligible choice under the no-self-voting and unique-role rules':'';
-  return {participantCount:s.players.length,blockedReason,transitionVersion:c.transitionVersion??0,navigationId:c.navigationId??null,candidateIds:castingCandidates(s).map(p=>p.id),duplicateAssignments:new Set(c.rounds.map(r=>r.winnerPlayerId).filter(Boolean)).size!==c.rounds.filter(r=>r.winnerPlayerId).length,itemPacingVersion:c.itemPacingVersion??0,audioVersion:version(c),revealVersion:c.revealVersion??0,startedAt:c.startedAt,readyAt:c.readyAt??null,rulesStartedAt:c.rulesStartedAt??null,roundIndex:c.roundIndex,castStartedAt:c.castStartedAt,completedAt:c.completedAt,
+  const candidates=castingCandidates(s),blockedReason=c.eligibilityVersion!==2&&s.phase==='chapter5-casting'&&s.players.some(p=>!candidates.some(q=>q.id!==p.id))?'Casting is paused: at least one participant has no eligible choice under the no-self-voting and unique-role rules':'';
+  return {participantCount:s.players.length,blockedReason,needsEligibilityRecovery:castingRecoveryDue(s),transitionVersion:c.transitionVersion??0,navigationId:c.navigationId??null,candidateIds:castingCandidates(s).map(p=>p.id),duplicateAssignments:new Set(c.rounds.map(r=>r.winnerPlayerId).filter(Boolean)).size!==c.rounds.filter(r=>r.winnerPlayerId).length,itemPacingVersion:c.itemPacingVersion??0,audioVersion:version(c),revealVersion:c.revealVersion??0,startedAt:c.startedAt,readyAt:c.readyAt??null,rulesStartedAt:c.rulesStartedAt??null,roundIndex:c.roundIndex,castStartedAt:c.castStartedAt,completedAt:c.completedAt,
     round:{id:r.id,title:castingRoles[c.roundIndex].title,setup:castingRoles[c.roundIndex].setup,question:castingRoles[c.roundIndex].question,startedAt:r.startedAt,completedAt:r.completedAt,narrationStartedAt:version(c)&&r.startedAt!==null?r.startedAt+roleNarrationOffset(r.id):null,votingOpensAt:r.startedAt!==null?r.startedAt+castingVotingOffset(r.id,version(c)):null,votingActive:s.phase==='chapter5-casting'&&r.completedAt===null&&now>=r.startedAt+castingVotingOffset(r.id,version(c)),
-      voteCount:Object.keys(r.votes).length,winner:revealed(r)?player(r.winnerPlayerId):null,...(playerId?{voted:Object.hasOwn(r.votes,playerId)}:{})},
+      voterCount:castingVoterIds(s).length,voteCount:Object.keys(r.votes).length,winner:revealed(r)?player(r.winnerPlayerId):null,...(playerId?{voted:Object.hasOwn(r.votes,playerId),canVote:castingVoterIds(s).includes(playerId)}:{})},
     winners:c.rounds.filter(revealed).map(r=>({roleId:r.id,title:castingRoles.find(role=>role.id===r.id).title,player:player(r.winnerPlayerId)}))};
 }
 export function packageProgress(s){const p=s.players.find(p=>p.id===s.macheteHolderPlayerId);return s.packageOpenedAt?{openedAt:s.packageOpenedAt,holderPlayer:p?{id:p.id,name:p.name}:null}:null;}

@@ -11,22 +11,22 @@ export const messageTemplates=Object.freeze([
  ['about-you','Someone in this room received a message about you.\nAct normal.'],
  ['lie','If {name} asks what your message said...\nLie.'],
  ['first-person',"Don't trust the first person who asks what your message said."],
- ['your-partner','Do not tell {partner} what this message says.\nEven if they ask.'],
- ['ask-partner','Ask {partner} what their message said.\nIf they refuse to tell you...\nremember that.'],
+ ['your-partner',"You heard {name}'s voice in the hallway.\nThey have not left this room."],
+ ['ask-partner','A door clicked shut behind {name}.\nNobody was standing beside it.'],
  ['eye-contact',"Look at {name}.\nHold eye contact for a few seconds.\nThen look away.\nDon't explain."],
  ['did-you-hear-that',"At some point, quietly ask {name}:\n“Did you hear that too?”\nIf they ask what you mean...\ndon't answer."],
  ['someone-knows',"Someone here knows why you received this message.\nWe aren't going to tell you who."],
- ['dont-be-last',"For the next few minutes...\ndon't be the last person to enter a room."],
- ['lights-out',"If the lights go out tonight...\nfind {name}.\nDon't ask why."],
+ ['dont-be-last',"The footsteps in the basement stopped the moment you opened this message."],
+ ['lights-out',"The hallway light flickered three times.\nSomething on the other side flickered back."],
  ['wrong-person',"You're fine.\nThis message wasn't meant for you."],
  ['dont-trust-them',"If anyone tells you to trust {name}...\ndon't."],
  ['the-lie',"One of you has already lied tonight.\nIt probably wasn't about anything important.\nProbably."],
  ['familiar-voice','Someone laughed just like someone you remember.\nListen carefully the next time.'],
  ['count-the-shadows','Take a quiet look around the room.\nNotice where the shadows fall.'],
  ['old-memory','Ask {name} if tonight feels familiar.\nKeep their answer to yourself.'],
- ['unanswered-question','Think of one question you would rather nobody asked you tonight.\nYou do not have to answer it.'],
+ ['unanswered-question','Your screen lit up before this message arrived.\nSomeone was already typing your name.'],
  ['quiet-observer','For a moment, listen instead of speaking.\nNotice who breaks the silence.'],
- ['nothing','No instructions for you.\nEnjoy the party.\nFor now.']
+ ['nothing','This message was sent from inside the house.\nThe sender is not in your contacts.']
 ].map(([id,body])=>Object.freeze({id,title,body})));
 
 export function createAssignments(players,choose=randomInt){

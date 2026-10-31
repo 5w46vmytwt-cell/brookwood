@@ -1,3 +1,4 @@
+import {MAX_PLAYERS,MIN_START_PLAYERS} from '../participant-limits.js';
 import {isChapter8,validateChapter8,chapter8Progress} from './_chapter8.js';
 import { randomUUID,randomInt } from "node:crypto";
 import {createAssignments,messageTemplates} from './_chapter3-messages.js';
@@ -35,7 +36,7 @@ const photoPhases = ["photo","photo-complete"];
 const positiveTime = value => Number.isFinite(value) && value > 0;
 export function validatePhoto(s){
   const cast=new Set(s.players.map(p=>p.id)),photo=s.photo;
-  if(s.players.length<1||s.players.length>20||cast.size!==s.players.length||[...cast].some(id=>typeof id!=="string"||!id)||
+  if(s.players.length<1||s.players.length>MAX_PLAYERS||cast.size!==s.players.length||[...cast].some(id=>typeof id!=="string"||!id)||
     !photo||!positiveTime(photo.promptedAt)||!Array.isArray(photo.confirmedPlayerIds))throw new Error("Invalid photo data.");
   const confirmed=new Set(photo.confirmedPlayerIds);
   if(confirmed.size!==photo.confirmedPlayerIds.length||[...confirmed].some(id=>!cast.has(id)))throw new Error("Invalid photo confirmations.");
@@ -44,7 +45,7 @@ export function validatePhoto(s){
   return confirmed;
 }
 function validateState(s){
-  if(!s||!Array.isArray(s.players)||s.players.length>20||(s.roomLocked!==undefined&&typeof s.roomLocked!=="boolean")||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases,...chapter4Phases,...chapter5Phases,'chapter6','chapter7','chapter8'].includes(s.phase))throw new Error("Invalid lobby data.");
+  if(!s||!Array.isArray(s.players)||s.players.length>MAX_PLAYERS||(s.roomLocked!==undefined&&typeof s.roomLocked!=="boolean")||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases,...chapter4Phases,...chapter5Phases,'chapter6','chapter7','chapter8'].includes(s.phase))throw new Error("Invalid lobby data.");
   if(isChapter6(s))validateChapter6(s);
   if(isChapter7(s))validateChapter7(s);
   if(isChapter8(s))validateChapter8(s);
@@ -58,7 +59,7 @@ export const isChapter3=s=>chapter3Phases.includes(s.phase);
 export const isChapter4=s=>chapter4Phases.includes(s.phase);
 export function validChapter3Cast(s){
   const cast=new Map(s.players.map(p=>[p.id,p]));
-  return s.players.length>0&&s.players.length<=20&&cast.size===s.players.length&&s.players.every(p=>typeof p.id==='string'&&p.id&&typeof p.name==='string'&&p.name&&
+  return s.players.length>0&&s.players.length<=MAX_PLAYERS&&cast.size===s.players.length&&s.players.every(p=>typeof p.id==='string'&&p.id&&typeof p.name==='string'&&p.name&&
     typeof p.token==='string'&&p.token);
 }
 export function validateChapter3(s){
@@ -104,7 +105,7 @@ function setOpening(s,startedAt){
 }
 export function startSession(s,startedAt=Date.now()){
   if(s.phase!=="lobby")return UNCHANGED;
-  if(!validChapter3Cast(s))throw new LobbyError(409,"Register participants before starting.");
+  if(!validChapter3Cast(s)||s.players.length<MIN_START_PLAYERS)throw new LobbyError(409,"At least 6 participants are required to start.");
   if(!s.roomLocked)throw new LobbyError(409,"Lock the room before starting.");
   setOpening(s,startedAt);
 }
@@ -234,7 +235,7 @@ export function fail(res,error){
   console.error("Lobby request failed:",error.message);
   return send(res,503,{error:"Brookwood could not reach the lobby database. Please try again."});
 }
-export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s),chapter4=chapter4Progress(s),chapter5=chapter5Progress(s),chapter6=chapter6Progress(s),pkg=packageProgress(s);return {room:s.room,roomLocked:!!s.roomLocked,phase:s.phase,startedAt:s.startedAt,...(isChapter8(s)?{chapter8:chapter8Progress(s),generation:s.generation}:{}),...(chapter6?{chapter6,generation:s.generation}:{}),...(isChapter7(s)?{chapter7:chapter7Progress(s),generation:s.generation}:{}),...(photo?{photo,generation:s.generation}:{}),...(chapter3?{chapter3}:{}),...(chapter4?{chapter4}:{}),...(chapter5?{chapter5}:{}),...(pkg?{package:pkg}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
+export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s),chapter4=chapter4Progress(s),chapter5=chapter5Progress(s),chapter6=chapter6Progress(s),pkg=packageProgress(s);return {room:s.room,generation:s.generation,roomLocked:!!s.roomLocked,phase:s.phase,startedAt:s.startedAt,...(isChapter8(s)?{chapter8:chapter8Progress(s),generation:s.generation}:{}),...(chapter6?{chapter6,generation:s.generation}:{}),...(isChapter7(s)?{chapter7:chapter7Progress(s),generation:s.generation}:{}),...(photo?{photo,generation:s.generation}:{}),...(chapter3?{chapter3}:{}),...(chapter4?{chapter4}:{}),...(chapter5?{chapter5}:{}),...(pkg?{package:pkg}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
 const freshChapter4=startedAt=>({startedAt,votingActivatedAt:null,votes:{},selectedPlayerId:null,completedAt:null});
 export function validateChapter4(s){
   validateChapter3({...s,phase:'private-messages-complete'});

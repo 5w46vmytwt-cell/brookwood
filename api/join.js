@@ -1,3 +1,4 @@
+import {MAX_PLAYERS} from '../participant-limits.js';
 import crypto from "node:crypto";
 import {updateState,send,fail,LobbyError} from "./_state.js";
 export default async function handler(req,res){
@@ -9,7 +10,7 @@ export default async function handler(req,res){
     const result=await updateState(s=>{
       if(s.phase!=="lobby")throw new LobbyError(409,"The Final Session has already begun.");
       if(s.roomLocked)throw new LobbyError(409,"THIS ROOM IS LOCKED");
-      if(s.players.length>=20)throw new LobbyError(409,"THIS ROOM IS FULL");
+      if(s.players.length>=MAX_PLAYERS)throw new LobbyError(409,"THIS ROOM IS FULL");
       if(s.players.some(x=>x.name.toLowerCase()===name.toLowerCase()))throw new LobbyError(409,"That name is already in the cast.");
       s.players.push(p);
       return {player:{id:p.id,token:p.token,name:p.name}};

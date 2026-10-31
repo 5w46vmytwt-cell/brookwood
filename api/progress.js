@@ -1,3 +1,4 @@
+import {MAX_PLAYERS} from '../participant-limits.js';
 import {isChapter8,withinChapter8Run,advanceChapter8,makeAutomaticChapter8Starter} from './_chapter8.js';
 import {updateState,withinCinematicRun,withinChapter3Run,isChapter3,activatePrivateMessages,UNCHANGED,LobbyError,send,fail,isChapter4,withinChapter4Run,activateDoorVoting,makeChapter4Starter,publicState} from './_state.js';
 import {isChapter7,advanceChapter7,withinBroadcastRun} from './_chapter7.js';
@@ -38,7 +39,7 @@ export default async function handler(req,res){
       if(!Number.isFinite(s.startedAt)||s.startedAt<=0)return UNCHANGED;
       const now=Date.now();
       if(now-s.startedAt<PHOTO_CHECKPOINT_MS)return UNCHANGED;
-      if(!s.players.length||s.players.length>20||new Set(s.players.map(p=>p.id)).size!==s.players.length)throw new LobbyError(409,"The current cast is not valid for the photo checkpoint.");
+      if(!s.players.length||s.players.length>MAX_PLAYERS||new Set(s.players.map(p=>p.id)).size!==s.players.length)throw new LobbyError(409,"The current cast is not valid for the photo checkpoint.");
       s.photo={promptedAt:now,confirmedPlayerIds:[],confirmedAt:null};
       s.phase='photo';outcome={ok:true,eligible:true,phase:'photo'};
     }));

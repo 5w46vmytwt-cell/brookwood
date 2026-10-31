@@ -28,8 +28,8 @@ const saved=()=>JSON.parse(raw);
 async function call(handler,body={},cookie){let status,data,headers={};await handler({method:'POST',body,headers:cookie?{cookie}:{}},{status(n){status=n;return this;},setHeader(k,v){headers[k]=v;},json(j){data=j;return j;}});return {status,data,headers};}
 async function guests(n){const players=[];for(let i=0;i<n;i++){const r=await call(join,{name:'Independent '+i});assert.equal(r.status,200);players.push(r.data.player);}return players;}
 test('independent odd/even lobbies, capacity CAS, persisted lock, host start and token recovery',async()=>{
- const players=await guests(19);const attempts=await Promise.all(Array.from({length:8},(_,i)=>call(join,{name:'Concurrent '+i})));
- assert.equal(attempts.filter(r=>r.status===200).length,1);assert.equal(saved().players.length,20);
+ const players=await guests(24);const attempts=await Promise.all(Array.from({length:8},(_,i)=>call(join,{name:'Concurrent '+i})));
+ assert.equal(attempts.filter(r=>r.status===200).length,1);assert.equal(saved().players.length,25);
  assert(attempts.filter(r=>r.status!==200).every(r=>r.data.error==='THIS ROOM IS FULL'));
  assert.equal((await call(host,{action:'lock-room'})).status,403);
  const auth=await call(host,{action:'maze-login',code:'local-host'});const cookie=auth.headers['Set-Cookie'].split(';')[0];
@@ -41,13 +41,13 @@ test('independent odd/even lobbies, capacity CAS, persisted lock, host start and
  assert.equal((await call(host,{action:'start'},cookie)).status,200);const start=saved().startedAt;
  await call(host,{action:'start'},cookie);assert.equal(saved().startedAt,start);
  now+=200000;assert.equal((await call(progress)).status,200);assert.equal(saved().phase,'photo');
- for(const p of saved().players)assert.equal((await call(player,{...p,action:'photo-confirm'})).status,200);
+ assert.equal((await call(host,{action:'photo-taken',generation:saved().generation,startedAt:saved().startedAt,code:'local-host'})).status,200);
  assert.equal(saved().phase,'photo-complete');assert.equal((await call(chapter3)).status,200);
- assert.equal(Object.keys(saved().chapter3.assignments).length,20);
+ assert.equal(Object.keys(saved().chapter3.assignments).length,25);
  for(const a of Object.values(saved().chapter3.assignments))assert(!a.body.includes('{'));
 });
-test('one or odd participant lobby can lock and start without partners or ready',async()=>{
- for(const count of [1,3,12]){raw=null;await guests(count);assert.equal((await call(host,{action:'lock-room',code:'local-host'})).status,200);assert.equal((await call(host,{action:'start',code:'local-host'})).status,200);assert(saved().players.every(p=>!p.partnerId&&!p.ready));}
+test('six or more, including odd participant lobbies, start without partners or ready',async()=>{
+ for(const count of [6,7,12]){raw=null;await guests(count);assert.equal((await call(host,{action:'lock-room',code:'local-host'})).status,200);assert.equal((await call(host,{action:'start',code:'local-host'})).status,200);assert(saved().players.every(p=>!p.partnerId&&!p.ready));}
 });
 test('two real phones plus ten independent simulations retain tokens until explicit reset',async()=>{
  const real=await guests(2);assert.equal((await call(host,{action:'test-fill',code:'local-host'})).status,200);
@@ -85,9 +85,9 @@ test('static review bytes, overlay order and narration allowance remain untouche
  assert.deepEqual([...section.matchAll(/id="chapter5-cast-([^"]+)"/g)].map(m=>m[1]),['screamer','terribleDecisionMaker','denier','tripper','killer','sacrifice']);
  assert(fs.readFileSync('chapter5-audio.js','utf8').includes('COMPLETE_CAST_PLAYBACK_TAIL_MS=1500'));
 });
-test('single participant reaches private messages safely and pauses on no-self-vote package eligibility',async()=>{
- const [p]=await guests(1);await call(host,{action:'lock-room',code:'local-host'});await call(host,{action:'start',code:'local-host'});now+=200000;await call(progress);await call(player,{...p,action:'photo-confirm'});assert.equal((await call(chapter3)).status,200);
- now+=200000;await call(progress);await call(player,{...p,action:'message-open'});await call(player,{...p,action:'message-read'});now+=3000;await call(progress);now+=200000;await call(progress);
+test('single participant cannot start but legacy checkpoint recovery retains no-self-vote safeguards',async()=>{
+ const [p]=await guests(1);await call(host,{action:'lock-room',code:'local-host'});assert.equal((await call(host,{action:'start',code:'local-host'})).status,409);assert.equal(saved().startedAt,null);
+ await call(host,{action:'chapter-select',checkpoint:'chapter4',code:'local-host'});now+=200000;await call(progress);
  assert.equal(saved().phase,'door-vote');assert(publicState(saved()).chapter4.blockedReason.includes('no-self-voting'));assert.equal((await call(player,{...p,action:'door-vote',chapter4StartedAt:saved().chapter4.startedAt,targetId:p.id})).status,400);
 });
 test('20 independent voters complete all six unique cast roles with unchanged tallying and no-self voting',()=>{

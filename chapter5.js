@@ -106,7 +106,7 @@ export class Chapter5View{
     this.document.getElementById('chapter5-waitingCopy').textContent='';
     this.document.getElementById('chapter5-timeToVote').hidden=!r.votingActive;
     this.document.getElementById('chapter5-voteQuestion').hidden=!r.votingActive;
-    this.document.getElementById('chapter5-voteCount').textContent=c.blockedReason||(r.voteCount+' / '+(state.players?.length??c.participantCount??0)+' HAVE VOTED');
+    this.document.getElementById('chapter5-voteCount').textContent=c.blockedReason||(r.voteCount+' / '+(r.voterCount??state.players?.length??c.participantCount??0)+' HAVE VOTED');
     this.document.getElementById('chapter5-winnerRole').textContent=role.title;
     this.document.getElementById('chapter5-winnerName').textContent=r.winner?.name||'';
     this.document.getElementById('chapter5-goodLuck').hidden=role.id!=='sacrifice';
@@ -129,6 +129,7 @@ export class Chapter5View{
   }
   progressDue(elapsed,state){
     const c=state.chapter5;
+    if(c.needsEligibilityRecovery)return true;
     if(state.phase==='chapter5-intro')return elapsed>=(c.audioVersion===1?chapter5IntroDuration(c):CHAPTER5_LEGACY_INTRO_MS);
     if(state.phase==='chapter5-rules')return elapsed>=c.rulesStartedAt-c.startedAt+CHAPTER5_RULES_MS;
     if(state.phase==='chapter5-finale')return elapsed>=c.castStartedAt-c.startedAt+castingFinaleMs(c.revealVersion,c.transitionVersion);

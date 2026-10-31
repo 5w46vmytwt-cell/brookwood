@@ -24,7 +24,7 @@ async function guests(n){const players=[];for(let i=0;i<n;i++){const r=await cal
 
 import {messageTemplates,createAssignments} from '../api/_chapter3-messages.js';
 test('host alone completes the photo with session cookie; guests, players and stale requests cannot',async()=>{
- const ps=await guests(3);await call(host,{action:'lock-room',code:'local-host'});await call(host,{action:'start',code:'local-host'});
+ const ps=await guests(6);await call(host,{action:'lock-room',code:'local-host'});await call(host,{action:'start',code:'local-host'});
  const s=saved();now+=200000;await call(progress);assert.equal(saved().phase,'photo');
  const body={action:'photo-taken',generation:s.generation,startedAt:s.startedAt};
  assert.equal((await call(host,body)).status,403);

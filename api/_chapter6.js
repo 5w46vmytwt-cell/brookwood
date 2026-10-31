@@ -206,9 +206,9 @@ function simulatedTokenVotes(s,now){
  if(sim.every(p=>Object.hasOwn(c.votes,p.id)))return UNCHANGED;
  if(Object.keys(c.votes).length)throw new LobbyError(409,'Run the simulated helper before any real ballots.');
  establishElectorate(s);const real=realPlayers(s).filter(p=>c.voterIds.includes(p.id));
- if(!real.length)throw new LobbyError(409,'Keep at least one real test phone connected.');
  c.voterIds=[...real,...sim].map(p=>p.id);c.electorateLocked=true;
  for(const p of sim)c.votes[p.id]=candidatePlayers(s).find(q=>q.id!==p.id&&q.id!==c.macheteId).id;
+ if(Object.keys(c.votes).length===c.voterIds.length)finalizeTokenVote(s,now);
 }
 // Build Chapter 6's test prerequisite by exercising the approved Chapter 5
 // mutation functions with server-generated clocks. Existing players/tokens remain.
@@ -222,12 +222,12 @@ function shiftCompletedPrerequisites(s,shift){
  for(const r of s.chapter5.rounds){r.startedAt+=shift;r.completedAt+=shift;}
 }
 export function makeMazeTestSelector(checkpoint='chapter6'){const base=makeCastingTestSelector('chapter5');let prepared;return s=>{
- if(s.players.length<7)throw new LobbyError(409,'This test checkpoint cannot fabricate six unique casting results with no-self-voting for this group');
+ if(s.players.length<6)throw new LobbyError(409,'This test checkpoint requires at least six participants');
  if(!prepared){const actual=checkpoint==='chapter6-ready'&&s.chapter5?.rounds?.every(r=>r.completedAt!==null&&r.winnerPlayerId)?structuredClone(s):null;base(s);const c=s.chapter5;
   c.readyAt=c.startedAt+CHAPTER5_INTRO_MS;c.rulesStartedAt=c.readyAt;s.phase='chapter5-casting';
   let at=c.rulesStartedAt+CHAPTER5_RULES_MS;
   for(const [i,r] of c.rounds.entries()){
-   const winner=s.players[i],alternative=s.players[i+1];r.startedAt=at;r.votes=Object.fromEntries(s.players.map(p=>[p.id,p.id===winner.id?alternative.id:winner.id]));r.winnerPlayerId=winner.id;r.completedAt=at+castingVotingOffset(r.id,1);at=r.completedAt+castingCompletionMs(r.id,1);
+   const winner=s.players[i],alternative=s.players[i+1];r.startedAt=at;r.votes=Object.fromEntries(s.players.filter(p=>alternative||p.id!==winner.id).map(p=>[p.id,p.id===winner.id?alternative.id:winner.id]));r.winnerPlayerId=winner.id;r.completedAt=at+castingVotingOffset(r.id,1);at=r.completedAt+castingCompletionMs(r.id,1);
   }
   c.roundIndex=5;c.castStartedAt=at;c.completedAt=at+castingFinaleMs(1,c.transitionVersion);
   // Shift all prerequisite clocks together so the test starts now, not in the future.
@@ -249,9 +249,9 @@ export function makeFinalCastTestSelector(){const build=makeMazeTestSelector();l
   for(const [i,r] of s.chapter5.rounds.entries()){
    const actual=prior.chapter5.rounds[i];
    if(actual.completedAt!==null){r.winnerPlayerId=actual.winnerPlayerId;r.votes=structuredClone(actual.votes);}
-   else{const winner=available.shift(),alternative=available[0];r.winnerPlayerId=winner.id;r.votes=Object.fromEntries(s.players.map(p=>[p.id,p.id===winner.id?alternative.id:winner.id]));}
+   else{const winner=available.shift(),alternative=available[0];r.winnerPlayerId=winner.id;r.votes=Object.fromEntries(s.players.filter(p=>alternative||p.id!==winner.id).map(p=>[p.id,p.id===winner.id?alternative.id:winner.id]));}
   }
-  if(prior.chapter5.eligibilityVersion!==1)delete s.chapter5.eligibilityVersion;
+  if(![1,2].includes(prior.chapter5.eligibilityVersion))delete s.chapter5.eligibilityVersion;
   const holder=prior.macheteHolderPlayerId;if(holder){s.chapter4.selectedPlayerId=holder;s.macheteHolderPlayerId=holder;s.chapter4.votes=Object.fromEntries(s.players.map(p=>[p.id,p.id===holder?s.players.find(q=>q.id!==holder).id:holder]));}
  }
  delete s.chapter6;const c=s.chapter5;c.transitionVersion=1;c.navigationId=generation;c.castStartedAt=Date.now();c.completedAt=null;s.phase='chapter5-finale';
