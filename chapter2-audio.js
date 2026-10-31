@@ -2,7 +2,7 @@ import { CHAPTER2_NARRATION, CHAPTER2_START_MS, PHOTO_PROMPT_MS, PHOTO_CHECKPOIN
 
 // Replacement source metadata; playback prefers the browser's native duration.
 export const partyTrack = Object.freeze({id:'chapter2-party', at:56925,
-  src:'/assets/chapter2/audio/halloweenbeat.mp3', durationMs:119040});
+  src:'/assets/chapter2/audio/halloweenbeat.mp3', durationMs:102896.32653061225});
 export const chapter2Narration = CHAPTER2_NARRATION.map(c=>Object.freeze({
   id:`chapter2-narration-${c.id}`, type:'narration', at:c.start, durationMs:c.duration,
   src:`/assets/chapter2/audio/narration-${c.id}.wav`
