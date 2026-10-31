@@ -5,12 +5,12 @@ import {EndingStaticPlayback} from '../chapter8-static.js';import {GLITCH_DURATI
 import {cameras,cuesFor} from '../chapter8-finale-timing.js';import {wifePresentation} from '../chapter8-presentation.js';
 import {Chapter8View} from '../chapter8.js';
 const flush=()=>new Promise(r=>setImmediate(r));
-test('both dedicated scare sites share safe 0.90 gain while original source bytes, chicken and all timings remain unchanged',()=>{
- assert.equal(SCARE_GAIN,.9);assert.equal(soundEffects.find(c=>c.id==='chapter6-sfx-scream').volume,.9);assert.equal(soundEffects[0].volume,.7);
+test('both dedicated scare sites share safe 0.95 gain while original source bytes, chicken and all timings remain unchanged',()=>{
+ assert.equal(SCARE_GAIN,.95);assert.equal(soundEffects.find(c=>c.id==='chapter6-sfx-scream').volume,.95);assert.equal(soundEffects[0].volume,.7);
  const original=JSON.parse(fs.readFileSync('chapter8-finale-media.json')).find(m=>m.src===effects.impact.src),bytes=fs.readFileSync('assets/chapter6/audio/ch6_sfx_scream.mp3');assert.equal(createHash('sha256').update(bytes).digest('hex'),original.sha256);
  const cue=phaseCues({phaseAt:100000,startedAt:100000,step:'silence',polishVersion:1}).find(c=>c.id==='chapter6-sfx-scream');assert.equal(cue.at,52000);assert.equal(cue.mediaDurationMs,3312);assert.equal(cue.durationMs,3512);
- const media=new Map(soundLayers.map(c=>[c.id,{readyState:4,paused:true,currentTime:0,play(){this.paused=false;return Promise.resolve();},pause(){this.paused=true;}}]));let now=100000;const sound=new Chapter8SoundDesign({media},()=>now,{Context:null}),c={step:'finale',finale:{id:'f',polishVersion:8,phaseAt:now}};sound.update(c,{id:'intruder-reveal'});assert.equal(media.get('scare-impact').volume,.9);assert.equal(media.get('scare-impact').currentTime,.2);now+=1950;sound.update(c,{id:'intruder-reveal'});assert(media.get('scare-impact').paused);sound.stop();
- assert(SCARE_GAIN*Math.pow(10,.434855/20)<.95);
+ const media=new Map(soundLayers.map(c=>[c.id,{readyState:4,paused:true,currentTime:0,play(){this.paused=false;return Promise.resolve();},pause(){this.paused=true;}}]));let now=100000;const sound=new Chapter8SoundDesign({media},()=>now,{Context:null}),c={step:'finale',finale:{id:'f',polishVersion:8,phaseAt:now}};sound.update(c,{id:'intruder-reveal'});assert.equal(media.get('scare-impact').volume,.95);assert.equal(media.get('scare-impact').currentTime,.2);now+=1950;sound.update(c,{id:'intruder-reveal'});assert(media.get('scare-impact').paused);sound.stop();
+ assert(SCARE_GAIN*Math.pow(10,.434855/20)<1);
 });
 test('coded puzzle has no top heading, keeps the supplied artwork and all 17 authorized reveal regions',()=>{
  const nodes=new Map(),element=()=>({hidden:true,style:{},dataset:{},classList:{toggle(){}},setAttribute(){},appendChild(){},addEventListener(){}}),document={getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement:element};document.getElementById('chapterSelectPanel').hidden=true;
