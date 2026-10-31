@@ -96,7 +96,7 @@ export class TVCinematicRuntime {
     if(!this.scheduler.acceptState(state.chapter7?{...state,startedAt:state.chapter7.startedAt}:chapter6?{...state,startedAt:state.chapter6.startedAt}:chapter5?{...state,startedAt:state.chapter5.startedAt}:chapter4?{...state,startedAt:state.chapter4.startedAt}:chapter3?{...state,startedAt:state.chapter3.startedAt}:state,timing)){this.state=previous;throw Error('Invalid server clock response.');}
     if(!chapter5){this.chapter5Visuals.stop();this.chapter5Audio.stop();}
     if(!chapter4){this.chapter4Audio.stop();this.chapter4Visuals.stop();}
-    if(!chapter3){this.chapter3Audio.stop();this.chapter3Visuals.stop();this.audio.setTrackGain(1);}
+    if(!chapter3){this.chapter3Audio.stop();this.chapter3Visuals.stop();this.audio.setTrackGain(['photo','photo-complete'].includes(state.phase)?.9:1);}
     if(state.phase!=='opening'){
       this.visuals.stop();this.chapter2Visuals.stop();if(!state.chapter7&&!chapter3&&!chapter4&&!chapter5&&!chapter6)this.audio.update(state);
     }
