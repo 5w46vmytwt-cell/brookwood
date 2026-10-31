@@ -6,11 +6,10 @@ body.lobby-active{background:#130b0e url('/assets/lobby/lobby_background.png') c
 #tvLobby .title{font:700 clamp(26px,2.3vw,42px)/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:.07em;margin:5px 0 10px;text-shadow:0 2px 12px #000}
 #tvLobby .eyebrow{font-size:11px;letter-spacing:.19em;color:#d4b6a4}
 #tvLobby .lobby-waiting{font-size:13px;letter-spacing:.22em;color:#f3d5bc;text-shadow:0 2px 6px #000}
-#tvLobby .room{position:absolute;right:0;top:0;font-size:11px;color:#d4b6a4}
-#tvLobby .room b{font-size:24px;margin-top:5px}
-#tvLobby .join{width:100%;justify-content:center;gap:18px;margin:14px 0;min-height:76px}
+#tvLobby .join{width:100%;justify-content:center;gap:18px;margin:14px 0;min-height:clamp(132px,18.52vh,200px)}
+#tvLobby .join .eyebrow{font-size:13.5px}
 #tvLobby .joinUrl{font-size:14px;color:#fff1e6;overflow-wrap:anywhere}
-#tvLobby .qr{width:76px;height:76px;padding:5px;border-radius:6px}
+#tvLobby .qr{width:clamp(132px,18.52vh,200px);height:clamp(132px,18.52vh,200px);padding:24px;border-radius:6px}
 #tvLobby .count{display:block;color:#d4b6a4;font-size:12px;white-space:nowrap}
 #tvLobby .count strong{font-size:22px;color:#fff6ed}
 #tvLobby .grid{display:flex;flex:0 0 auto;flex-wrap:wrap;align-content:center;justify-content:center;gap:var(--card-gap);width:calc(var(--columns,5)*var(--card-width) + (var(--columns,5) - 1)*var(--card-gap));max-width:100%;min-height:var(--card-height);overflow:visible;margin:auto 0}
@@ -28,6 +27,6 @@ body.lobby-active{background:#130b0e url('/assets/lobby/lobby_background.png') c
 #tvLobby .msg{width:100%;text-align:center;margin:6px 0 0;color:#ffd0b0}
 .lobby-arrival{animation:lobby-arrive 450ms ease-out both}
 @keyframes lobby-arrive{from{opacity:0;box-shadow:0 0 16px #ed8b3b99}to{opacity:1;box-shadow:0 4px 14px #0004}}
-@media(max-height:760px){#tvLobby .join{margin:10px 0;min-height:64px}#tvLobby .qr{width:64px;height:64px}#tvLobby .host{margin-top:10px;gap:6px}#tvLobby .title{margin-bottom:7px}}
-@media(max-width:900px){.lobby-active #tvLobby{width:96vw;--card-width:clamp(90px,16vw,148px)}#tvLobby .room{position:static;margin-left:16px}#tvLobby .grid .name{font-size:14px}#tvLobby .joinUrl{font-size:12px}}
+@media(max-height:760px){.lobby-active #tvLobby{padding-top:9vh}#tvLobby .join{margin:6px 0}#tvLobby .qr{padding:16px}#tvLobby .host{margin-top:10px;gap:6px}#tvLobby .title{margin-bottom:7px}}
+@media(max-width:900px){.lobby-active #tvLobby{width:96vw;--card-width:clamp(90px,16vw,148px)}#tvLobby .grid .name{font-size:14px}#tvLobby .joinUrl{font-size:12px}}
 @media(prefers-reduced-motion:reduce){#tvLobby .lobby-arrival{animation:none}}

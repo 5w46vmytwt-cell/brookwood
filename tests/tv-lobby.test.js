@@ -19,3 +19,9 @@ test('polling retains cards; only genuinely new joins animate; names are safe te
 test('departures remove every stale card without leaving placeholders',()=>{
  const grid=new Node(document);renderLobbyPlayers(grid,players(25));renderLobbyPlayers(grid,[{id:'fresh',name:'New player'}]);assert.equal(grid.children.length,1);assert.equal(grid.children[0].dataset.playerId,'fresh');renderLobbyPlayers(grid,[]);assert.equal(grid.children.length,0);
 });
+
+import {readFileSync} from 'node:fs';
+test('lobby join presentation removes room label and retains the join URL and crisp QR source',()=>{
+ const html=readFileSync('tv.html','utf8'),lobby=html.split('<main class="wrap" id="tvLobby">')[1].split('</main>')[0];
+ assert(lobby.includes('THE FINAL SESSION'));assert(lobby.includes('HALLOWEEN 2026'));assert(!lobby.includes('ROOM CODE'));assert(!lobby.includes('1031'));assert(lobby.includes('JOIN ON YOUR PHONE')||lobby.includes('Join on your phone'));assert(html.includes("const join=location.origin+'/join'"));assert(html.includes('text:join,width:220,height:220'));
+});
