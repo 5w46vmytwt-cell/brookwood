@@ -13,7 +13,7 @@ function enter(c,index,now){
 }
 export function startFinale(c,now,index=0){
  c.step='finale';c.phaseAt=now;c.audioStartedAt=null;c.deadline=null;c.completedAt=null;
- c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:8,introVersion:1,sirenVersion:1,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};
+ c.finale={id:c.id+':finale:'+c.sequence,startedAt:now,polishVersion:8,introVersion:1,sirenVersion:1,creditsVersion:1,index:0,phaseAt:now,mediaStartedAt:null,deadline:null,completedAt:null};
  // Existing checkpoints pass an index from the original version-8 cue list.
  const target=cuesFor(c).findIndex(cue=>cue.id===finaleCues[index]?.id);enter(c,target>=0?target:index,now);
 }
@@ -43,6 +43,7 @@ export function validateFinale(c){
  if(!f||typeof f.id!=='string'||!f.id||!time(f.startedAt)||!time(f.phaseAt)||!Number.isInteger(f.index)||!cue||f.mediaStartedAt!==null&&(!time(f.mediaStartedAt)||f.mediaStartedAt<f.phaseAt||cue.kind==='hold')||f.completedAt!==null&&!time(f.completedAt)||f.testEntry!==undefined&&typeof f.testEntry!=='boolean')throw Error('Invalid Chapter 8 finale.');
  if(f.polishVersion!==undefined&&![1,2,3,4,5,6,7,8].includes(f.polishVersion))throw Error('Invalid finale polish version.');
  if(f.sirenVersion!==undefined&&f.sirenVersion!==1)throw Error('Invalid siren version.');
+ if(f.creditsVersion!==undefined&&(f.creditsVersion!==1||f.polishVersion!==8||f.introVersion!==1))throw Error('Invalid credits version.');
  if(f.introVersion!==undefined&&(f.introVersion!==1||f.polishVersion!==8))throw Error('Invalid finale introduction version.');
  if(f.soundAnchors&&(typeof f.soundAnchors!=='object'||Array.isArray(f.soundAnchors)||Object.entries(f.soundAnchors).some(([k,v])=>!['garage','sirens','sirensOut','news','happy','credits'].includes(k)||!time(v))))throw Error('Invalid finale sound anchor.');
  if(c.step==='finale'){

@@ -3,8 +3,10 @@ import {FINAL_SONG_VOLUME} from './chapter8-ending.js';
 
 export const creditPhotos=Object.freeze([
  [1,1671,941],[2,1671,941],[3,1672,941],[4,1671,941],[5,1536,1024],
- [6,1669,942],[7,1669,942],[8,1672,941],[9,1669,942]
+ [6,1669,942],[7,1669,942],[8,1672,941],[9,1669,942],[10,1670,942]
 ].map(([number,width,height])=>Object.freeze({number,width,height,src:'/assets/chapter8/final'+number+'.png'})));
+// Explicit story order, independent of filenames and legacy cue indexes.
+export const creditPhotoOrder=Object.freeze([1,2,3,4,5,6,7,8,10,9]);
 export const CREDITS_INTRO_MS=5500,PHOTO_MS=11000,MUSIC_OUT_MS=2500;
 export const SHUTDOWN_SRC='/assets/chapter8/shutdown.mp4';
 export const SHUTDOWN_MS=5258.34375;

@@ -85,5 +85,12 @@
       }
     ],
     "fragmented": true
+  },
+  {
+    "src": "/assets/chapter8/final10.png",
+    "bytes": 2409093,
+    "sha256": "b17cd5e66dbbcc7013f31c7fb6b2cd207deed0d09f5bf9b0a950c9cbb5ca406d",
+    "width": 1670,
+    "height": 942
   }
 ]

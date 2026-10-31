@@ -1,5 +1,5 @@
 import {effects} from './chapter8-sound-design.js';
-import {creditPhotos,CREDITS_INTRO_MS,PHOTO_MS,MUSIC_OUT_MS,SHUTDOWN_SRC,SHUTDOWN_MS} from './chapter8-credits.js';
+import {creditPhotos,creditPhotoOrder,CREDITS_INTRO_MS,PHOTO_MS,MUSIC_OUT_MS,SHUTDOWN_SRC,SHUTDOWN_MS} from './chapter8-credits.js';
 import {GREETING_HOLD_MS,GLITCH_DURATIONS,COLLECTOR_SRC,COLLECTOR_DURATION_MS,FINAL_SONG_SRC,FINAL_SONG_DURATION_MS,FINAL_SONG_VOLUME} from './chapter8-ending.js';
 // Nominal cue windows exclude loading/poll latency. Native media completion,
 // not a wall-clock timeout, is authoritative for every recording and the news.
@@ -103,8 +103,11 @@ export const version7FinaleCues=timed([...version6FinaleCues.slice(0,-1),
 export const finaleCues=timed(version7FinaleCues.map(c=>c.photo?{...c,durationMs:PHOTO_MS}:c));
 export const shortWifeIntro={id:'wife-intro-short',kind:'narration',src:'/assets/chapter8/audio/wife-intro-short.mp3',durationMs:734976/44100*1000,visual:'wife-bright',volume:1};
 export const shortIntroFinaleCues=timed(finaleCues.flatMap(c=>c.id==='wife-01'?[shortWifeIntro]:['wife-02','wife-03'].includes(c.id)?[]:[c]));
-export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...version5FinaleCues,...version6FinaleCues,...version7FinaleCues,...finaleCues,...shortIntroFinaleCues];
+export const final10FinaleCues=timed(shortIntroFinaleCues.flatMap(c=>
+ c.id==='credit-photo-1'?creditPhotoOrder.map(number=>({...hold('credit-photo-'+number,'credit-photo',PHOTO_MS),credits:true,photo:number,readyImage:'credit-'+number})):
+ c.photo?[]:c.id==='final-image'?[hold('final-image','black',c.durationMs)]:[c]));
+export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...version5FinaleCues,...version6FinaleCues,...version7FinaleCues,...finaleCues,...shortIntroFinaleCues,...final10FinaleCues];
 export const finaleDurationMs=finaleCues.at(-1).end;
-export const cuesFor=c=>c?.finale?.introVersion===1?shortIntroFinaleCues:c?.finale?.polishVersion===8?finaleCues:c?.finale?.polishVersion===7?version7FinaleCues:c?.finale?.polishVersion===6?version6FinaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
+export const cuesFor=c=>c?.finale?.creditsVersion===1?final10FinaleCues:c?.finale?.introVersion===1?shortIntroFinaleCues:c?.finale?.polishVersion===8?finaleCues:c?.finale?.polishVersion===7?version7FinaleCues:c?.finale?.polishVersion===6?version6FinaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news','chapter8-finale-after-news','chapter8-finale-credits'];
