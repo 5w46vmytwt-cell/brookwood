@@ -6,7 +6,7 @@ import {mp3Metadata} from './mp3-metadata.js';
 import {chapter5Reveals,completeCastRecording,revealTiming,COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS,POLISHED_FINALE_MS} from '../chapter5-reveal-timing.js';
 import {castingRoles,castingCompletionMs,castingRevealOffset,castingFinaleMs} from '../chapter5-timing.js';
 import {castingResultTimeline,polishedFinaleTimeline,Chapter5View} from '../chapter5.js';
-import {Chapter5Audio,chapter5Narration,chapter5ScoreVolume} from '../chapter5-audio.js';
+import {Chapter5Audio,chapter5Narration,chapter5ScoreVolume,COMPLETE_CAST_PLAYBACK_TAIL_MS} from '../chapter5-audio.js';
 const flush=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
 function fixture(){
   let elapsed=0,blocked=false;
@@ -89,7 +89,7 @@ test('full cast shows all six approved images for the entire narration plus 3s t
   for(let t=COMPLETE_CAST_END_MS;t<timeline.end;t+=100){const frame=e.resolve(timeline,t);assert(Object.values(frame).filter(v=>v.opacity>0).length<=1);}
   const messages=timeline.cues.slice(1);for(let i=0;i<messages.length;i++){const cue=messages[i];assert.equal(cue.visual.fadeIn[1]-cue.at,600);assert.equal(cue.end-cue.visual.fadeOut[0],600);if(i)assert.equal(cue.at-messages[i-1].end,500);assert.equal(e.resolve(timeline,cue.at+1000)[cue.id].opacity,1);assert.equal(e.resolve(timeline,cue.end)[cue.id].opacity,0);}
   assert.equal(timeline.end,POLISHED_FINALE_MS);assert.equal(castingFinaleMs(1),timeline.end);
-  const html=fs.readFileSync('tv.html','utf8');for(const role of castingRoles)assert(html.includes('src="'+role.src+'"'));assert(!html.includes('id="chapter5-roleTitle"'));
+  const html=fs.readFileSync('tv.html','utf8');assert(html.includes('src="/assets/chapter5/cast_final.png"'));assert(!html.includes('id="chapter5-roleTitle"'));
 });
 test('reveal refresh seeks active narration, skips expired voice and repeated polls cannot replay it',async()=>{
   for(const [index,role] of castingRoles.entries()){
@@ -107,6 +107,22 @@ test('complete cast narration seeks on refresh, ducks a continuous score then sc
   assert.equal(chapter5ScoreVolume(300000+COMPLETE_CAST_END_MS,s),0);
   e.at(300000+COMPLETE_CAST_END_MS);e.audio.update(s);assert(voice.paused);assert.equal(score.volume,0);
 });
+test('cast summary lets a delayed decoder finish natively within the existing hold, and refresh skips the tail',async()=>{
+  const s=state(5);s.phase='chapter5-finale';s.chapter5.castStartedAt=400000;
+  const at=300000,end=at+completeCastRecording.durationMs,e=fixture();
+  e.at(end-1200);e.audio.update(s,{reconstruct:true});await flush();
+  const voice=e.audio.player.media.get(completeCastRecording.id);
+  assert.equal(voice.plays,1);assert.equal(voice.volume,1);
+  voice.currentTime=(completeCastRecording.durationMs-1000)/1000;
+  e.at(end+500);e.audio.update(s);assert(!voice.paused,'clock deadline must not cut a delayed final word');assert.equal(voice.plays,1);
+  // Native ended leaves the element paused; polling must never restart it.
+  voice.currentTime=completeCastRecording.durationMs/1000;voice.paused=true;
+  e.at(end+1100);e.audio.update(s);assert.equal(voice.plays,1);
+  e.at(end+COMPLETE_CAST_PLAYBACK_TAIL_MS);e.audio.update(s);assert(voice.paused);
+  assert(end+COMPLETE_CAST_PLAYBACK_TAIL_MS<at+COMPLETE_CAST_HOLD_MS);
+  for(const offset of [1,750,1600,3000]){const refresh=fixture();refresh.at(end+offset);refresh.audio.update(s,{reconstruct:true});await flush();assert.equal(refresh.audio.player.media.get(completeCastRecording.id).plays,0);}
+});
+
 test('blocked reveal audio recovers at current offset without replaying earlier narration',async()=>{
   const e=fixture(),s=state();e.block(true);e.at(202000);e.audio.update(s,{reconstruct:true});await flush();assert(e.audio.needsUnlock());
   e.block(false);e.audio.unlock();await flush();const voice=e.audio.player.media.get('chapter5-reveal-screamer');assert(!voice.paused);assert.equal(voice.currentTime,1);

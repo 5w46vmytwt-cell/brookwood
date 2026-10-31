@@ -3,6 +3,9 @@ import {chapter5Recordings,chapter5OpeningFor,castBackground,roleNarrationOffset
 const clamp=t=>Math.max(0,Math.min(1,t));
 const lerp=(a,b,t)=>a+(b-a)*clamp(t);
 const castAt=c=>c.castStartedAt??(c.revealVersion===1&&c.round.id==='killer'&&c.round.completedAt!==null?c.round.completedAt+revealTiming('killer').end:null);
+// Execution allowance only: retain native media duration and the existing 3s
+// visual hold. A slightly delayed TV decoder must reach ended before cleanup.
+export const COMPLETE_CAST_PLAYBACK_TAIL_MS=1500;
 export function chapter5Narration(state){
   const c=state?.chapter5;
   const opening=chapter5Recordings.map((cue,index)=>{
@@ -51,6 +54,14 @@ export class Chapter5Audio{
     this.state=state;
     if(state.chapter5?.audioVersion!==1||state.phase==='chapter5-complete'){this.player.stop();return;}
     this.player.cues=chapter5Narration(state);
+    const elapsed=this.clock.elapsedNow();
+    this.player.cues=this.player.cues.map(cue=>{
+      if(cue.id!==completeCastRecording.id)return cue;
+      const continuing=this.player.startedAt===state.chapter5.startedAt&&this.player.active?.cue.id===cue.id&&!this.player.media.get(cue.id)?.ended;
+      // Never start/replay an expired recording when refreshing in its tail.
+      if(elapsed>=cue.at+cue.durationMs&&!continuing)return {...cue,at:Infinity};
+      return {...cue,durationMs:cue.durationMs+COMPLETE_CAST_PLAYBACK_TAIL_MS};
+    });
     this.player.update({phase:'opening',startedAt:state.chapter5.startedAt},meta);
   }
   unlock(){
