@@ -22,7 +22,7 @@ export function previousRetrievers(s){
 export const envelopeCandidates=s=>realPlayers(s).filter(p=>!previousRetrievers(s).has(p.id));
 export function startInvestigation(s,now=Date.now()){
  const c=s.chapter7;if(s.phase!=='chapter7'||c.step!=='waiting'||c.investigation)return UNCHANGED;
- c.investigation={theoryVersion:1,polishVersion:5,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
+ c.investigation={envelopeVersion:1,theoryVersion:1,polishVersion:5,id:randomUUID(),startedAt:now,sequence:0,step:'connection',phaseAt:now,deadline:null,audioStartedAt:null,offsetMs:0,presence:{},elections:{},testMode:s.players.some(p=>p.simulated===true),testSetup:null,hostRetriever:false,envelopeReturnedAt:null,completedAt:null};c.sequence++;
 }
 // Anchor the visible-photo delay to the persisted native camera start, including refreshes before its end.
 function phaseDeadline(i){if(i.step==='photo-delay')return Math.max(i.phaseAt,i.photoSoundPlayedAt+Math.max(PHOTO_AUDIO_DELAY_MS,cameraCue.durationMs));const duration=sceneDuration(i);return duration===undefined?null:i.phaseAt+duration;}
@@ -97,7 +97,7 @@ export function advanceInvestigation(s,now=Date.now()){
  if(i.step==='connection'&&i.polishVersion<3){enter(s,'connection',now);return;}
  if(i.step==='scare'){enter(s,'silent-black',now);return;}
  if(i.deadline===null||now<i.deadline)return repaired?undefined:UNCHANGED;
- const next={'envelope-transition':'incoming','ring-gap':'incoming-second','photo-delay':'photograph','connection-black':'narrator','date-reveal':'podcast-intro','theory1-transition':'possession','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
+ const next={'envelope-transition':i.envelopeVersion===1?'envelope-instructions':'incoming','ring-gap':'incoming-second','photo-delay':'photograph','connection-black':'narrator','date-reveal':'podcast-intro','theory1-transition':'possession','vote-fade':'spoken',spoken:'theory-reveal','theory-reveal':'theory-fade','theory-fade':'silent-black','silent-black':'incoming','after-scare':'incoming','retriever-reveal':'envelope-waiting','photo-hold':'ending-fade','ending-fade':'complete','theory2-transition':'premeditation','theory3-transition':'accomplice','narrator-transition':'vote-intro'}[i.step];
  if(i.step==='interlude'){if(i.next==='theory-vote')beginVote(s,'theory',now);else enter(s,i.next,now);return;}
  if(i.step==='message-hold'){beginVote(s,'envelope',now);return;}
  if(!next)return UNCHANGED;
@@ -169,7 +169,7 @@ export function investigationProgress(s,playerId){
  const theory=election(i,'theory')?.winnerId??i.testSetup?.theoryId??null;
  const retriever=election(i,'envelope')?.winnerId??i.testSetup?.retrieverId??null;
  const p=s.players.find(p=>p.id===retriever);
- return {theoryVersion:i.theoryVersion??0,needsRecovery:simulatedRecoveryDue(s),polishVersion:i.polishVersion??0,id:i.id,startedAt:i.startedAt,sequence:i.sequence,step:i.step,phaseAt:i.phaseAt,deadline:i.deadline,audioStartedAt:i.audioStartedAt,offsetMs:i.offsetMs,photoSoundPlayedAt:i.photoSoundPlayedAt??null,testMode:i.testMode,completedAt:i.completedAt,hostRetriever:i.hostRetriever,
+ return {envelopeVersion:i.envelopeVersion??0,theoryVersion:i.theoryVersion??0,needsRecovery:simulatedRecoveryDue(s),polishVersion:i.polishVersion??0,id:i.id,startedAt:i.startedAt,sequence:i.sequence,step:i.step,phaseAt:i.phaseAt,deadline:i.deadline,audioStartedAt:i.audioStartedAt,offsetMs:i.offsetMs,photoSoundPlayedAt:i.photoSoundPlayedAt??null,testMode:i.testMode,completedAt:i.completedAt,hostRetriever:i.hostRetriever,
   winningTheory:['theory-vote','vote-fade','spoken'].includes(i.step)?null:theory,
   selectedPlayer:p?{id:p.id,name:p.name}:null,
   election:active?{id:active.id,key:electionKey(i),voteCount:Object.keys(active.votes).length,voterCount:active.voterIds.length,closed:active.closedAt!==null,testData:i.testMode,simulatedVoteCount:Object.keys(active.votes).filter(id=>s.players.some(p=>p.id===id&&p.simulated)).length,...(playerId?{voted:Object.hasOwn(active.votes,playerId),canVote:active.closedAt===null&&active.voterIds.includes(playerId),candidates:active.candidateIds.map(id=>active===election(i,'theory')?{id,name:theories.find(t=>t[0]===id)?.[1],description:theories.find(t=>t[0]===id)?.[2]}:{id,name:s.players.find(p=>p.id===id)?.name??''})}:{})}:null};
@@ -177,6 +177,7 @@ export function investigationProgress(s,playerId){
 export function validateInvestigation(s){
  const i=s.chapter7.investigation;if(!i)return;
  if(typeof i.id!=='string'||!i.id||!Number.isFinite(i.startedAt)||!validSteps.includes(i.step)||!Number.isInteger(i.sequence)||i.sequence<0||!Number.isFinite(i.phaseAt)||!Number.isFinite(i.offsetMs)||i.offsetMs<0||i.audioStartedAt!==null&&!Number.isFinite(i.audioStartedAt)||typeof i.testMode!=='boolean'||!i.presence||!i.elections)throw Error('Invalid Chapter 7 investigation.');
+ if(i.envelopeVersion!==undefined&&i.envelopeVersion!==1)throw Error('Invalid envelope version.');
  if(i.theoryVersion!==undefined&&i.theoryVersion!==1)throw Error('Invalid investigation theory version.');
  if(i.polishVersion!==undefined&&![1,2,3,4,5].includes(i.polishVersion)||i.photoSoundPlayedAt!=null&&!Number.isFinite(i.photoSoundPlayedAt))throw Error('Invalid investigation polish metadata.');
  if(i.deadline!==phaseDeadline(i))throw Error('Invalid investigation clock.');

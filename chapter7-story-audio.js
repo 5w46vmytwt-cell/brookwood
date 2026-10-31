@@ -1,4 +1,4 @@
-import {storyRecordings,storyRecording,narrationDuration,prophecyAt,cameraCue,possessionIntroRecording} from './chapter7-story-timing.js';
+import {storyRecordings,storyRecording,narrationDuration,prophecyAt,cameraCue,possessionIntroRecording,envelopeDiscoveryRecording} from './chapter7-story-timing.js';
 import {ConnectionPlayback} from './chapter7-connection.js';
 import {InvestigationAmbient} from './chapter7-ambient.js';
 
@@ -6,7 +6,7 @@ import {InvestigationAmbient} from './chapter7-ambient.js';
 // rather than a guessed deadline, authorizes each scene's next transition.
 export class InvestigationAudio{
  constructor(clock,{Player=globalThis.BrookwoodAudio.Player,request,onState,Connection=ConnectionPlayback}={}){
-  this.Connection=Connection;this.clock=clock;this.request=request;this.onState=onState;this.player=new Player({id:'chapter7-story',cues:[...storyRecordings,possessionIntroRecording,cameraCue].map(r=>({...r,at:0}))},{externallyDriven:true,elapsedNow:()=>clock.elapsedNow(),canSync:()=>!clock.recovering});
+  this.Connection=Connection;this.clock=clock;this.request=request;this.onState=onState;this.player=new Player({id:'chapter7-story',cues:[...storyRecordings,possessionIntroRecording,envelopeDiscoveryRecording,cameraCue].map(r=>({...r,at:0}))},{externallyDriven:true,elapsedNow:()=>clock.elapsedNow(),canSync:()=>!clock.recovering});
   this.photoClaims=new Set();this.epoch=0;this.entry=null;this.state=null;this.message='';this.blocked=false;
   this.ambient=new InvestigationAmbient(clock,{Player});
  }

@@ -30,5 +30,6 @@ export const narrationCues=[
  {step:'coded-message',id:'chapter8-coded-message',src:'/assets/chapter8/audio/ch8_02_coded_message.wav',durationMs:23150},
  {step:'reaction',id:'chapter8-reaction',src:'/assets/chapter8/audio/ch8_03_message_reaction.wav',durationMs:14400}
 ].map(c=>({...c,at:0,type:'narration',volume:1}));
-export const narrationFor=step=>narrationCues.find(c=>c.step===step);
+export const envelopeCodedRecording={step:'coded-message',id:'envelope-coded-message',src:'/assets/chapter7/audio/envelope_coded_messag.wav',durationMs:21675,at:0,type:'narration',volume:1};
+export const narrationFor=(step,c={})=>step==='coded-message'&&c.envelopeVersion===1?envelopeCodedRecording:narrationCues.find(c=>c.step===step);
 export const smooth=x=>{const t=Math.max(0,Math.min(1,x));return t*t*(3-2*t);};

@@ -4,14 +4,14 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function harness(step='puzzle',{offset=0,deny=false,ready=4}={}){
  let now=100000+offset;const audios=[],requests=[];
  class Audio{
-  constructor(src){this.src=src;this.readyState=ready;this.duration=src.endsWith('.mp3')?144.84:src.includes('01_')?13.45:src.includes('02_')?23.15:14.4;this.currentTime=0;this.volume=1;this.paused=true;this.plays=0;this.listeners=new Map();audios.push(this);}
+  constructor(src){this.src=src;this.readyState=ready;this.duration=src.includes('envelope_coded_messag.wav')?21.675:src.endsWith('.mp3')?144.84:src.includes('01_')?13.45:src.includes('02_')?23.15:14.4;this.currentTime=0;this.volume=1;this.paused=true;this.plays=0;this.listeners=new Map();audios.push(this);}
   addEventListener(n,fn){if(!this.listeners.has(n))this.listeners.set(n,new Set());this.listeners.get(n).add(fn);}removeEventListener(n,fn){this.listeners.get(n)?.delete(fn);}emit(n){for(const fn of this.listeners.get(n)??[])fn();}load(){}
   play(){this.plays++;if(deny)return Promise.reject(Error('Autoplay'));this.paused=false;queueMicrotask(()=>this.emit('playing'));return Promise.resolve();}pause(){this.paused=true;}
  }
  const context=vm.createContext({Audio,console:{warn(){}},requestAnimationFrame(){throw Error('No second cinematic clock');},cancelAnimationFrame(){}});vm.runInContext(fs.readFileSync('cinematic-audio.js','utf8'),context);
  const state={phase:'chapter8',generation:'g',chapter8:{id:'c',startedAt:100000,step,phaseAt:100000,audioStartedAt:null,puzzleStartedAt:100000,deadline:null,sequence:0,revealedClues:[]}};
  const audio=new Chapter8Audio({elapsedNow:()=>now-100000},{Player:context.BrookwoodAudio.Player,request:async(_path,b)=>{requests.push(b);if(b.action==='chapter8-audio-playing')state.chapter8.audioStartedAt=now;return {state};},onState:s=>audio.update(s)});
- return {audio,state,audios,requests,at:value=>now=100000+value,deny:value=>deny=value,update:()=>audio.update(state),track:()=>audio.track.audio,voice:()=>audio.player.media.get(narrationFor(state.chapter8.step)?.id)};
+ return {audio,state,audios,requests,at:value=>now=100000+value,deny:value=>deny=value,update:()=>audio.update(state),track:()=>audio.track.audio,voice:()=>audio.player.media.get(narrationFor(state.chapter8.step,state.chapter8)?.id)};
 }
 test('one native loop fades gently, stays continuous during reveals, and reconstructs its modulo offset after refresh',async()=>{
  const h=harness('puzzle',{offset:ambientCue.durationMs*2+3000});h.update();await flush();assert(h.track().loop);assert.equal(h.track().currentTime,3);assert.equal(h.track().volume,0);h.at(ambientCue.durationMs*2+3800);h.update();assert.equal(h.track().volume,.035);h.at(ambientCue.durationMs*2+4600);h.update();assert.equal(h.track().volume,.07);for(let n=0;n<17;n++){h.state.chapter8.sequence++;h.update();}assert.equal(h.track().plays,1);assert.equal(h.audios.filter(a=>a.src===ambientCue.src).length,1);
@@ -58,4 +58,10 @@ test('version 2 fades existing music fully before wife takes over, then pauses i
  const h=harness('reaction');h.update();await flush();h.at(1600);h.update();assert.equal(h.track().volume,.07);const plays=h.track().plays;
  const {finaleCues}=await import('../chapter8-finale-timing.js');h.state.chapter8.step='finale';h.state.chapter8.sequence++;h.state.chapter8.finale={polishVersion:2,index:0,phaseAt:102000,mediaStartedAt:null};h.at(2000);h.update();assert.equal(h.track().volume,.07);h.at(2800);h.update();assert.equal(h.track().volume,.035);h.at(3600);h.update();assert.equal(h.track().volume,0);
  for(let i=1;i<finaleCues.length;i++){h.state.chapter8.finale.index=i;h.state.chapter8.sequence++;h.update();assert(h.track().paused);assert.equal(h.track().volume,0);assert.equal(h.track().plays,plays);}
+});
+
+test('revised coded recording is full-volume, refresh-safe, native-ended and never replays old opening clips',async()=>{
+ const h=harness('coded-message',{offset:7000});h.state.chapter8.envelopeVersion=1;h.state.chapter8.audioStartedAt=100000;h.update();await flush();assert.equal(h.voice().src,'/assets/chapter7/audio/envelope_coded_messag.wav');assert.equal(h.voice().currentTime,7);assert.equal(h.voice().volume,1);
+ for(let i=0;i<10;i++)h.update();assert.equal(h.voice().plays,1);assert.equal(h.audios.filter(a=>a.src.includes('ch8_01_')||a.src.includes('ch8_02_')).reduce((n,a)=>n+a.plays,0),0);
+ h.at(21675);h.voice().currentTime=21.675;h.voice().ended=true;h.voice().paused=true;h.voice().emit('ended');h.voice().emit('ended');await flush();assert.equal(h.requests.filter(b=>b.action==='chapter8-audio-ended').length,1);h.audio.stop();assert(h.audios.every(a=>a.paused));
 });

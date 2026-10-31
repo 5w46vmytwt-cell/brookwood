@@ -3,7 +3,8 @@ export {storyRecordings};
 export const narrationOrder=['narrator','podcast-intro','possession','officer','prophecy','reaction','premeditation','accomplice','vote-intro'];
 export const theories=[['possession','POSSESSION','Something supernatural controlled Daniel.'],['premeditation','PREMEDITATION','Daniel planned the murders.'],['accomplice','ACCOMPLICE','Someone else, possibly Nathan Reeve, helped him.']];
 export const possessionIntroRecording={step:'podcast-intro',id:'chapter7-story-possession-intro',src:'/assets/chapter7/audio/theories_possession_intro.wav',type:'narration',volume:1,durationMs:14475};
-export const storyRecording=(step,i={})=>step==='podcast-intro'&&i.theoryVersion===1?possessionIntroRecording:step==='photo-appearance'?cameraCue:step==='incoming-second'?storyRecording('incoming'):step==='connection'?connectionCue:step==='scare'?undefined:storyRecordings.find(r=>r.step===step);
+export const envelopeDiscoveryRecording={step:'envelope-instructions',id:'chapter7-envelope-discovery',src:'/assets/chapter7/audio/envelope_discovery_intro.wav',type:'narration',volume:1,durationMs:21700};
+export const storyRecording=(step,i={})=>step==='envelope-instructions'&&i.envelopeVersion===1?envelopeDiscoveryRecording:step==='podcast-intro'&&i.theoryVersion===1?possessionIntroRecording:step==='photo-appearance'?cameraCue:step==='incoming-second'?storyRecording('incoming'):step==='connection'?connectionCue:step==='scare'?undefined:storyRecordings.find(r=>r.step===step);
 // Revised handoff: one second earlier, within the final damaged transmission.
 export const POLICE_OVERLAP_MS=1900;
 export const PROPHECY_AT_MS=storyRecording('officer').durationMs-POLICE_OVERLAP_MS;

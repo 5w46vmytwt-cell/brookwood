@@ -34,9 +34,10 @@ export class Chapter8View{
   this.setup();this.node('chapter8TV').hidden=false;if(this.clock.canSync?.()===false)return;this.audio.update(state);
   if((c.step==='finale'||c.step==='complete'&&c.finale?.polishVersion>=7)&&!this.finale)this.finale=new Chapter8Finale(this.document,this.clock,{Player:this.Player,request:this.request,onState:this.onState});
   this.finale?.update(state,this.authenticated);
-  const puzzle=['puzzle','leaving'].includes(c.step);this.node('chapter8Canvas').hidden=!puzzle;this.node('chapter8Canvas').style.opacity=String(c.step==='leaving'?smooth((c.deadline-c.startedAt-this.clock.elapsedNow())/PUZZLE_FADE_MS):1);
+  const puzzle=['puzzle','leaving'].includes(c.step);this.node('chapter8TV').classList.toggle('ch8-decoding',c.envelopeVersion===1&&puzzle);this.node('chapter8DecodeHeading').hidden=!(c.envelopeVersion===1&&puzzle);this.node('chapter8Canvas').hidden=!puzzle;this.node('chapter8Canvas').style.opacity=String(c.step==='leaving'?smooth((c.deadline-c.startedAt-this.clock.elapsedNow())/PUZZLE_FADE_MS):1);
   this.node('chapter8Narrator').hidden=puzzle||c.step==='complete'||c.step==='finale';this.node('chapter8Narrator').style.opacity=String(smooth((c.startedAt+this.clock.elapsedNow()-c.phaseAt)/1600));this.node('chapter8Heading').textContent=({'unexpected-evidence':'UNEXPECTED EVIDENCE','photo-waiting':'TAKE A PHOTOGRAPH OF THE NOTE.','coded-message':'A CODED MESSAGE',reaction:'THE MESSAGE'})[c.step]??'';
-  this.node('chapter8Copy').hidden=c.step!=='photo-waiting';this.node('chapter8Copy').textContent=c.step==='photo-waiting'?'Send the photograph. Then confirm once it has been sent.':'';this.node('chapter8Wave').hidden=!narrationFor(c.step);
+  if(c.envelopeVersion===1&&c.step==='coded-message')this.node('chapter8Heading').textContent='DECODE THE MESSAGE';
+  this.node('chapter8Copy').hidden=c.step!=='photo-waiting';this.node('chapter8Copy').textContent=c.step==='photo-waiting'?'Send the photograph. Then confirm once it has been sent.':'';this.node('chapter8Wave').hidden=!narrationFor(c.step,c);
   this.node('chapter8Wave').classList.toggle('speaking',!!this.audio.entry&&!this.audio.entry.audio.paused&&!this.audio.entry.ended);
   const nav=this.node('chapterSelectPanel'),navigating=nav&&!nav.hidden;if(navigating)this.pointer=null;
   for(const clue of clues){const button=this.buttons.get(clue.id),revealed=c.revealedClues.includes(clue.id),interactive=this.authenticated&&c.step==='puzzle'&&!revealed&&!this.pending&&!this.revealing.has(clue.id)&&!navigating;

@@ -210,3 +210,52 @@ media, twelve-person retrieval voting, host return, photograph start, and silent
 phones. Long unchanged clips were sampled and sought near their native endings
 for the targeted rehearsal; the new introduction ran to completion. Reports are
 in `logs/chapter7-possession-browser-report.json`.
+
+## Envelope discovery and direct decoding (2026-10-31)
+
+New investigations also persist `envelopeVersion: 1`. Their completed possession
+reaction fades for the existing 1,600 ms, then starts the new discovery narration
+directly. The old double phone ring and old `ch7_10_envelope_instructions.wav`
+are not entered on this route. AN ENVELOPE IS WAITING remains visible through
+the complete new narration before the unchanged retrieval election opens.
+Candidate exclusions, ballots, host closing/return confirmation and historical
+retriever identities are unchanged. UI sentence-ending periods are removed from
+these envelope screens without modifying player names or their abbreviations.
+
+| Supplied asset | Format | Native duration | SHA-256 |
+|---|---|---:|---|
+| `assets/chapter7/audio/envelope_discovery_intro.wav` | Mono, 24 kHz, 32-bit IEEE float WAV | 21,700 ms | `dbf3d569559a85f6482c476ea94c060d464dffdcb960f6c2f7e286e4133f7759` |
+| `assets/chapter7/audio/envelope_coded_messag.wav` | Mono, 24 kHz, 32-bit IEEE float WAV | 21,675 ms | `cfa60097cfc295832b840af8a7e2478e3062e12fffae3a9641877b6a0d70bef7` |
+
+The second filename is the actual supplied spelling, explicitly approved by the
+user. Neither WAV is renamed, edited or re-encoded.
+
+The original photograph, shutter/delay, complete 41,575-ms narration, enhanced
+window synchronization, 10,500-ms final hold and 1,500-ms fade remain unchanged.
+The automatic Chapter 8 handoff inherits the stored envelope version and starts
+the new coded-message recording, replacing both old opening clips and bypassing
+the photo-request/PHOTO SENT checkpoint. The user authorized only this minimal
+Chapter 8 handoff change. Saved Chapter 7/8 runs without the new version retain
+their previous recordings, clocks and photo-confirmation interaction.
+
+DECODE THE MESSAGE uses the existing investigation typography and palette. The
+unchanged puzzle artwork and all 17 percentage-based reveal regions remain
+together in the same aspect-ratio container, with a heading in the black margin.
+The puzzle still uses authenticated host letter reveals, not typed answers or
+a timer. No answer, role mapping, reveal persistence, completion requirement,
+reaction or subsequent finale behavior is changed.
+
+Fixed time from possession reaction completion until the puzzle opens changes
+from **126,475 ms (2:06.475)** to **105,450 ms (1:45.450)**, saving **21,025 ms**.
+Both totals include the unchanged retrieval reveal, photograph sequence and
+window ending, but exclude human retrieval voting/return time and transport
+latency. Removing the old PHOTO SENT wait saves additional variable time.
+
+Validation: 91 focused Chapter 7 story/audio and Chapter 8 puzzle/audio/view tests
+pass. The isolated TV/two-phone rehearsal ran both new WAVs and the unchanged
+photograph narration to native completion, refreshed during all three, completed
+the twelve-person retrieval election, checked decoding layout at 1080p/720p,
+revealed all 17 clues, restored completion after refresh, and verified Continue.
+No old replacement narration played and both phones stayed silent. Report:
+`logs/chapter7-envelope-browser-report.json`. The production build includes both
+new WAVs byte-for-byte. No production state mutation is used for verification.

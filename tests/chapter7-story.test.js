@@ -14,7 +14,7 @@ let now,raw,realDate,realFetch;
 beforeEach(()=>{now=10000000;raw=null;realDate=Date.now;realFetch=global.fetch;Date.now=()=>now;process.env.HOST_KEY='story-host';process.env.KV_REST_API_URL='https://redis.invalid';process.env.KV_REST_API_TOKEN='test';global.fetch=async(_url,options)=>{const a=JSON.parse(options.body);let result;if(a[0]==='GET')result=raw;else{assert.equal(a[0],'EVAL');assert.equal(a[1],CAS_SCRIPT);result=(raw??'')===a[4]?1:0;if(result)raw=a[5];}return {ok:true,json:async()=>({result})};};});
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
 // Default fixtures represent already-saved three-theory runs.
-function fixture(real=4,simulated=false,legacy=true){const s=finalNarrationFixture(now);s.players.forEach((p,i)=>p.simulated=i>=real);if(!simulated)s.players=s.players.slice(0,real);makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);if(legacy)delete s.chapter7.investigation.theoryVersion;endAudio(s);advance(s);return s;}
+function fixture(real=4,simulated=false,legacy=true){const s=finalNarrationFixture(now);s.players.forEach((p,i)=>p.simulated=i>=real);if(!simulated)s.players=s.players.slice(0,real);makeBroadcastTestSelector('chapter7-after')(s);startInvestigation(s);delete s.chapter7.investigation.envelopeVersion;if(legacy)delete s.chapter7.investigation.theoryVersion;endAudio(s);advance(s);return s;}
 const inv=s=>s.chapter7.investigation;
 const body=(s,action,extra={})=>({action,generation:s.generation,broadcastId:s.chapter7.id,investigationId:inv(s).id,sequence:inv(s).sequence,...extra});
 function jump(s,checkpoint,extra={}){makeBroadcastTestSelector(checkpoint,extra)(s);validateChapter7(s);}
@@ -221,4 +221,12 @@ test('new introduction metadata matches original supplied WAV bytes; fixed runti
  const previous=voice(['podcast-intro','possession','officer','reaction','premeditation','accomplice','vote-intro'])+['theory1-transition','theory2-transition','theory3-transition','narrator-transition','vote-fade','spoken','theory-reveal','theory-fade','silent-black'].reduce((sum,step)=>sum+sceneDuration(i,step),0)+2700;
  const updated=['podcast-intro','possession','officer','reaction'].reduce((sum,step)=>sum+narrationDuration({...i,theoryVersion:1,step}),0)+9000+1800+1600;
  assert(Math.abs(previous-401131.85714285716)<.001);assert(Math.abs(updated-186901.85714285713)<.001);assert(Math.abs(previous-updated-214230)<.001);
+});
+
+test('new envelope discovery immediately follows the whole podcast and gates unchanged retrieval voting',()=>{
+ const s=fixture(4,false,false);inv(s).envelopeVersion=1;jump(s,'chapter7-podcast');
+ endAudio(s);advance(s);assert.equal(inv(s).step,'officer');endAudio(s);advance(s);assert.equal(inv(s).step,'reaction');endAudio(s);assert.equal(inv(s).step,'envelope-transition');advance(s);assert.equal(inv(s).step,'envelope-instructions');
+ const cue=storyRecording(inv(s).step,inv(s));assert.equal(cue.src,'/assets/chapter7/audio/envelope_discovery_intro.wav');assert.equal(cue.durationMs,21700);assert.equal(investigationProgress(s).election,null);
+ investigationHostAction(s,body(s,'investigation-audio-playing',{recording:cue.id}));now+=20000;assert.throws(()=>investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id})));assert.equal(advanceInvestigation(structuredClone(s)),UNCHANGED);now+=1700;investigationHostAction(s,body(s,'investigation-audio-ended',{recording:cue.id}));assert.equal(inv(s).step,'envelope-vote');assert.equal(inv(s).elections.envelope.winnerId,null);assert.deepEqual(investigationProgress(s,'p0').election.candidates.map(p=>p.id),['p2','p3']);
+ const b=fs.readFileSync(cue.src.slice(1)),m=wavMetadata(b);assert.equal(m.durationMs,21700);assert.equal(createHash('sha256').update(b).digest('hex'),'dbf3d569559a85f6482c476ea94c060d464dffdcb960f6c2f7e286e4133f7759');
 });

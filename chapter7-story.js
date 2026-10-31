@@ -70,6 +70,7 @@ export class Chapter7Investigation{
    enhanced.hidden=!frame.enhanced;if(frame.enhanced){if(!enhanced.getAttribute('src'))enhanced.src='/assets/chapter7/ch7_window_enhanced.png';enhanced.style.opacity=String(frame.mix);enhanced.style.transform='scale('+(1+.035*clamp((position-PHOTO_ENHANCED_MS)/15000))+')';}
    if(i.step==='ending-fade')stage.style.opacity=this.fade(elapsed,sceneDuration(i),false);
   }
+  if(i.envelopeVersion===1&&['envelope-instructions','envelope-vote','retriever-fallback','retriever-reveal','envelope-waiting'].includes(i.step)){const clean=text=>text.replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');eyebrow=clean(eyebrow);if(i.step==='envelope-waiting')title=title.replace(/\.$/,'');else if(i.step!=='retriever-reveal')title=clean(title);subtitle=clean(subtitle);}
   if(i.testMode&&i.election)node('ch7Progress').textContent+=' / TEST DATA: '+i.election.simulatedVoteCount+' SIMULATED';
   if(['narrator','podcast-intro','vote-intro'].includes(i.step))this.narrator.update({eyebrow,title,subtitle,scene:i.step,opacity:scene.style.opacity,speaking:!!this.audio.entry&&!(this.audio.entry.secondary??this.audio.entry.audio).paused&&!this.audio.entry.ended});
   else {node('ch7Eyebrow').textContent=eyebrow;node('ch7Title').textContent=title;node('ch7Subtitle').textContent=subtitle;}
