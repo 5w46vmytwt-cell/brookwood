@@ -63,13 +63,19 @@ test('door/package reveal uses the approved image and exact HTML copy only at th
   assert.equal(image.subarray(1,4).toString(),'PNG');
   const vote=html.match(/<div id="chapter4-vote"[\s\S]*?<\/div>/)[0];
   assert(vote.includes('src="/assets/chapter4/doorbell-package.png"'));
-  assert(vote.includes('<h2>SOMEONE LEFT SOMETHING AT THE DOOR.</h2>'));
-  assert(vote.includes('Who is brave enough to go check?'));
+  assert(vote.includes('<h2>SOMEONE LEFT A PACKAGE AT YOUR DOORSTEP</h2>'));
+  assert(vote.includes('ONLY ONE PERSON CAN RETRIEVE IT'));
+  assert(vote.includes('Decide as a group who should go'));
+  assert(vote.includes('VOTE ON YOUR PHONE'));
+  assert(vote.includes('FRONT DOOR CAMERA'));
   const cue=chapter4Timeline.cues.find(c=>c.id==='vote');assert.equal(cue.at,114474);
-  assert.deepEqual(cue.visual.content.map(c=>c.text),['SOMEONE LEFT SOMETHING AT THE DOOR.','Who is brave enough to go check?']);
+  assert.deepEqual(cue.visual.content.map(c=>c.text),['SOMEONE LEFT A PACKAGE AT YOUR DOORSTEP','Decide as a group who should go']);
   for(const at of [108450,111449,111450,112500,114473])assert.equal(setup(at).opacity('vote'),0);
   assert.equal(setup(114474).opacity('vote'),1);
   assert.equal(chapter4AudioTimeline.cues.at(-1).at,111450);assert.equal(chapter4AudioTimeline.cues.at(-1).durationMs,3024);
+  assert.equal(chapter4AudioTimeline.cues.at(-1).volume,Math.min(1,1*1.5));
+  assert(html.includes('THE GROUP HAS SPOKEN'));
+  assert(html.includes('CONFIRM ON YOUR PHONE ONCE THE PACKAGE IS OPEN'));
 });
 
 test('voting refresh reconstructs the door/package reveal and current aggregate progress without replaying audio',()=>{
@@ -82,6 +88,10 @@ test('voting refresh reconstructs the door/package reveal and current aggregate 
   assert.equal(e.audio('chapter4-doorbell').plays,0);
   e.runtime.acceptState({...state,chapter4:{...state.chapter4,voteCount:8}});assert.equal(e.opacity('vote'),1);
   assert.equal(e.nodes.get('chapter4-count').textContent,'8 / 12 VOTES RECORDED');
+  e.runtime.acceptState({...state,phase:'door-vote-complete',chapter4:{...state.chapter4,complete:true,selectedPlayer:{id:'persisted',name:'Alexandra Long Name'}}});
+  assert.equal(e.nodes.get('chapter4-selected').textContent,'Alexandra Long Name');
+  assert.equal(e.nodes.get('chapter4-result').hidden,false);
+  assert.equal(e.nodes.get('chapter4-cinematic').hidden,true);
 });
 
 test('Chapter 4 reuses the original score and reconstructs its loop from the canonical clock',()=>{

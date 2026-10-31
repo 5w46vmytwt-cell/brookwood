@@ -2,8 +2,8 @@ import {chapter4Scenes,CHAPTER4_DOORBELL_MS,CHAPTER4_VOTING_MS,CHAPTER4_DOORBELL
 export const chapter4Timeline={id:'chapter4',end:CHAPTER4_VOTING_MS,cues:[
   ...chapter4Scenes.map(s=>({id:'scene-'+s.id,type:'image',at:s.at,end:s.end,visual:{target:'chapter4-scene-'+s.id,src:s.src,...(!s.cut?{fadeIn:[s.at,s.at+250]}:{}),fadeOut:[s.end-300,s.end]}})),
   {id:'vote',type:'text',at:CHAPTER4_VOTING_MS,end:Infinity,visual:{target:'chapter4-vote',content:[
-    {selector:'h2',text:'SOMEONE LEFT SOMETHING AT THE DOOR.'},
-    {selector:'.chapter4-door-question',text:'Who is brave enough to go check?'}
+    {selector:'h2',text:'SOMEONE LEFT A PACKAGE AT YOUR DOORSTEP'},
+    {selector:'.chapter4-door-question',text:'Decide as a group who should go'}
   ]}}
 ]};
 export const chapter4AudioTimeline={id:'chapter4-audio',cues:[
