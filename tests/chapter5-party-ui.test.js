@@ -15,10 +15,11 @@ test('valid session restores READY without a PIN and late authentication cannot 
  const yes=setup(async()=>({authenticated:true}));yes.controls.update(waiting);await flush();assert(!yes.node('chapter5ReadyButton').hidden);yes.controls.update(waiting);assert(!yes.node('chapter5ReadyButton').hidden);
  yes.controls.update({...waiting,phase:'chapter5-casting',chapter5:{...waiting.chapter5,round:{votingActive:true}}});assert(yes.node('chapter5ReadyButton').hidden);assert(yes.node('chapter5Host').hidden);yes.node('chapter5HostToggle').onclick();assert(!yes.node('chapter5Host').hidden);
 });
-test('cast presentation keeps original card assets, removes round counter, and deals on the canonical clock',()=>{
+test('cast presentation keeps original card assets, removes round counter, and uses a static review',()=>{
  const html=fs.readFileSync('tv.html','utf8'),source=fs.readFileSync('chapter5.js','utf8'),css=fs.readFileSync('chapter5.css','utf8');
  assert(!html.includes('id="chapter5-roundProgress"'));assert(!source.includes("'ROUND '"));assert(html.includes('Who would be perfect for that role?'));assert(!source.includes("?'WAITING FOR THE HOST'"));
- assert(!html.includes('The same person can win more than one role.'));assert(html.includes('No self-voting. One vote per role.'));assert(!source.includes('CASTING IN PROGRESS'));
- for(const name of ['01-the-screamer.png','02-the-terrible-decision-make.png','03-the-tripper.png','04-the-denier.png','05-the-sacrifice.png','06-the-killer.png'])assert(html.includes('/assets/chapter5/'+name));
- assert(source.includes('--cast-deal-clock'));assert(css.includes('animation-play-state:paused'));assert(css.includes('prefers-reduced-motion'));assert(css.includes('background:#000'));
+ assert(!html.includes('The same person can win more than one role.'));assert(html.includes('No self-voting One vote per role'));assert(!source.includes('CASTING IN PROGRESS'));
+ assert(html.includes('/assets/chapter5/cast_final.png'));assert(!html.includes('cast-fan'));assert(!css.includes('cast-deal'));assert(css.includes('prefers-reduced-motion'));assert(css.includes('background:#000'));
 });
+
+test('static review maps image order to finalized role IDs and rules remove only periods',()=>{const html=fs.readFileSync('tv.html','utf8');const review=html.match(/<div id="chapter5-cast"[^]*?<div id="chapter5-ofCourse"/)?.[0]||html.slice(html.indexOf('<div id="chapter5-cast"'),html.indexOf('<div id="chapter5-ofCourse"'));const ids=[...review.matchAll(/id="chapter5-cast-([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(ids,['screamer','terribleDecisionMaker','denier','tripper','killer','sacrifice']);for(const id of ['chapter5-intro','chapter5-gameIntro']){const rules=html.match(new RegExp('<div id="'+id+'"[^>]*>(.*?)</div>'))[1];assert(!rules.includes('.'));assert(rules.includes('Before entering haunted houses, the original Brookwood group used to cast their own horror movie'));}});
