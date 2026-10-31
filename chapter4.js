@@ -25,6 +25,7 @@ export class Chapter4View{
     details.hidden=!frame.visible;details.style.opacity=frame.opacity;
     this.document.getElementById('chapter4-selected').textContent=frame.visible?c.selectedPlayer?.name||'':'';
     this.renderer.update({phase:'opening',startedAt:c.startedAt});
+    if(c.blockedReason)this.document.getElementById('chapter4-vote').querySelector('h2').textContent=c.blockedReason;
   }
   stop(){this.renderer.stop();}
 }

@@ -4,7 +4,7 @@ export class MazeAmbient{
  constructor(soundtrack){this.track=soundtrack;this.enabled=false;this.active=false;this.stopping=false;}
  update(c,narration){
   if(!this.track)return;
-  if(c.step==='complete'){this.stop();return;}
+
   if(c.pacingVersion===1)this.enabled=true;
   this.active=c.pacingVersion===1||c.step!=='takeover'||this.active;if(!this.active)return;
   this.stopping=false;

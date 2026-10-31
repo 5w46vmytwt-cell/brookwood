@@ -1,4 +1,4 @@
-import {revealTiming,POLISHED_FINALE_MS} from './chapter5-reveal-timing.js';
+import {revealTiming,POLISHED_FINALE_MS,EXTENDED_FINALE_MS} from './chapter5-reveal-timing.js';
 import {CHAPTER5_READY_MS,ITEM_ACQUIRED_BLACK_MS,WIFE_HANDOFF_SILENCE_MS,roleVotingOffset} from './chapter5-audio-timing.js';
 export const chapter5Phases=['chapter5-intro','chapter5-waiting','chapter5-rules','chapter5-casting','chapter5-finale','chapter5-complete'];
 export const CHAPTER5_INTRO_MS=CHAPTER5_READY_MS+ITEM_ACQUIRED_BLACK_MS+WIFE_HANDOFF_SILENCE_MS;
@@ -15,4 +15,4 @@ export const castingRoles=[
 export const castingVotingOffset=(role,audioVersion=1)=>audioVersion===1?roleVotingOffset(role):role==='killer'?2500:1200;
 export const castingRevealOffset=(role,revealVersion=0)=>revealVersion===1?revealTiming(role).winnerAt:role==='killer'?6300:2200;
 export const castingCompletionMs=(role,revealVersion=0)=>revealVersion===1?revealTiming(role).end:role==='killer'?11300:role==='sacrifice'?9400:6900;
-export const castingFinaleMs=(revealVersion=0)=>revealVersion===1?POLISHED_FINALE_MS:CHAPTER5_FINALE_MS;
+export const castingFinaleMs=(revealVersion=0,transitionVersion=0)=>revealVersion===1?(transitionVersion===1?EXTENDED_FINALE_MS:POLISHED_FINALE_MS):CHAPTER5_FINALE_MS;

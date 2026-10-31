@@ -99,3 +99,7 @@
 #chapter5-cast .cast-review{position:relative;width:min(100vw,177.6833vh);aspect-ratio:1672/941;flex:none}
 #chapter5-cast .cast-review>img{display:block;width:100%;height:100%;object-fit:contain}
 .cast-review-names span{position:absolute;left:var(--name-x);top:76%;transform:translateX(-50%);width:14.7%;box-sizing:border-box;padding:.3em .2em;color:#fff;font:600 clamp(16px,1.55vw,30px)/1.2 var(--party-font);text-align:center;overflow-wrap:anywhere;text-shadow:0 2px 4px #000;background:#080605b8;border-radius:4px}
+
+/* Chapter 1 cinematic text styling for the final mystery beats */
+#chapter5-ofCourse,#chapter5-onlyGame,#chapter5-tonight,#chapter5-someoneElse,#chapter5-unlikeYours,#chapter5-rules{font-family:Arial,sans-serif;color:#d7d5d0;letter-spacing:.3em;background:#000;font-weight:400;text-shadow:none}
+#chapter5-someoneElse,#chapter5-rules{color:#9f1717}

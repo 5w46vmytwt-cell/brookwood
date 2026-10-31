@@ -55,3 +55,21 @@
 .maze-failure-voice #chapter6Waveform{height:120px}.maze-failure-voice #chapter6Waveform i{background:#873f3f;width:10px}.maze-failure-voice #chapter6Content{background:radial-gradient(ellipse,#1d1117aa,transparent 70%)}
 #chapter6Image.memory{opacity:1!important;filter:none!important;transform:none!important;transition:none!important;animation:none!important}
 @media(max-height:700px){.maze-result-bridge #chapter6Content{inset:16vh 3vw 3vh 50vw}.maze-result-bridge #chapter6Detail{font-size:18px;line-height:1.3}.maze-result #chapter6Question{padding:1vh}.maze-result-boxoffice #chapter6Detail{padding:1.5vh 3vw}}
+
+/* Same restrained Chapter 1 type, palette and cinematic surfaces */
+#chapter6TV{font-family:Arial,sans-serif;background:#000;color:#d7d5d0}
+#chapter6Title,#chapter6Question{font-family:Arial,sans-serif;font-weight:400;letter-spacing:.14em;text-shadow:none}
+#chapter6Detail{color:#aaa}
+#chapter6ReadyStart,#chapter6DoorActions button{min-height:48px;border:1px solid #b94242;border-radius:10px;padding:12px 25px;background:#9f1717;color:#fff;font:600 18px Arial,sans-serif;cursor:pointer}
+#chapter6ReadyStart:disabled,#chapter6DoorActions button:disabled{opacity:.5;cursor:wait}
+#chapter6ReadyStart:focus-visible,#chapter6DoorActions button:focus-visible{outline:3px solid #eee;outline-offset:4px}
+#chapter6DoorActions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+#chapter6DoorActions button[data-door=black]{background:#151515;border-color:#999}#chapter6DoorActions button[data-door=green]{background:#183d29;border-color:#3c8054}#chapter6DoorActions button[data-door=blue]{background:#162f56;border-color:#467ac2}
+#chapter6TV.maze-silence{background:#000}
+#chapter6TV.maze-silence::before{opacity:.08}
+#chapter6TV.maze-silence #chapter6Waveform{opacity:.3}
+#chapter6Doors figcaption{display:none}
+
+#chapter6TV #chapter6GameTitle,#chapter6TV #chapter6Stage,#chapter6TV #chapter6Objective,#chapter6TV #chapter6HostStatus{font-family:Arial,sans-serif;color:#d7d5d0}
+#chapter6TV.maze-token #chapter6Title,#chapter6TV.maze-gameover #chapter6Title{color:#d7d5d0;text-shadow:none}
+#chapter6Question{overflow-wrap:anywhere;max-width:92vw}

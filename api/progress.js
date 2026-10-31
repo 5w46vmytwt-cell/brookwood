@@ -38,11 +38,7 @@ export default async function handler(req,res){
       if(!Number.isFinite(s.startedAt)||s.startedAt<=0)return UNCHANGED;
       const now=Date.now();
       if(now-s.startedAt<PHOTO_CHECKPOINT_MS)return UNCHANGED;
-      const cast=new Map(s.players.map(p=>[p.id,p]));
-      if(s.players.length!==12||cast.size!==12||s.players.some(p=>
-        typeof p.id!=='string'||!p.id||typeof p.token!=='string'||!p.token||!p.ready||
-        !p.partnerId||p.partnerId===p.id||cast.get(p.partnerId)?.partnerId!==p.id))
-        throw new LobbyError(409,'The current cast is not valid for the photo checkpoint.');
+      if(!s.players.length||s.players.length>20||new Set(s.players.map(p=>p.id)).size!==s.players.length)throw new LobbyError(409,"The current cast is not valid for the photo checkpoint.");
       s.photo={promptedAt:now,confirmedPlayerIds:[],confirmedAt:null};
       s.phase='photo';outcome={ok:true,eligible:true,phase:'photo'};
     }));

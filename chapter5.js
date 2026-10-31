@@ -1,4 +1,4 @@
-import {revealTiming,COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS,POLISHED_FINALE_MS} from './chapter5-reveal-timing.js';
+import {revealTiming,COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS,POLISHED_FINALE_MS,EXTENDED_FINALE_MS} from './chapter5-reveal-timing.js';
 import {castingRoles,CHAPTER5_LEGACY_INTRO_MS,CHAPTER5_FINALE_MS,castingCompletionMs,castingFinaleMs} from './chapter5-timing.js';
 import {chapter5OpeningFor,chapter5IntroDuration,ITEM_ACQUIRED_FADE_MS,CHAPTER5_RULES_MS} from './chapter5-audio-timing.js';
 const text=(id,at,end,target,copy,extra={})=>({id,type:'text',at,end,visual:{target,...(copy?{text:copy}:{}),...extra}});
@@ -54,9 +54,10 @@ export const chapter5FinaleTimeline={id:'chapter5-finale',end:CHAPTER5_FINALE_MS
   text('unlikeYours',23100,30100,'chapter5-unlikeYours','AND UNLIKE YOURS...',{fadeOut:[28600,30100]}),
   text('rules',24600,30100,'chapter5-rules',"YOU DON'T KNOW THE RULES YET.",{fadeOut:[28600,30100]})
 ]};
-export function polishedFinaleTimeline(){
-  const messages=chapter5FinaleTimeline.cues.slice(1).map((cue,i)=>{const at=COMPLETE_CAST_END_MS+600+i*3500,end=at+3000;return {...cue,at,end,visual:{...cue.visual,fadeIn:[at,at+600],fadeOut:[end-600,end]}};});
-  return {id:'chapter5-narrated-finale',end:POLISHED_FINALE_MS,cues:[{...chapter5FinaleTimeline.cues[0],end:COMPLETE_CAST_END_MS,visual:{...chapter5FinaleTimeline.cues[0].visual,fadeOut:[COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS]}},...messages]};
+export function polishedFinaleTimeline(transitionVersion=0){
+  const extended=transitionVersion===1,stride=extended?6300:3500,duration=extended?5800:3000,fade=extended?1000:600;
+  const messages=chapter5FinaleTimeline.cues.slice(1).map((cue,i)=>{const at=COMPLETE_CAST_END_MS+600+i*stride,end=at+duration;return {...cue,at,end,visual:{...cue.visual,fadeIn:[at,at+fade],fadeOut:[end-fade,end]}};});
+  return {id:'chapter5-narrated-finale',end:extended?EXTENDED_FINALE_MS:POLISHED_FINALE_MS,cues:[{...chapter5FinaleTimeline.cues[0],end:COMPLETE_CAST_END_MS,visual:{...chapter5FinaleTimeline.cues[0].visual,fadeOut:[COMPLETE_CAST_HOLD_MS,COMPLETE_CAST_END_MS]}},...messages]};
 }
 export class Chapter5View{
   constructor(document,Renderer,clock){this.document=document;this.Renderer=Renderer;this.clock=clock;this.renderer=null;this.key=null;this.state=null;this.sceneLayers=document.querySelectorAll?[...document.querySelectorAll('#chapter5TV > .chapter5-layer')].map(node=>[node.id,node]):introTargets.map(id=>[id,document.getElementById(id)]);}
@@ -85,7 +86,7 @@ export class Chapter5View{
     if(key!==this.key){
       this.stop();this.key=key;
       if(state.phase==='chapter5-complete')return;
-      const timeline=intro?(c.audioVersion===1?chapter5IntroTimelineFor(c):legacyIntroTimeline):waiting?waitingTimeline:rules?chapter5RulesTimeline:finale?(c.revealVersion===1?polishedFinaleTimeline():chapter5FinaleTimeline):r.completedAt!==null?castingResultTimeline(role,c.revealVersion):castingCardTimeline(role);
+      const timeline=intro?(c.audioVersion===1?chapter5IntroTimelineFor(c):legacyIntroTimeline):waiting?waitingTimeline:rules?chapter5RulesTimeline:finale?(c.revealVersion===1?polishedFinaleTimeline(c.transitionVersion):chapter5FinaleTimeline):r.completedAt!==null?castingResultTimeline(role,c.revealVersion):castingCardTimeline(role);
       this.renderer=new this.Renderer(this.document,timeline,{...this.clock,elapsedNow:()=>{
         const current=this.state.chapter5,base=['chapter5-intro','chapter5-waiting'].includes(this.state.phase)?current.startedAt:this.state.phase==='chapter5-rules'?current.rulesStartedAt:['chapter5-finale','chapter5-complete'].includes(this.state.phase)?current.castStartedAt:current.round.completedAt??current.round.startedAt;
         return Math.max(0,this.clock.elapsedNow()-(base-current.startedAt));
@@ -105,7 +106,7 @@ export class Chapter5View{
     this.document.getElementById('chapter5-waitingCopy').textContent='';
     this.document.getElementById('chapter5-timeToVote').hidden=!r.votingActive;
     this.document.getElementById('chapter5-voteQuestion').hidden=!r.votingActive;
-    this.document.getElementById('chapter5-voteCount').textContent=r.voteCount+' / 12 HAVE VOTED';
+    this.document.getElementById('chapter5-voteCount').textContent=c.blockedReason||(r.voteCount+' / '+(state.players?.length??c.participantCount??0)+' HAVE VOTED');
     this.document.getElementById('chapter5-winnerRole').textContent=role.title;
     this.document.getElementById('chapter5-winnerName').textContent=r.winner?.name||'';
     this.document.getElementById('chapter5-goodLuck').hidden=role.id!=='sacrifice';
@@ -130,7 +131,7 @@ export class Chapter5View{
     const c=state.chapter5;
     if(state.phase==='chapter5-intro')return elapsed>=(c.audioVersion===1?chapter5IntroDuration(c):CHAPTER5_LEGACY_INTRO_MS);
     if(state.phase==='chapter5-rules')return elapsed>=c.rulesStartedAt-c.startedAt+CHAPTER5_RULES_MS;
-    if(state.phase==='chapter5-finale')return elapsed>=c.castStartedAt-c.startedAt+castingFinaleMs(c.revealVersion);
+    if(state.phase==='chapter5-finale')return elapsed>=c.castStartedAt-c.startedAt+castingFinaleMs(c.revealVersion,c.transitionVersion);
     if(state.phase==='chapter5-casting'&&c.round.completedAt!==null)return elapsed>=c.round.completedAt-c.startedAt+castingCompletionMs(c.round.id,c.revealVersion);
     return false;
   }

@@ -23,7 +23,7 @@ export function transitionVisual(c,now){
  return {scene:{...c,game:c.game===4?4:c.game+1,step:c.game===4?(c.audioVersion===2&&c.polishVersion!==1?'gameover':'finale'):'intro',phaseAt:c.deadline},black:Math.max(0,1-(t-revealAt)/1000)};
 }
 export const games=[
- {title:'THE FOUR DOORS',question:'Which door will you choose?',options:[['red','Red — XIII'],['blue','Blue — VI'],['green','Green — VII'],['black','Black — IX']],correct:'black'},
+ {title:'THE FOUR DOORS',question:'ONLY ONE DOOR WILL SAVE YOU, CHOOSE WISELY',options:[['red','Red — XIII'],['blue','Blue — VI'],['green','Green — VII'],['black','Black — IX']],correct:'black'},
  {title:'HORROR BOX OFFICE',question:'Which of these horror movies earned the most money at the worldwide box office?',options:[['A','The Exorcist (1973)'],['B','A Nightmare on Elm Street (1984)'],['C','The Sixth Sense (1999)'],['D','Halloween (1978)'],['E','Paranormal Activity (2007)']],correct:'C'},
  {title:"DON'T LOOK AWAY",question:'What time was shown on the clock?',options:[['A','3:15'],['B','4:45'],['C','3:45'],['D','9:15'],['E','4:15']],correct:'C'},
  {title:'BRIDGE OF DEATH',question:'What is the minimum total time required for everyone to cross?',options:[['A','15 minutes'],['B','17 minutes'],['C','19 minutes'],['D','20 minutes'],['E','22 minutes']],correct:'B'},

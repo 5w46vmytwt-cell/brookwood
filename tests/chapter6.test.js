@@ -25,7 +25,7 @@ beforeEach(()=>{
 afterEach(()=>{Date.now=realDate;global.fetch=realFetch;});
 function fixture(real=12,modern=false){
  const s=fresh();s.players=Array.from({length:12},(_,i)=>({id:'p'+i,token:'t'+i,name:'Guest '+i,partnerId:'p'+(i%2?i-1:i+1),ready:true,alive:true,hearts:3,inventory:[],...(i>=real?{simulated:true}:{})}));
- makeMazeTestSelector()(s);delete s.chapter6.polishVersion;delete s.chapter6.pacingVersion;delete s.chapter6.controlVersion;if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
+ makeMazeTestSelector()(s);delete s.chapter6.startVersion;delete s.chapter6.polishVersion;delete s.chapter6.pacingVersion;delete s.chapter6.controlVersion;if(!modern){delete s.chapter6.audioVersion;s.chapter6.step='intro';s.chapter6.deadline=s.chapter6.startedAt+introDuration(0);}validateChapter6(s);return s;
 }
 function request(s,action,extra={}){return {action,generation:s.generation,chapter6StartedAt:s.chapter6.startedAt,sequence:s.chapter6.sequence,...extra};}
 function modernAdvance(s){now=s.chapter6.deadline;const cue=phaseCues(s.chapter6)[0];if(['intro','result','zero','finale','selected','return'].includes(s.chapter6.step)&&cue)mazeHostAction(s,request(s,'maze-audio-ended',{recording:cue.number}));else advanceChapter6(s);validateChapter6(s);}

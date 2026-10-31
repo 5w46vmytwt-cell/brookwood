@@ -17,9 +17,9 @@
     const status=!navigator.onLine?'offline':/network|connect|timeout|timed out|reach|fetch|unavailable/i.test(errors)?'reconnecting':'online';
     attr(node('mobileConnection'),'data-state',status);
     text(node('mobileConnectionText'),status==='offline'?'Offline':status==='reconnecting'?'Reconnecting':'Online');
-    const player=visible(node('joinBox'))?'':node('playerName').textContent,partner=node('partnerName').textContent;
+    const player=visible(node('joinBox'))?'':node('playerName').textContent;
     text(node('mobileIdentity'),player||'Your private game screen');
-    text(node('mobilePartner'),player&&partner&&partner!=='Not selected'?'Partner · '+partner:'Room 1031');
+    text(node('mobilePartner'),'Room 1031');
     for(const panel of content.querySelectorAll('.panel')){
       if(!visible(panel))continue;
       const selects=[...panel.querySelectorAll('select')].filter(visible),buttons=[...panel.querySelectorAll('button')].filter(visible);

@@ -14,7 +14,7 @@ function fillSimulatedPlayers(s){
         if(s.players.some(p=>names.some(n=>n.toLowerCase()===p.name.toLowerCase())))throw new LobbyError(409,"A real player is using a reserved test name.");
         for(let i=0;i<5;i++){
           const couple=['A','B'].map(suffix=>({id:crypto.randomUUID(),token:crypto.randomBytes(24).toString("hex"),name:`Test ${i+1}${suffix}`,partnerId:null,ready:true,alive:true,hearts:3,inventory:[],simulated:true}));
-          couple[0].partnerId=couple[1].id;couple[1].partnerId=couple[0].id;
+          // Simulated participants retain their names and independent identities.
           s.players.push(...couple);
         }
 }
@@ -24,7 +24,7 @@ export default async function handler(req,res){
   const chapter8Action=['chapter8-start','chapter8-photo-sent','chapter8-reveal','chapter8-continue','chapter8-audio-playing','chapter8-audio-ended','chapter8-finale-ready','chapter8-finale-playing','chapter8-finale-ended'].includes(req.body?.action);
   const broadcastCheckpoint=req.body?.action==='chapter-select'&&['chapter7','chapter7-after',...storyCheckpoints.map(c=>c[0])].includes(req.body?.checkpoint);
   const investigationAction=['investigation-audio-playing','investigation-audio-ended','investigation-close-voting','investigation-envelope-return','investigation-host-retrieval','investigation-test-vote','investigation-photo-sound'].includes(req.body?.action);
-  const sessionAction=chapter8Checkpoint||chapter8Action||req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['casting-ready','maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
+  const sessionAction=chapter8Checkpoint||chapter8Action||req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['lock-room','start','casting-ready','maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
   const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
   if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
   if(pinValid)issueHostSession(req,res);
@@ -49,6 +49,7 @@ export default async function handler(req,res){
     if(['maze-login','maze-session'].includes(req.body.action))return send(res,200,{ok:true,authenticated:true});
     if(investigationAction){let state,playSound=false;await updateState(withinBroadcastRun(s=>{const result=investigationHostAction(s,req.body);playSound=result?.playSound===true;state=publicState(s);return result;}));return send(res,200,{ok:true,playSound,state:{...state,serverNow:Date.now()}});}
     if(['broadcast-playing','broadcast-ended'].includes(req.body.action)){let state;await updateState(withinBroadcastRun(s=>{const result=broadcastHostAction(s,req.body);state=publicState(s);return result;}));return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
+    if(req.body.action==="lock-room"){await updateState(s=>{if(s.phase!=="lobby")throw new LobbyError(409,"The game has already started.");if(s.roomLocked)return UNCHANGED;s.roomLocked=true;});return send(res,200,{ok:true});}
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
     if(['maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body.action)){
       let state;await updateState(withinMazeRun(s=>{const result=mazeHostAction(s,req.body);state=publicState(s);return result;}));
@@ -121,7 +122,7 @@ export default async function handler(req,res){
     }
     if(req.body.action==="test-fill"){
       await updateState(s=>{
-        if(s.phase!=="lobby")throw new LobbyError(409,"Test fill is only available during the lobby.");
+        if(s.phase!=="lobby"||s.roomLocked)throw new LobbyError(409,"Test fill requires an unlocked lobby.");
         fillSimulatedPlayers(s);
       });
       return send(res,200,{ok:true});

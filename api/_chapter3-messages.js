@@ -20,20 +20,20 @@ export const messageTemplates=Object.freeze([
  ['lights-out',"If the lights go out tonight...\nfind {name}.\nDon't ask why."],
  ['wrong-person',"You're fine.\nThis message wasn't meant for you."],
  ['dont-trust-them',"If anyone tells you to trust {name}...\ndon't."],
- ['the-lie',"One of the twelve of you has already lied tonight.\nIt probably wasn't about anything important.\nProbably."],
+ ['the-lie',"One of you has already lied tonight.\nIt probably wasn't about anything important.\nProbably."],
  ['nothing','No instructions for you.\nEnjoy the party.\nFor now.']
 ].map(([id,body])=>Object.freeze({id,title,body})));
 
 export function createAssignments(players,choose=randomInt){
-  const templates=[...messageTemplates],assignments={};
+  const templates=players.length===1?messageTemplates.filter(t=>!/[{](name|partner)[}]/.test(t.body)):[...messageTemplates],assignments={};
   for(let i=templates.length-1;i>0;i--){const j=choose(i+1);[templates[i],templates[j]]=[templates[j],templates[i]];}
   for(let i=0;i<players.length;i++){
     const p=players[i],template=templates[i],others=players.filter(q=>q.id!==p.id);
     const partner=players.find(q=>q.id===p.partnerId&&q.partnerId===p.id);
-    if(!partner)throw Error('Invalid reciprocal partner');
-    const target=others[choose(others.length)];
+
+    const target=others.length?others[choose(others.length)]:p;
     assignments[p.id]={templateId:template.id,title:template.title,
-      body:template.body.replace(/\{(name|partner)\}/g,(_,key)=>key==='name'?target.name:partner.name),openedAt:null,readAt:null};
+      body:template.body.replace(/\{(name|partner)\}/g,(_,key)=>key==='name'?target.name:(partner??target).name),openedAt:null,readAt:null};
   }
   return assignments;
 }

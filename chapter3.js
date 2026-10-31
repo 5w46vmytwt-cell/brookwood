@@ -17,7 +17,7 @@ export class Chapter3View{
     this.state=state;const c=state.chapter3,complete=c.completedAt!==null&&c.startedAt+this.elapsedNow()>=messageCompletionAt(c);
     this.document.getElementById('chapter3-main').hidden=complete;
     this.document.getElementById('chapter3-completion').hidden=!complete;
-    this.document.getElementById('chapter3-readCount').textContent=c.readCount+' / 12 READ';
+    this.document.getElementById('chapter3-readCount').textContent=c.readCount+' / '+(state.players?.length??c.participantCount??0)+' READ';
     this.document.getElementById('chapter3Host').hidden=complete||this.elapsedNow()<PRIVATE_CHECKPOINT_MS;
     const pseudo={phase:'opening',startedAt:c.startedAt};
     if(complete)this.completion.update(pseudo);else this.main.update(pseudo);

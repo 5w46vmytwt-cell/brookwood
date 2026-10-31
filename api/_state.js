@@ -15,7 +15,7 @@ export const CAS_SCRIPT = `local current = redis.call('GET', KEYS[1])
 if (current or '') ~= ARGV[1] then return 0 end
 if ARGV[2] ~= ARGV[1] then redis.call('SET', KEYS[1], ARGV[2]) end
 return 1`;
-export const fresh = () => ({room:"1031",phase:"lobby",players:[],startedAt:null,updatedAt:Date.now(),generation:randomUUID(),revision:randomUUID()});
+export const fresh = () => ({room:"1031",phase:"lobby",players:[],roomLocked:false,startedAt:null,updatedAt:Date.now(),generation:randomUUID(),revision:randomUUID()});
 export class LobbyError extends Error {
   constructor(status,message){super(message);this.status=status;}
 }
@@ -35,16 +35,16 @@ const photoPhases = ["photo","photo-complete"];
 const positiveTime = value => Number.isFinite(value) && value > 0;
 export function validatePhoto(s){
   const cast=new Set(s.players.map(p=>p.id)),photo=s.photo;
-  if(s.players.length!==12||cast.size!==12||[...cast].some(id=>typeof id!=="string"||!id)||
+  if(s.players.length<1||s.players.length>20||cast.size!==s.players.length||[...cast].some(id=>typeof id!=="string"||!id)||
     !photo||!positiveTime(photo.promptedAt)||!Array.isArray(photo.confirmedPlayerIds))throw new Error("Invalid photo data.");
   const confirmed=new Set(photo.confirmedPlayerIds);
   if(confirmed.size!==photo.confirmedPlayerIds.length||[...confirmed].some(id=>!cast.has(id)))throw new Error("Invalid photo confirmations.");
-  if(s.phase==="photo"&&(confirmed.size>11||photo.confirmedAt!==null))throw new Error("Invalid incomplete photo data.");
-  if(s.phase==="photo-complete"&&(confirmed.size!==12||!positiveTime(photo.confirmedAt)))throw new Error("Invalid completed photo data.");
+  if(s.phase==="photo"&&(confirmed.size>=s.players.length||photo.confirmedAt!==null))throw new Error("Invalid incomplete photo data.");
+  if(s.phase==="photo-complete"&&(confirmed.size!==s.players.length||!positiveTime(photo.confirmedAt)))throw new Error("Invalid completed photo data.");
   return confirmed;
 }
 function validateState(s){
-  if(!s||!Array.isArray(s.players)||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases,...chapter4Phases,...chapter5Phases,'chapter6','chapter7','chapter8'].includes(s.phase))throw new Error("Invalid lobby data.");
+  if(!s||!Array.isArray(s.players)||s.players.length>20||(s.roomLocked!==undefined&&typeof s.roomLocked!=="boolean")||s.room!=="1031"||!["lobby","opening",...photoPhases,...chapter3Phases,...chapter4Phases,...chapter5Phases,'chapter6','chapter7','chapter8'].includes(s.phase))throw new Error("Invalid lobby data.");
   if(isChapter6(s))validateChapter6(s);
   if(isChapter7(s))validateChapter7(s);
   if(isChapter8(s))validateChapter8(s);
@@ -58,14 +58,14 @@ export const isChapter3=s=>chapter3Phases.includes(s.phase);
 export const isChapter4=s=>chapter4Phases.includes(s.phase);
 export function validChapter3Cast(s){
   const cast=new Map(s.players.map(p=>[p.id,p]));
-  return s.players.length===12&&cast.size===12&&s.players.every(p=>typeof p.id==='string'&&p.id&&typeof p.name==='string'&&p.name&&
-    typeof p.token==='string'&&p.token&&p.partnerId!==p.id&&cast.get(p.partnerId)?.partnerId===p.id);
+  return s.players.length>0&&s.players.length<=20&&cast.size===s.players.length&&s.players.every(p=>typeof p.id==='string'&&p.id&&typeof p.name==='string'&&p.name&&
+    typeof p.token==='string'&&p.token);
 }
 export function validateChapter3(s){
   const c=s.chapter3;
   validatePhoto({...s,phase:'photo-complete'});
   if(!validChapter3Cast(s)||!c||!positiveTime(c.startedAt)||!c.assignments||Array.isArray(c.assignments)||
-    Object.keys(c.assignments).length!==12)throw Error('Invalid Chapter 3 state.');
+    Object.keys(c.assignments).length!==s.players.length)throw Error('Invalid Chapter 3 state.');
   const templates=new Set(messageTemplates.map(t=>t.id)),used=new Set();let count=0;
   const active=c.privateMessagesActivatedAt!==null;
   if(active&&(!positiveTime(c.privateMessagesActivatedAt)||c.privateMessagesActivatedAt<c.startedAt+PRIVATE_MESSAGES_MS))throw Error('Invalid message activation.');
@@ -79,8 +79,8 @@ export function validateChapter3(s){
     if(a.readAt!==null)count++;
   }
   if(s.phase==='chapter3-opening'&&(active||count||c.completedAt!==null))throw Error('Invalid Chapter 3 opening.');
-  if(s.phase==='private-messages'&&(!active||count===12||c.completedAt!==null))throw Error('Invalid private checkpoint.');
-  if(s.phase==='private-messages-complete'&&(!active||count!==12||!positiveTime(c.completedAt)||c.completedAt<Math.max(...Object.values(c.assignments).map(a=>a.readAt))))throw Error('Invalid private completion.');
+  if(s.phase==='private-messages'&&(!active||count===s.players.length||c.completedAt!==null))throw Error('Invalid private checkpoint.');
+  if(s.phase==='private-messages-complete'&&(!active||count!==s.players.length||!positiveTime(c.completedAt)||c.completedAt<Math.max(...Object.values(c.assignments).map(a=>a.readAt))))throw Error('Invalid private completion.');
   return count;
 }
 export function withinChapter3Run(change){
@@ -93,7 +93,7 @@ export function makeChapter3Starter(){
     if(isChapter3(s))return UNCHANGED;
     if(s.phase!=='photo-complete')throw new LobbyError(409,'Complete the group photo before starting Chapter 3.');
     validatePhoto(s);
-    if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter 3 requires twelve players in reciprocal couples.');
+    if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter 3 requires registered participants.');
     // Cache once per request; CAS retries never reroll the prepared selection.
     prepared??={startedAt:Date.now(),privateMessagesActivatedAt:null,assignments:createAssignments(s.players),completedAt:null};
     s.chapter3=structuredClone(prepared);s.phase='chapter3-opening';
@@ -103,17 +103,16 @@ function setOpening(s,startedAt){
   s.phase='opening';s.startedAt=startedAt;delete s.photo;delete s.chapter3;delete s.chapter4;delete s.chapter5;delete s.chapter6;delete s.chapter7;delete s.chapter8;delete s.packageOpenedAt;delete s.macheteHolderPlayerId;
 }
 export function startSession(s,startedAt=Date.now()){
-  if(s.players.length!==12)throw new LobbyError(409,"The cast must contain exactly 12 players.");
-  if(s.players.some(p=>!p.partnerId||!p.ready))throw new LobbyError(409,"Every player must have a partner and be ready.");
-  const pairs=new Set(s.players.map(p=>[p.id,p.partnerId].sort().join(":")));
-  if(pairs.size!==6)throw new LobbyError(409,"The cast must contain six couples.");
+  if(s.phase!=="lobby")return UNCHANGED;
+  if(!validChapter3Cast(s))throw new LobbyError(409,"Register participants before starting.");
+  if(!s.roomLocked)throw new LobbyError(409,"Lock the room before starting.");
   setOpening(s,startedAt);
 }
 export function makeTestChapterSelector(checkpoint){
   if(!['chapter1','chapter2','photo','chapter3','chapter4'].includes(checkpoint))throw new LobbyError(400,'Unknown test checkpoint.');
   let prepared;
   return withinCinematicRun(s=>{
-    if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter Select requires twelve players in six reciprocal couples.');
+    if(!validChapter3Cast(s))throw new LobbyError(409,'Chapter Select requires registered participants.');
     if(!prepared){
       const now=Date.now(),offset=checkpoint==='chapter1'?0:checkpoint==='chapter2'?CHAPTER2_START_MS:PHOTO_CHECKPOINT_MS;
       // Distinct server-generated clocks also distinguish intentional same-ms reruns.
@@ -131,7 +130,7 @@ export function makeTestChapterSelector(checkpoint){
       }
     }
     s.generation=prepared.generation;
-    if(checkpoint==='chapter1'){startSession(s,prepared.startedAt);return;}
+    if(checkpoint==='chapter1'){s.roomLocked=true;setOpening(s,prepared.startedAt);return;}
     setOpening(s,prepared.startedAt);
     if(checkpoint==='chapter2')return;
     s.photo={promptedAt:prepared.now,confirmedPlayerIds:checkpoint==='chapter3'?s.players.map(p=>p.id):[],confirmedAt:checkpoint==='chapter3'?prepared.now:null};
@@ -164,7 +163,7 @@ export function chapter3Progress(s){
   if(isChapter5(s))return chapter3Progress({...s,phase:'private-messages-complete'});
   if(isChapter4(s))return chapter3Progress({...s,phase:'private-messages-complete'});
   if(!isChapter3(s))return null;
-  return {startedAt:s.chapter3.startedAt,privateMessagesActivatedAt:s.chapter3.privateMessagesActivatedAt,completedAt:s.chapter3.completedAt,readCount:validateChapter3(s)};
+  return {participantCount:s.players.length,startedAt:s.chapter3.startedAt,privateMessagesActivatedAt:s.chapter3.privateMessagesActivatedAt,completedAt:s.chapter3.completedAt,readCount:validateChapter3(s)};
 }
 export function confirmPhoto(s,ids){
   if(!photoPhases.includes(s.phase))throw new LobbyError(409,"The photo checkpoint is not active.");
@@ -175,7 +174,7 @@ export function confirmPhoto(s,ids){
   if(s.phase==="photo-complete")throw new LobbyError(409,"Player is missing from the completed photo.");
   for(const id of added)confirmed.add(id);
   s.photo.confirmedPlayerIds=[...confirmed];
-  if(confirmed.size===12&&[...cast].every(id=>confirmed.has(id))){s.photo.confirmedAt=Date.now();s.phase="photo-complete";}
+  if(confirmed.size===s.players.length&&[...cast].every(id=>confirmed.has(id))){s.photo.confirmedAt=Date.now();s.phase="photo-complete";}
 }
 export function photoProgress(s){
   if(isChapter5(s))return photoProgress({...s,phase:'photo-complete'});
@@ -228,7 +227,7 @@ export function fail(res,error){
   console.error("Lobby request failed:",error.message);
   return send(res,503,{error:"Brookwood could not reach the lobby database. Please try again."});
 }
-export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s),chapter4=chapter4Progress(s),chapter5=chapter5Progress(s),chapter6=chapter6Progress(s),pkg=packageProgress(s);return {room:s.room,phase:s.phase,startedAt:s.startedAt,...(isChapter8(s)?{chapter8:chapter8Progress(s),generation:s.generation}:{}),...(chapter6?{chapter6,generation:s.generation}:{}),...(isChapter7(s)?{chapter7:chapter7Progress(s),generation:s.generation}:{}),...(photo?{photo}:{}),...(chapter3?{chapter3}:{}),...(chapter4?{chapter4}:{}),...(chapter5?{chapter5}:{}),...(pkg?{package:pkg}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
+export function publicState(s){const photo=photoProgress(s),chapter3=chapter3Progress(s),chapter4=chapter4Progress(s),chapter5=chapter5Progress(s),chapter6=chapter6Progress(s),pkg=packageProgress(s);return {room:s.room,roomLocked:!!s.roomLocked,phase:s.phase,startedAt:s.startedAt,...(isChapter8(s)?{chapter8:chapter8Progress(s),generation:s.generation}:{}),...(chapter6?{chapter6,generation:s.generation}:{}),...(isChapter7(s)?{chapter7:chapter7Progress(s),generation:s.generation}:{}),...(photo?{photo}:{}),...(chapter3?{chapter3}:{}),...(chapter4?{chapter4}:{}),...(chapter5?{chapter5}:{}),...(pkg?{package:pkg}:{}),players:s.players.map(p=>({id:p.id,name:p.name,partnerId:p.partnerId||null,ready:!!p.ready,alive:p.alive!==false,hearts:p.hearts??3}))};}
 const freshChapter4=startedAt=>({startedAt,votingActivatedAt:null,votes:{},selectedPlayerId:null,completedAt:null});
 export function validateChapter4(s){
   validateChapter3({...s,phase:'private-messages-complete'});
@@ -238,10 +237,10 @@ export function validateChapter4(s){
   if(active&&(!positiveTime(c.votingActivatedAt)||c.votingActivatedAt<c.startedAt+CHAPTER4_VOTING_MS))throw Error('Invalid door voting activation.');
   if(entries.some(([voter,target])=>!cast.has(voter)||!cast.has(target)||voter===target))throw Error('Invalid door votes.');
   if(s.phase==='chapter4-opening'&&(active||entries.length||c.completedAt!==null||c.selectedPlayerId!==null))throw Error('Invalid Chapter 4 opening.');
-  if(s.phase==='door-vote'&&(!active||entries.length>=12||c.completedAt!==null||c.selectedPlayerId!==null))throw Error('Invalid incomplete vote.');
+  if(s.phase==='door-vote'&&(!active||entries.length>=s.players.length||c.completedAt!==null||c.selectedPlayerId!==null))throw Error('Invalid incomplete vote.');
   if(s.phase==='door-vote-complete'){
     const counts=new Map();for(const [,target] of entries)counts.set(target,(counts.get(target)||0)+1);
-    if(!active||entries.length!==12||!positiveTime(c.completedAt)||c.completedAt<c.votingActivatedAt||!cast.has(c.selectedPlayerId)||counts.get(c.selectedPlayerId)!==Math.max(...counts.values()))throw Error('Invalid completed vote.');
+    if(!active||entries.length!==s.players.length||!positiveTime(c.completedAt)||c.completedAt<c.votingActivatedAt||!cast.has(c.selectedPlayerId)||counts.get(c.selectedPlayerId)!==Math.max(...counts.values()))throw Error('Invalid completed vote.');
   }
   return entries.length;
 }
@@ -249,7 +248,7 @@ export function chapter4Progress(s){
   if(isChapter5(s))return chapter4Progress({...s,phase:'door-vote-complete'});
   if(!isChapter4(s))return null;
   const c=s.chapter4,p=s.players.find(p=>p.id===c.selectedPlayerId);
-  return {startedAt:c.startedAt,votingActivatedAt:c.votingActivatedAt,active:c.votingActivatedAt!==null||Date.now()>=c.startedAt+CHAPTER4_VOTING_MS,voteCount:validateChapter4(s),complete:s.phase==='door-vote-complete',completedAt:c.completedAt,selectedPlayer:p?{id:p.id,name:p.name}:null};
+  return {startedAt:c.startedAt,votingActivatedAt:c.votingActivatedAt,blockedReason:s.players.length===1?"Voting is paused: no other participant is available under the no-self-voting rule":"",active:c.votingActivatedAt!==null||Date.now()>=c.startedAt+CHAPTER4_VOTING_MS,voteCount:validateChapter4(s),complete:s.phase==='door-vote-complete',completedAt:c.completedAt,selectedPlayer:p?{id:p.id,name:p.name}:null};
 }
 export function withinChapter4Run(change){let seen=false,start;return s=>{if(seen&&s.chapter4?.startedAt!==start)throw new LobbyError(409,'Chapter 4 changed. Please try again.');seen=true;start=s.chapter4?.startedAt;return change(s);};}
 export function makeChapter4Starter(){
@@ -273,7 +272,7 @@ export function makeDoorVoter(choose=randomInt){
     const pending=entries.filter(([id])=>!Object.hasOwn(s.chapter4.votes,id));
     if(!pending.length)return UNCHANGED;
     activateDoorVoting(s);for(const [id,target] of pending)s.chapter4.votes[id]=target;
-    if(Object.keys(s.chapter4.votes).length===12){
+    if(Object.keys(s.chapter4.votes).length===s.players.length){
       const counts=new Map();for(const target of Object.values(s.chapter4.votes))counts.set(target,(counts.get(target)||0)+1);
       const maximum=Math.max(...counts.values()),leaders=[...counts].filter(([,n])=>n===maximum).map(([id])=>id).sort(),key=JSON.stringify(leaders);
       if(!decisions.has(key))decisions.set(key,leaders[choose(leaders.length)]);

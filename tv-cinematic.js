@@ -32,7 +32,7 @@ export class TVCinematicRuntime {
         if(this.state?.chapter8){this.chapter8Visuals.update(this.state);this.onElapsed(elapsed,this.state);return;}
         this.chapter8Visuals?.update(this.state??{});
         this.chapter6Visuals?.advanceAmbient();
-        if(this.state?.chapter7){this.chapter7Visuals.update(this.state);this.onElapsed(elapsed,this.state);return;}
+        if(this.state?.chapter7){this.chapter7Visuals.update(this.state);const broadcast=this.chapter7Visuals;if(!this.state.chapter7.investigation&&this.state.chapter7.step==='blackout'&&!broadcast.attempted)this.chapter6Visuals.ambient.update({pacingVersion:1,step:'broadcast-blackout'},null);else this.chapter6Visuals.ambient.stop(true);this.onElapsed(elapsed,this.state);return;}
         if(this.state?.chapter6){this.chapter6Visuals.update(this.state,meta);this.onElapsed(elapsed,this.state);return;}
         if(chapter5Phases.includes(this.state?.phase)){
           if(this.keepPackageMusic())this.chapter4Audio.update({phase:'opening',startedAt:this.state.chapter4.startedAt},meta);
@@ -88,7 +88,7 @@ export class TVCinematicRuntime {
     const chapter4=chapter4Phases.includes(state.phase);
     const chapter5=chapter5Phases.includes(state.phase);
     const chapter6=!!state.chapter6;
-    if(state.chapter7){this.audio.stop();this.audio.soundtrack?.cancel();this.chapter3Audio.stop();this.chapter4Audio.stop();this.chapter5Audio.stop();this.chapter6Visuals.stopNarration();this.chapter6Visuals.ambient.stop();}
+    if(state.chapter7){this.audio.stop();this.audio.soundtrack?.cancel();this.chapter3Audio.stop();this.chapter4Audio.stop();this.chapter5Audio.stop();this.chapter6Visuals.stopNarration();}
     else this.chapter7Visuals.stop();
     if(chapter6){this.audio.stop();this.chapter3Audio.stop();this.chapter3Visuals.stop();this.chapter4Audio.stop();this.chapter4Visuals.stop();this.chapter5Audio.stop();this.chapter5Visuals.stop();const score=this.audio.soundtrack;if(score?.audio){score.audio.pause();score.target=0;score.ramp=null;score.audio.volume=0;}}
     else if(['chapter5-finale','chapter5-complete'].includes(state.phase)){this.chapter6Visuals.stopNarration();if(previous?.chapter6||!['chapter5-finale','chapter5-complete'].includes(previous?.phase))this.chapter6Visuals.ambient.stop(true);}

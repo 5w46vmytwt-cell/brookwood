@@ -18,3 +18,5 @@ export function revealTiming(role){
 export const COMPLETE_CAST_HOLD_MS=Math.ceil(completeCastRecording.durationMs)+3000;
 export const COMPLETE_CAST_END_MS=COMPLETE_CAST_HOLD_MS+1500;
 export const POLISHED_FINALE_MS=COMPLETE_CAST_END_MS+21600;
+
+export const EXTENDED_FINALE_MS=COMPLETE_CAST_END_MS+38400;

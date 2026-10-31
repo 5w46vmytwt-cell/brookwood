@@ -14,8 +14,13 @@ test('maze score uses one looping shared player element, starts after unlock and
  ambient.update({step:'ready'},null);at(1700);ambient.advance();assert(Math.abs(audio.volume-.085)<.001);at(2150);ambient.advance();assert.equal(audio.volume,.12);
  for(const step of ['answer','expired','transition','silence','verdict'])ambient.update({step},null);assert.equal(audio.plays,1);assert.equal(media.length,1);
 });
-test('maze completion fades the score to zero and pauses it on the existing scheduler',()=>{
- const {ambient,audio,at}=harness();ambient.update({step:'intro'},{ended:false,audio:{paused:false}});at(900);ambient.advance();ambient.update({step:'complete'},null);at(1075);ambient.advance();assert(audio.volume>0&&audio.volume<.05);assert(!audio.paused);at(1250);ambient.advance();assert.equal(audio.volume,0);assert(audio.paused);
+test('maze completion keeps the same score through results, voting, waiting and blackout; broadcast stops it',()=>{
+ const {ambient,audio,media,at}=harness();ambient.update({step:'intro'},{ended:false,audio:{paused:false}});at(900);ambient.advance();audio.currentTime=42;
+ for(const step of ['finale','vote','selected','waiting','return','complete','broadcast-blackout'])ambient.update({step,pacingVersion:1},null);
+ at(1800);ambient.advance();assert.equal(audio.volume,.12);assert(!audio.paused);assert.equal(audio.currentTime,42);assert.equal(audio.plays,1);assert.equal(media.length,1);
+ ambient.stop(true);assert.equal(audio.volume,0);assert(audio.paused);
+ const runtime=fs.readFileSync('tv-cinematic.js','utf8');assert(runtime.includes("step==='blackout'&&!broadcast.attempted"));assert(runtime.includes('else this.chapter6Visuals.ambient.stop(true)'));
+
 });
 
 test('one maze soundtrack starts with the first cast transition message and survives the chapter boundary',()=>{
