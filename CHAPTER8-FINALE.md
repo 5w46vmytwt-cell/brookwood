@@ -270,3 +270,12 @@ refreshed during the intro, checked the warm narrator at 1920×1080 and 1280×72
 and reached the original driveway narration with no old 01/02/03 playback or
 browser exceptions. Evidence: `logs/chapter8-short-intro-browser-report.json`
 and `logs/ch8-short-wife-1920.png` / `logs/ch8-short-wife-1280.png`.
+
+
+## Post-scare siren refinement (2026-10-31)
+
+Fresh finales persist sirenVersion 1. The existing five-second silence and two-second scare are unchanged. Entry to wife-12 / SIGNAL LOST anchors the sirens at the authoritative end of the scare, before the warning plays. The existing approaching-siren layer remains continuous through the warning, SIGNAL LOST pause, wife-13 and escape effects, and wife-14. The actual wife-14 line is: "I think... I think he's gone. Is everyone okay? Please tell me you are all okay."
+
+Native completion of the full wife-14 recording establishes sirensOut. The existing quiet-after-escape visual holds while sirens fade smoothly to zero over 1000 ms; no sirens reach wife-15 or the news. Existing two-source equal-power crossfaded source windows remain one managed siren layer, at the unchanged 8%-34% approach envelope below narration. No source media or cinematic durations changed. Refresh reconstructs the persisted anchors; previously saved finales without sirenVersion retain their prior mix.
+
+Focused validation: 19 tests across host-photo/messages, checkpoint/siren controls, preserved short introduction, and existing sound-design coverage passed. Production build passed. Isolated browser rehearsal exercised all 32 existing checkpoint targets, host/guest photo confirmation, 1080p/720p photo and Four Doors layouts, complete native scare/warning/escape playback, siren refresh recovery and fade completion, with no browser exceptions. Screenshots and report: logs/ch8-host-photo-{1920,1280}.png, logs/ch8-doors-hint-{1920,1280}.png, logs/checkpoints-photo-messages-sirens-browser.json. No production state was used.

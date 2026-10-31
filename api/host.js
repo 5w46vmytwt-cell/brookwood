@@ -7,7 +7,7 @@ import {issueHostSession,validHostSession} from './_host-session.js';
 import {isChapter6,withinMazeRun,mazeHostAction,makeMazeTestSelector,makeFinalCastTestSelector} from './_chapter6.js';
 import {isChapter5,makeCastingTestSelector,makeCastingVoter,withinCastingRun,confirmCastingReady,castingCandidates} from './_chapter5.js';
 import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
-import {getState,updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
+import {getState,updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,confirmHostPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
 function fillSimulatedPlayers(s){
         if(s.players.length!==2||s.players.some(p=>p.simulated))throw new LobbyError(409,"Test fill requires exactly 2 real players.");
         const names=Array.from({length:5},(_,i)=>[`Test ${i+1}A`,`Test ${i+1}B`]).flat();
@@ -24,7 +24,7 @@ export default async function handler(req,res){
   const chapter8Action=['chapter8-start','chapter8-photo-sent','chapter8-reveal','chapter8-continue','chapter8-audio-playing','chapter8-audio-ended','chapter8-finale-ready','chapter8-finale-playing','chapter8-finale-ended'].includes(req.body?.action);
   const broadcastCheckpoint=req.body?.action==='chapter-select'&&['chapter7','chapter7-after',...storyCheckpoints.map(c=>c[0])].includes(req.body?.checkpoint);
   const investigationAction=['investigation-audio-playing','investigation-audio-ended','investigation-close-voting','investigation-envelope-return','investigation-host-retrieval','investigation-test-vote','investigation-photo-sound'].includes(req.body?.action);
-  const sessionAction=chapter8Checkpoint||chapter8Action||req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['lock-room','start','casting-ready','maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
+  const sessionAction=chapter8Checkpoint||chapter8Action||req.body?.action==='investigation-test-options'||req.body?.action==='investigation-test-fill'||req.body?.action==='investigation-checkpoint-options'||investigationAction||broadcastCheckpoint||['broadcast-playing','broadcast-ended'].includes(req.body?.action)||['photo-taken','lock-room','start','casting-ready','maze-login','maze-session','maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body?.action);
   const pinValid=String(req.body?.code||"")===String(process.env.HOST_KEY||"1031");
   if(!pinValid&&!(sessionAction&&validHostSession(req)))return send(res,403,{error:sessionAction?'Host authentication required.':'Wrong host code.'});
   if(pinValid)issueHostSession(req,res);
@@ -49,6 +49,7 @@ export default async function handler(req,res){
     if(['maze-login','maze-session'].includes(req.body.action))return send(res,200,{ok:true,authenticated:true});
     if(investigationAction){let state,playSound=false;await updateState(withinBroadcastRun(s=>{const result=investigationHostAction(s,req.body);playSound=result?.playSound===true;state=publicState(s);return result;}));return send(res,200,{ok:true,playSound,state:{...state,serverNow:Date.now()}});}
     if(['broadcast-playing','broadcast-ended'].includes(req.body.action)){let state;await updateState(withinBroadcastRun(s=>{const result=broadcastHostAction(s,req.body);state=publicState(s);return result;}));return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
+    if(req.body.action==='photo-taken'){let state;await updateState(withinCinematicRun(s=>{const result=confirmHostPhoto(s,req.body);state=publicState(s);return result;}));return send(res,200,{ok:true,state:{...state,serverNow:Date.now()}});}
     if(req.body.action==="lock-room"){await updateState(s=>{if(s.phase!=="lobby")throw new LobbyError(409,"The game has already started.");if(s.roomLocked)return UNCHANGED;s.roomLocked=true;});return send(res,200,{ok:true});}
     if(req.body.action==="reset"){await resetState();return send(res,200,{ok:true});}
     if(['maze-audio-ended','maze-answer','maze-start-games','maze-show-image','maze-image-ready','maze-begin-silence','maze-verdict','maze-token-return','maze-close-voting','maze-test-vote'].includes(req.body.action)){

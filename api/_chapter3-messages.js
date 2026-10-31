@@ -21,6 +21,11 @@ export const messageTemplates=Object.freeze([
  ['wrong-person',"You're fine.\nThis message wasn't meant for you."],
  ['dont-trust-them',"If anyone tells you to trust {name}...\ndon't."],
  ['the-lie',"One of you has already lied tonight.\nIt probably wasn't about anything important.\nProbably."],
+ ['familiar-voice','Someone laughed just like someone you remember.\nListen carefully the next time.'],
+ ['count-the-shadows','Take a quiet look around the room.\nNotice where the shadows fall.'],
+ ['old-memory','Ask {name} if tonight feels familiar.\nKeep their answer to yourself.'],
+ ['unanswered-question','Think of one question you would rather nobody asked you tonight.\nYou do not have to answer it.'],
+ ['quiet-observer','For a moment, listen instead of speaking.\nNotice who breaks the silence.'],
  ['nothing','No instructions for you.\nEnjoy the party.\nFor now.']
 ].map(([id,body])=>Object.freeze({id,title,body})));
 

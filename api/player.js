@@ -21,7 +21,7 @@ export default async function handler(req,res){
         return vote(s,[[p.id,req.body.targetId]]);
       }
       if(['message-open','message-read'].includes(req.body.action))return privateMessageAction(s,[p.id],req.body.action);
-      if(req.body.action==="photo-confirm")return confirmPhoto(s,[p.id]);
+      if(req.body.action==="photo-confirm")throw new LobbyError(403,"The host confirms the group photo");
       if(s.phase!=="lobby")throw new LobbyError(409,"The Final Session has already begun.");
       if(req.body.action==="partner"){
         const q=s.players.find(x=>x.id===req.body.partnerId);

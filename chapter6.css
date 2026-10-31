@@ -73,3 +73,5 @@
 #chapter6TV #chapter6GameTitle,#chapter6TV #chapter6Stage,#chapter6TV #chapter6Objective,#chapter6TV #chapter6HostStatus{font-family:Arial,sans-serif;color:#d7d5d0}
 #chapter6TV.maze-token #chapter6Title,#chapter6TV.maze-gameover #chapter6Title{color:#d7d5d0;text-shadow:none}
 #chapter6Question{overflow-wrap:anywhere;max-width:92vw}
+
+#chapter6TV .maze-door-hint{font-family:inherit;color:#fff;font-size:clamp(14px,1.15vw,22px);line-height:1.5;max-width:70vw;margin:12px auto;text-align:center}

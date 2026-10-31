@@ -83,6 +83,7 @@ export class Chapter6View{
   image.style.transform=cinematicResult?'scale('+String(1+.02*Math.min(1,Math.max(0,(now-c.phaseAt)/12000)))+')':'none';
   image.hidden=!src||c.step==='prepare-image'||c.step==='exposure'&&!memoryVisible(c,now);image.style.opacity=failureScare&&c.pacingVersion===1?String(Math.max(0,Math.min(1,(3000-(now-c.phaseAt))/500))):'1';image.classList.toggle('memory',memoryVisible(c,now));image.classList.toggle('jump',src==='silence_jumpscare.png');image.classList.toggle('bridge',src==='bridge_background.png');
   this.exposure.update(state,image);
+  node('chapter6DoorHint').hidden=opening||c.game!==0||!['intro','game-ready','answer','expired'].includes(c.step);
   const doors=node('chapter6Doors');doors.hidden=opening||!(c.game===0&&['intro','game-ready','answer','expired','locked'].includes(c.step));
   const orderKey=c.startedAt+':'+c.doorOrder?.join(',');
   if(c.game===0&&this.orderKey!==orderKey){doors.replaceChildren();for(const [id,label] of orderedOptions({...c,game:0})){

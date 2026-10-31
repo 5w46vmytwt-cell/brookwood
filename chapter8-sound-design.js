@@ -51,9 +51,9 @@ export class Chapter8SoundDesign{
    if(f.polishVersion>=6&&!pastMusicCut&&f.soundAnchors?.happy!=null&&this.now()>=f.soundAnchors.happy&&(cue?.id==='wife-16'||cue?.visual==='ending'&&!(cue.glitch>=3)))desired.set('happy-return',f.soundAnchors.happy);
   }
   const sirenMix=new Map();
-  if(f?.polishVersion>=1&&f.soundAnchors?.sirens!=null&&!['breaking-news','news-out','wife-16','ending'].includes(cue?.id)&&(f.polishVersion<6||['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape','wife-15','news-black'].includes(cue?.id))){
-   const elapsed=this.now()-f.soundAnchors.sirens,fade=cue?.id==='news-black'?1-smooth((this.now()-f.phaseAt)/cue.durationMs):1;
-   if(elapsed>=0)for(const w of sirenWindows(elapsed)){desired.set(w.id,f.soundAnchors.sirens+w.at);sirenMix.set(w.id,{gain:w.gain*(.08+.26*smooth(elapsed/12000))*fade});}
+  if(f?.polishVersion>=1&&f.soundAnchors?.sirens!=null&&!['breaking-news','news-out','wife-16','ending'].includes(cue?.id)&&(f.sirenVersion===1?['wife-12','signal-lost-pause','wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape'].includes(cue?.id):(f.polishVersion<6||['wife-13','escape-running','escape-slam','escape-settle','wife-14','quiet-after-escape','wife-15','news-black'].includes(cue?.id)))){
+   const elapsed=this.now()-f.soundAnchors.sirens,fade=f.sirenVersion===1&&f.soundAnchors.sirensOut!=null?1-smooth((this.now()-f.soundAnchors.sirensOut)/1000):cue?.id==='news-black'?1-smooth((this.now()-f.phaseAt)/cue.durationMs):1;
+   if(elapsed>=0&&fade>0)for(const w of sirenWindows(elapsed)){desired.set(w.id,f.soundAnchors.sirens+w.at);sirenMix.set(w.id,{gain:w.gain*(.08+.26*smooth(elapsed/12000))*fade});}
   }
   for(const [id,e] of this.active)if(!desired.has(id)||e.anchor!==desired.get(id)){e.media.pause();e.media.loop=false;this.active.delete(id);}
   for(const [id,anchor] of desired){
