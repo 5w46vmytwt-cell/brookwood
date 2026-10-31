@@ -22,15 +22,22 @@ for(const [at,photo,check,privateCount] of [[1999,1,0,0],[2000,1,0,0],[2499,.002
   test(`Chapter 3 exact visual boundary ${at}`,()=>{const e=setup(at);assert(Math.abs(e.opacity('photoComplete')-photo)<1e-9);assert.equal(e.opacity('checkPhones'),check);assert.equal(e.opacity('privateMessages'),privateCount);});
 }
 test('Chapter 3 narration and vibration have exact windows with zero-gap hard cut',()=>{
-  assert.deepEqual(chapter3AudioTimeline.cues.map(c=>[c.at,c.durationMs]),[[3250,6150],[10150,2450]]);
-  for(const [at,id,active,offset] of [[3249,'chapter3-opening',false,0],[3250,'chapter3-opening',true,0],[5000,'chapter3-opening',true,1.75],[9400,'chapter3-opening',false,0],[10150,'private-message-vibration',true,0],[12000,'private-message-vibration',true,1.85],[12600,'private-message-vibration',false,0]]){
+  assert.deepEqual(chapter3AudioTimeline.cues.map(c=>[c.at,c.durationMs]),[[3250,6150],[14600,2450],[17450,2450]]);
+  for(const [at,id,active,offset] of [[3249,'chapter3-opening',false,0],[3250,'chapter3-opening',true,0],[5000,'chapter3-opening',true,1.75],[9400,'chapter3-opening',false,0],[14600,'private-message-vibration',true,0],[15000,'private-message-vibration',true,.4],[17050,'private-message-vibration',false,0]]){
     const e=setup(at),audio=e.audio(id);assert.equal(audio.plays,active?1:0);if(active)assert.equal(audio.currentTime,offset);
   }
 });
 test('Chapter 3 refresh consumes historical audio and polling cannot restart vibration',()=>{
-  const e=setup(12000);e.accept(12000);assert.equal(e.audio('private-message-vibration').plays,1);
-  e.accept(12600);assert(e.audio('private-message-vibration').paused);assert.equal(e.opacity('checkPhones'),1);
-  const refreshed=setup(15000);for(const cue of chapter3AudioTimeline.cues)assert.equal(refreshed.audio(cue.id).plays,0);
+  const e=setup(15000);e.accept(15000);assert.equal(e.audio('private-message-vibration').plays,1);
+  e.accept(17050);assert(e.audio('private-message-vibration').paused);assert.equal(e.opacity('privateMessages'),1);
+  const refreshed=setup(18800);for(const cue of chapter3AudioTimeline.cues)assert.equal(refreshed.audio(cue.id).plays,cue.id==='private-message-vibration-repeat'?1:0);
+});
+test('two TV notification rings keep their gain and 400ms separation; early reads retain the message through both alerts and readable hold',()=>{
+  const rings=chapter3AudioTimeline.cues.filter(c=>c.type==='sfx');assert.equal(rings.length,2);
+  assert.equal(rings[1].at-rings[0].at-rings[0].durationMs,400);assert.equal(rings[0].src,rings[1].src);assert(rings.every(c=>c.volume===1));
+  const e=setup(20899,212700);assert.equal(e.nodes.get('chapter3-main').hidden,false);assert.equal(e.opacity('privateMessages'),1);
+  assert.equal(e.runtime.chapter3Visuals.progressDue(22899,e.runtime.state),false);assert.equal(e.runtime.chapter3Visuals.progressDue(22900,e.runtime.state),true);
+  e.accept(20900,212700);assert.equal(e.nodes.get('chapter3-main').hidden,true);assert.equal(e.opacity('completed'),1);
 });
 test('Chapter 3 user gestures cannot pause active narration',()=>{
   const e=setup(4000),audio=e.audio('chapter3-opening');e.runtime.unlockChapter3();assert.equal(audio.plays,1);assert.equal(audio.paused,false);
@@ -40,7 +47,7 @@ test('party fades smoothly to silence by 3250 without changing original elapsed 
   const e=setup(4000);assert.equal(e.runtime.elapsedNow(),4000);assert.equal(e.runtime.originalElapsedNow(),104000);
 });
 test('completion holds 1500ms, fades 500ms and remains black',()=>{
-  for(const [elapsed,opacity] of [[0,1],[1499,1],[1500,1],[1750,.5],[2000,0],[9000,0]]){const e=setup(20000+elapsed,220000);assert.equal(e.opacity('completed'),opacity);assert(e.nodes.get('chapter3-main').hidden);assert(e.nodes.get('chapter3Host').hidden);}
+  for(const [elapsed,opacity] of [[0,1],[1499,1],[1500,1],[1750,.5],[2000,0],[9000,0]]){const e=setup(20900+elapsed,220000);assert.equal(e.opacity('completed'),opacity);assert(e.nodes.get('chapter3-main').hidden);assert(e.nodes.get('chapter3Host').hidden);}
 });
 test('phone activation uses server time at exactly 12600, with no wall clock',()=>{
   let perf=0;const calls=[];const runtime=new PhoneChapter3Runtime({now:()=>perf,requestFrame:()=>1,cancelFrame(){},onState:(s,active)=>calls.push(active)});
@@ -49,7 +56,7 @@ test('phone activation uses server time at exactly 12600, with no wall clock',()
   runtime.acceptState({phase:'lobby'});assert.equal(runtime.state.chapter3,undefined);
 });
 test('checkpoint changes reconstruct existing TV/audio without reload and consume historical Chapter 1 effects',()=>{
-  const e=setup(12000),vibration=e.audio('private-message-vibration');assert.equal(vibration.paused,false);
+  const e=setup(15000),vibration=e.audio('private-message-vibration');assert.equal(vibration.paused,false);
   e.runtime.acceptState({phase:'opening',startedAt:400000,serverNow:444000,players:[]});
   assert.equal(e.runtime.elapsedNow(),44000);assert.equal(vibration.paused,true);
   assert.equal(e.runtime.audio.media.get('camera-shutter').plays,0);assert.equal(e.runtime.audio.media.get('narration-01').plays,0);
@@ -57,9 +64,9 @@ test('checkpoint changes reconstruct existing TV/audio without reload and consum
   assert.equal(e.runtime.elapsedNow(),88000);for(const a of e.runtime.audio.media.values())assert.equal(a.paused,true);
   const run={phase:'chapter3-opening',startedAt:612000,chapter3:{startedAt:700000,completedAt:null,readCount:0},serverNow:700000};
   e.runtime.acceptState(run);assert.equal(e.runtime.elapsedNow(),0);assert.equal(e.opacity('photoComplete'),1);assert.equal(vibration.paused,true);
-  e.runtime.acceptState({...run,serverNow:710150},{hard:true});assert.equal(vibration.plays,2);assert.equal(vibration.currentTime,0);
+  e.runtime.acceptState({...run,serverNow:714600},{hard:true});assert.equal(vibration.plays,2);assert.equal(vibration.currentTime,0);
   // Reselect Chapter 3 while vibration is playing: new generation starts at zero.
   e.runtime.acceptState({...run,startedAt:712000,chapter3:{...run.chapter3,startedAt:800000},serverNow:800000});
   assert.equal(e.runtime.elapsedNow(),0);assert.equal(vibration.paused,true);assert.equal(e.opacity('photoComplete'),1);
-  e.runtime.acceptState({...run,startedAt:712000,chapter3:{...run.chapter3,startedAt:800000},serverNow:810150},{hard:true});assert.equal(vibration.plays,3);
+  e.runtime.acceptState({...run,startedAt:712000,chapter3:{...run.chapter3,startedAt:800000},serverNow:814600},{hard:true});assert.equal(vibration.plays,3);
 });

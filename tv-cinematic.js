@@ -7,7 +7,7 @@ import {Chapter3View} from './chapter3.js';
 import {chapter3AudioTimeline,chapter3PartyGain} from './chapter3-audio.js';
 import {chapter3Phases} from './chapter3-timing.js';
 import {chapter4Phases,CHAPTER4_VOTING_MS} from './chapter4-timing.js';
-import {Chapter4View,chapter4AudioTimeline} from './chapter4.js';
+import {Chapter4View,chapter4AudioTimeline,PACKAGE_RESULT_HOLD_MS,PACKAGE_RESULT_FADE_MS} from './chapter4.js';
 import {chapter4Audio,chapter4Score} from './chapter4-audio.js';
 import {chapter5Phases} from './chapter5-timing.js';
 import {Chapter5View} from './chapter5.js';
@@ -35,10 +35,13 @@ export class TVCinematicRuntime {
         if(this.state?.chapter7){this.chapter7Visuals.update(this.state);this.onElapsed(elapsed,this.state);return;}
         if(this.state?.chapter6){this.chapter6Visuals.update(this.state,meta);this.onElapsed(elapsed,this.state);return;}
         if(chapter5Phases.includes(this.state?.phase)){
+          const held=this.holdingPackageResult();
+          this.document.getElementById('chapter4TV').hidden=!held;this.document.getElementById('chapter5TV').hidden=held;
+          if(held){this.chapter4Visuals.update(this.state,this.state.chapter5.startedAt+elapsed);this.chapter5Audio.stop();return;}
           this.chapter5Visuals.update(this.state);this.chapter5Audio.update(this.state,meta);
           if(['chapter5-finale','chapter5-complete'].includes(this.state.phase))this.chapter6Visuals.ambient.updateCast(this.state,elapsed,this.state.chapter5.revealVersion===1?COMPLETE_CAST_END_MS+600:11000,this.chapter5Audio.player.active);
           this.document.getElementById('chapter5EnableAudio').hidden=!(this.chapter5Audio.needsUnlock()||this.chapter6Visuals.ambient.needsUnlock());
-          this.onElapsed(elapsed,this.state);return;
+          this.onElapsed(Math.max(0,elapsed-this.packageIntroDelay()),this.state);return;
         }
         if(chapter4Phases.includes(this.state?.phase)){
           this.chapter4Visuals.update(this.state);
@@ -68,8 +71,9 @@ export class TVCinematicRuntime {
     this.chapter4Visuals=new Chapter4View(document,Renderer,clock);
     this.chapter4Audio=new Player(chapter4AudioTimeline,{...clock,audioExtension:chapter4Audio,
       trackMedia:new Map([[chapter4Score.id,this.audio.soundtrack?.audio]]),canSync:()=>!this.scheduler.recovering});
-    this.chapter5Visuals=new Chapter5View(document,Renderer,clock);
-    this.chapter5Audio=new Chapter5Audio(Player,{...clock,canSync:()=>!this.scheduler.recovering});
+    const castClock={...clock,elapsedNow:()=>Math.max(0,this.scheduler.elapsedNow()-this.packageIntroDelay())};
+    this.chapter5Visuals=new Chapter5View(document,Renderer,castClock);
+    this.chapter5Audio=new Chapter5Audio(Player,{...castClock,canSync:()=>!this.scheduler.recovering});
     this.chapter6Visuals=new Chapter6View(document,Player,{...clock,canSync:()=>!this.scheduler.recovering});
     this.chapter7Visuals=new Chapter7View(document,{elapsedNow:()=>this.scheduler.elapsedNow(),canSync:()=>!this.scheduler.recovering});
     this.chapter8Visuals=new Chapter8View(document,{elapsedNow:()=>this.scheduler.elapsedNow(),canSync:()=>!this.scheduler.recovering},{Player});
@@ -102,6 +106,8 @@ export class TVCinematicRuntime {
     }
   }
   suspend(){this.scheduler.recovering=true;}
+  packageIntroDelay(){const s=this.state;return s?.phase==='chapter5-intro'&&Number.isFinite(s.chapter4?.completedAt)?Math.max(0,s.chapter4.completedAt+PACKAGE_RESULT_HOLD_MS+PACKAGE_RESULT_FADE_MS-s.chapter5.startedAt):0;}
+  holdingPackageResult(){return this.packageIntroDelay()>this.scheduler.elapsedNow();}
   elapsedNow(){return this.scheduler.elapsedNow();}
   originalElapsedNow(){return this.elapsedNow()+(this.state?.chapter6?this.state.chapter6.startedAt-this.state.startedAt:chapter5Phases.includes(this.state?.phase)?this.state.chapter5.startedAt-this.state.startedAt:chapter4Phases.includes(this.state?.phase)?this.state.chapter4.startedAt-this.state.startedAt:chapter3Phases.includes(this.state?.phase)?this.state.chapter3.startedAt-this.state.startedAt:0);}
   unlockChapter3(){if(!this.state?.chapter8&&!this.state?.chapter7&&this.chapter3Audio.startedAt===null)this.chapter3Audio.unlock();}

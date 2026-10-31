@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {wavMetadata} from './wav-metadata.js';
-import {chapter4Timeline,chapter4AudioTimeline} from '../chapter4.js';
+import {chapter4Timeline,chapter4AudioTimeline,packageResultFrame} from '../chapter4.js';
+import {castingRoles} from '../chapter5-timing.js';
 import {chapter4Scenes,CHAPTER4_VOTING_MS} from '../chapter4-timing.js';
 import {TVCinematicRuntime} from '../tv-cinematic.js';
 import {chapter4Score,chapter4ScoreVolume} from '../chapter4-audio.js';
@@ -92,6 +93,20 @@ test('voting refresh reconstructs the door/package reveal and current aggregate 
   assert.equal(e.nodes.get('chapter4-selected').textContent,'Alexandra Long Name');
   assert.equal(e.nodes.get('chapter4-result').hidden,false);
   assert.equal(e.nodes.get('chapter4-cinematic').hidden,true);
+});
+test('package result uses finalized server time for exactly three seconds of suspense and a 400ms reveal',()=>{
+  const c={completedAt:420000};assert.deepEqual(packageResultFrame(c,422999),{visible:false,opacity:0});
+  assert.deepEqual(packageResultFrame(c,423000),{visible:true,opacity:0});assert.equal(packageResultFrame(c,423200).opacity,.5);assert.equal(packageResultFrame(c,423400).opacity,1);
+  const e=setup(123200);e.runtime.acceptState({phase:'door-vote-complete',startedAt:100000,serverNow:423200,chapter4:{startedAt:300000,completedAt:420000,complete:true,voteCount:12,selectedPlayer:{id:'winner',name:'W'.repeat(24)}}},{hard:true});
+  assert.equal(e.nodes.get('chapter4-selected').textContent,'W'.repeat(24));assert.equal(e.nodes.get('chapter4-resultDetails').style.opacity,.5);
+});
+test('TV-only hold survives early package confirmation without server changes or skipping item narration',()=>{
+  const e=setup(120000),s={phase:'chapter5-intro',startedAt:100000,serverNow:421000,chapter4:{startedAt:300000,completedAt:420000,complete:true,selectedPlayer:{id:'winner',name:'Alex'}},chapter5:{startedAt:421000,audioVersion:1,roundIndex:0,round:{...castingRoles[0],startedAt:null,completedAt:null,voteCount:0},rulesStartedAt:null,castStartedAt:null,readyAt:null},package:{holderPlayer:{name:'Alex'}}};
+  s.chapter5.winners=[];
+  e.runtime.acceptState(s,{hard:true});assert.equal(e.runtime.holdingPackageResult(),true);assert.equal(e.nodes.get('chapter4-selected').textContent,'');
+  e.frame(2399);assert.equal(e.runtime.holdingPackageResult(),true);
+  e.frame(1);assert.equal(e.runtime.holdingPackageResult(),false);assert.equal(e.nodes.get('chapter5TV').hidden,false);
+  const narration=e.runtime.chapter5Audio.player.active;assert(narration);assert.equal(narration.audio.currentTime,0);assert.equal(s.chapter5.startedAt,421000);
 });
 
 test('Chapter 4 reuses the original score and reconstructs its loop from the canonical clock',()=>{
