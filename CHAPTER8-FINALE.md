@@ -233,3 +233,40 @@ Menu correction validation: 3 focused tests and the 250-file build passed. A sho
 Skip to Final Credits is a visible, enabled option in the same Ctrl+Shift+C host-only test selector as the other Chapter 8 checkpoints. Selecting it stops prior controllers, starts a version-8 finale at credits-intro, and plays TO BE CONTINUED... with the existing final song. It is an explicit authenticated test-navigation action, not a normal gameplay button. Existing after-news testing remains available.
 
 Current validation: 5 focused tests passed for exact +2000-ms photo timing and retained animations, host-only checkpoint/state recovery, uninterrupted mute/unmute with zero transition pauses/replays/seeks, and natural-end/late-refresh non-restart behavior. Production build passed (250 files). A short Chrome test opened the native menu, selected Skip to Final Credits with keyboard input and clicked Go, verified the title plus one song at normal volume, prior media cleanup, preserved players and silent phones. Evidence: logs/ch8-final-credits-checkpoint-proof.json; screenshot logs/ch8-final-credits-native-menu.png. No full regression suite, exhaustive media checks or lengthy cinematic rehearsal was run for this polish. The earlier full-rehearsal results above document version 7.
+
+## Short wife introduction (2026-10-31)
+
+Fresh finales persist `introVersion: 1` alongside polish version 8. They use
+`assets/chapter8/audio/wife-intro-short.mp3` in place of wife-01/02/03. The
+supplied file is unchanged mono MPEG Layer III, 44,100 Hz, 128 kbps, 638 frames
+(734,976 samples): **16,666.122449 ms**. SHA-256:
+`c5703848ac2b79315e82196140a164d1f774f5720566a2d29e16de2958410f26`.
+
+The three previous recordings total **44,094.693878 ms**; the fixed saving is
+**27,428.571429 ms**. The existing 1,600-ms takeover is unchanged. The same warm
+shared narrator renderer remains visible through the new recording, using its
+existing entrance fade immediately rather than the old clip's black lead. The
+old game-title beat belonged to wife-02 and is not shown over the replacement.
+
+At native intro completion the unchanged camera notification and 350-ms gap
+lead into wife-04. No new hold or clock is inserted. Nominal wife-04 entry moves
+from **47,940.680272** to **20,512.108844 ms**. Every notification, camera, narration,
+sound cue, native video gate, scare, news, Collector/credits and permanent ending
+from that interruption onward has identical properties and relative timing.
+The finite nominal cue table changes from 607,942.760984 to 580,514.189555 ms;
+the existing final image still remains indefinitely.
+
+Already-saved finales without `introVersion` retain their original cue arrays
+and indexes. Existing testing checkpoints translate their original cue IDs into
+the shortened table, preserving their destinations. All original wife files
+remain unchanged as legacy media/backups. Narration stays at volume 1 with no
+encoding, gain or playback-rate changes.
+
+Validation: 16 focused tests passed, including exact source bytes/duration,
+complete downstream cue equivalence, native gates, checkpoint destinations,
+legacy indexes, scare/news completion, credits continuity and state fencing.
+The targeted isolated Chrome rehearsal played the entire new intro and wife-04,
+refreshed during the intro, checked the warm narrator at 1920×1080 and 1280×720,
+and reached the original driveway narration with no old 01/02/03 playback or
+browser exceptions. Evidence: `logs/chapter8-short-intro-browser-report.json`
+and `logs/ch8-short-wife-1920.png` / `logs/ch8-short-wife-1280.png`.

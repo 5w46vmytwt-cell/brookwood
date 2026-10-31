@@ -8,7 +8,9 @@ export function wifePresentation(c,now){
  const returning=cue?.visual==='wife-return',warm=cue?.visual==='wife-bright'||returning&&offset>=WIFE_RELAX_AT_MS;
  const first=['wife-01','wife-13','wife-14','wife-16'].includes(cue?.id),last=['wife-04','wife-13','wife-15','wife-16'].includes(cue?.id);
  const position=first?offset:6000+offset,end=last?(first?cue.durationMs:6000+cue.durationMs):Infinity;
- const opacity=cue?.id==='handoff'?0:narratorFrame(position,end).scene;
+ // The short clip starts its existing narrator fade immediately, without the
+ // old first clip's 3.5-second black lead. All later presentations are unchanged.
+ const opacity=cue?.id==='handoff'?0:cue?.id==='wife-intro-short'?narratorFrame(3500+offset).scene:narratorFrame(position,end).scene;
  return {visible,mood:warm?'warm':'cold',title:cue?.id==='wife-02'&&offset>=GAME_TITLE_AT_MS&&offset<GAME_TITLE_END_MS?GAME_TITLE:'',offset,opacity};
 }
 export function finaleAmbientTarget(c,now){

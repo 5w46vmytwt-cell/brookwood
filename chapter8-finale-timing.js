@@ -101,8 +101,10 @@ export const version7FinaleCues=timed([...version6FinaleCues.slice(0,-1),
  {...hold('final-image','final9',1200),readyImage:'credit-9'}
 ]);
 export const finaleCues=timed(version7FinaleCues.map(c=>c.photo?{...c,durationMs:PHOTO_MS}:c));
-export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...version5FinaleCues,...version6FinaleCues,...version7FinaleCues,...finaleCues];
+export const shortWifeIntro={id:'wife-intro-short',kind:'narration',src:'/assets/chapter8/audio/wife-intro-short.mp3',durationMs:734976/44100*1000,visual:'wife-bright',volume:1};
+export const shortIntroFinaleCues=timed(finaleCues.flatMap(c=>c.id==='wife-01'?[shortWifeIntro]:['wife-02','wife-03'].includes(c.id)?[]:[c]));
+export const allFinaleCues=[...legacyFinaleCues,...version1FinaleCues,...version2FinaleCues,...version3FinaleCues,...version4FinaleCues,...version5FinaleCues,...version6FinaleCues,...version7FinaleCues,...finaleCues,...shortIntroFinaleCues];
 export const finaleDurationMs=finaleCues.at(-1).end;
-export const cuesFor=c=>c?.finale?.polishVersion===8?finaleCues:c?.finale?.polishVersion===7?version7FinaleCues:c?.finale?.polishVersion===6?version6FinaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
+export const cuesFor=c=>c?.finale?.introVersion===1?shortIntroFinaleCues:c?.finale?.polishVersion===8?finaleCues:c?.finale?.polishVersion===7?version7FinaleCues:c?.finale?.polishVersion===6?version6FinaleCues:c?.finale?.polishVersion===5?version5FinaleCues:c?.finale?.polishVersion===4?version4FinaleCues:c?.finale?.polishVersion===3?version3FinaleCues:c?.finale?.polishVersion===2?version2FinaleCues:c?.finale?.polishVersion===1?version1FinaleCues:legacyFinaleCues;
 export const finaleCue=c=>cuesFor(c)[c?.finale?.index];
 export const finaleCheckpoints=['chapter8-finale','chapter8-finale-silence','chapter8-finale-news','chapter8-finale-after-news','chapter8-finale-credits'];

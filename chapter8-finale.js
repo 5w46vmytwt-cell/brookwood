@@ -78,7 +78,7 @@ export class Chapter8Finale{
   const wife=wifePresentation(c,this.now()),speaking=cue.kind==='narration'&&this.entry?.key===f.id+':'+c.sequence&&!this.entry.ended&&!this.entry.media.paused;
   this.narrator.update({...wife,speaking,title:wife.title||'BROOKWOOD FARM',eyebrow:'BROOKWOOD FARM · CASE FILE 1996',subtitle:wife.title?'':'THE QUESTIONS REMAIN.',titleOpacity:wife.title?smooth((wife.offset-GAME_TITLE_AT_MS)/500):1});
   this.breach.hidden=!(f.polishVersion>=1&&['garage-alarm-lead','garage-announcement','garage-alarm-release'].includes(cue.id));this.breach.style.opacity=String(.86+.14*(.5+.5*Math.sin(elapsed/650)));
-  const prepareImpact=['handoff','wife-01','wife-02','wife-03','wife-04','wife-05','wife-06','wife-07','wife-08','wife-09','wife-10','wife-11','whistle-approach','living-silence'].includes(cue.id);
+  const prepareImpact=['handoff','wife-intro-short','wife-01','wife-02','wife-03','wife-04','wife-05','wife-06','wife-07','wife-08','wife-09','wife-10','wife-11','whistle-approach','living-silence'].includes(cue.id);
   const impactReady=prepareImpact&&f.polishVersion>=4?this.sound.prepareImpact():true;
   if(cue.kind==='hold'){
    this.release();
