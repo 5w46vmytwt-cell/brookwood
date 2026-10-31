@@ -5,7 +5,7 @@ import {envelopeCandidates,previousRetrievers,investigationHostAction} from './_
 import {storyCheckpoints} from '../chapter7-story-timing.js';
 import crypto from "node:crypto";
 import {issueHostSession,validHostSession} from './_host-session.js';
-import {isChapter6,withinMazeRun,mazeHostAction,makeMazeTestSelector,makeFinalCastTestSelector} from './_chapter6.js';
+import {isChapter6,withinMazeRun,mazeHostAction,makeMazeTestSelector,makePostMazeTestSelector,makeFinalCastTestSelector} from './_chapter6.js';
 import {isChapter5,makeCastingTestSelector,makeCastingVoter,withinCastingRun,confirmCastingReady,castingCandidates,castingVoterIds} from './_chapter5.js';
 import {isChapter4,withinChapter4Run,makeDoorVoter} from './_state.js';
 import {getState,updateState,resetState,send,fail,LobbyError,UNCHANGED,confirmPhoto,confirmHostPhoto,withinCinematicRun,withinChapter3Run,privateMessageAction,isChapter3,startSession,makeTestChapterSelector,publicState} from "./_state.js";
@@ -74,9 +74,9 @@ export default async function handler(req,res){
       }));return send(res,200,{ok:true});
     }
     if(req.body.action==='chapter-select'){
-      const select=broadcastCheckpoint?makeBroadcastTestSelector(req.body.checkpoint,req.body):req.body.checkpoint==='chapter5-finale'?makeFinalCastTestSelector():['chapter6','chapter6-ready'].includes(req.body.checkpoint)?makeMazeTestSelector(req.body.checkpoint):['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
+      const select=broadcastCheckpoint?makeBroadcastTestSelector(req.body.checkpoint,req.body):req.body.checkpoint==='chapter6-after-results'?makePostMazeTestSelector():req.body.checkpoint==='chapter5-finale'?makeFinalCastTestSelector():['chapter6','chapter6-ready'].includes(req.body.checkpoint)?makeMazeTestSelector(req.body.checkpoint):['package','chapter5'].includes(req.body.checkpoint)?makeCastingTestSelector(req.body.checkpoint):makeTestChapterSelector(req.body.checkpoint);
       let state;
-      await updateState(s=>{const mazeNavigation=broadcastCheckpoint||isChapter7(s)||isChapter6(s)||['chapter6','chapter6-ready','chapter5-finale'].includes(req.body.checkpoint);const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
+      await updateState(s=>{const mazeNavigation=broadcastCheckpoint||isChapter7(s)||isChapter6(s)||['chapter6','chapter6-ready','chapter6-after-results','chapter5-finale'].includes(req.body.checkpoint);const result=select(s);if(mazeNavigation)state=publicState(s);return result;});
       return send(res,200,{ok:true,...(state?{state:{...state,serverNow:Date.now()}}:{})});
     }
     if(req.body.action==='test-read-simulated'){

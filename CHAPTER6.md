@@ -160,3 +160,11 @@ Open polls now establish voteVersion 3 from the persisted session roster: every 
 Scare effect policy is shared at SCARE_GAIN=0.90. The timed silence-game scream changes from 0.75 to 0.90 at the unchanged 52000-ms cue, with its existing 3312-ms source and 200-ms execution tail. Chicken, ordinary narration and ambient gains are unchanged. The failure image has no separate impact effect; its narration remains at normal volume. The source scream MP3 has a decoded floating-point peak of +0.435 dBFS; 0.90 gain bounds its peak near -0.48 dBFS without re-encoding.
 
 Focused checks: real electorates of 6, 12, 20 and 25 remain pending through the penultimate ballot; 12 reveals only after vote 12. Duplicate, concurrent and reconnecting ballots, open legacy repair, finalized legacy preservation, mixed real/simulated and entirely simulated electorates, and authorized host closure passed in isolated memory. Browser verification reproduced 1/12 and 11/12 pending states across TV refresh, then the existing result at 12/12. No production session was reset.
+
+## AFTER MAZE RESULTS test checkpoint
+
+Ctrl+Shift+C now lists AFTER MAZE RESULTS immediately after the Maze entries and before Chapter 7 (33 entries; all previous 32 retained). The existing authenticated chapter-select action targets chapter6 step vote: laundry-room retrieval voting begins immediately, without replaying final results or skipping retrieval/return. Normal completion is unchanged.
+
+This explicit test jump preserves existing players, tokens, cast, lives and completed results. Missing prerequisites use the established test initializers; appended Maze outcomes are marked synthetic. Original source records remain private in postMazeCheckpointSource. A new generation fences stale requests, and a revision guard prevents checkpoint retries overwriting concurrent results. Phone stale-response protection now respects generation changes, so connected phones accept the test election without requiring refresh.
+
+Validation: 20/20 focused checkpoint, laundry-quorum and existing targeted tests passed. Isolated browser verification confirmed Ctrl+Shift+C, 33 chronological entries, actual checkpoint selection, prior narration cleanup, TV refresh and connected-phone voting with no premature result or browser errors.

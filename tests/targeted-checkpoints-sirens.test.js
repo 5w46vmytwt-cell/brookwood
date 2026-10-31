@@ -13,7 +13,7 @@ test('visible checkpoint menu retains every ID and places dynamic chapter7 scene
  const menu={options:[...original,...storyCheckpoints.map(([id])=>id)].map(value=>({value})),appendChild(o){this.options.splice(this.options.indexOf(o),1);this.options.push(o);}};
  const code=html.match(/\{\s*const menu=document.getElementById\('chapterSelectCheckpoint'\);[\s\S]*?\n\}/)[0];
  vm.runInNewContext(code,{document:{getElementById:()=>menu},BrookwoodTV:{chapter7Checkpoints:storyCheckpoints}});
- assert.deepEqual(menu.options.map(o=>o.value),['chapter1','chapter2','photo','chapter3','chapter4','package','chapter5','chapter5-finale','chapter6','chapter6-ready','chapter7','chapter7-after',...storyCheckpoints.map(([id])=>id),'chapter8','chapter8-puzzle','chapter8-finale','chapter8-finale-silence','chapter8-finale-news','chapter8-finale-after-news','chapter8-finale-credits']);
+ assert.deepEqual(menu.options.map(o=>o.value),['chapter1','chapter2','photo','chapter3','chapter4','package','chapter5','chapter5-finale','chapter6','chapter6-ready','chapter6-after-results','chapter7','chapter7-after',...storyCheckpoints.map(([id])=>id),'chapter8','chapter8-puzzle','chapter8-finale','chapter8-finale-silence','chapter8-finale-news','chapter8-finale-after-news','chapter8-finale-credits']);
  assert.equal(menu.options.length,new Set(menu.options.map(o=>o.value)).size);
 });
 test('native scare completion starts one persisted siren anchor, warning does not move it, and gone narration completion anchors fade',()=>{

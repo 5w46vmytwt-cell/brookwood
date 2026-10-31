@@ -1,4 +1,4 @@
-import {randomInt,createHash} from 'node:crypto';
+import {randomInt,randomUUID,createHash} from 'node:crypto';
 import {LobbyError,UNCHANGED} from './_state.js';
 import {validateChapter5,makeCastingTestSelector} from './_chapter5.js';
 import {gate,introDuration,answerWindows,games,resultRecording,TRANSITION_MS,introNumbers,phaseCues} from '../chapter6-timing.js';
@@ -232,6 +232,23 @@ export function makeMazeTestSelector(checkpoint='chapter6'){const base=makeCasti
   shiftCompletedPrerequisites(s,shift);
   if(actual){const generation=s.generation;Object.assign(s,actual);s.generation=generation;delete s.chapter6;const cast=s.chapter5;cast.castStartedAt??=cast.rounds[5].completedAt+castingCompletionMs('killer',cast.revealVersion);cast.completedAt??=cast.castStartedAt+castingFinaleMs(cast.revealVersion,cast.transitionVersion);shiftCompletedPrerequisites(s,Math.min(0,Date.now()-cast.completedAt));}s.phase='chapter5-complete';startChapter6(s);s.chapter6.testMode=true;if(checkpoint==='chapter6-ready'){s.chapter6.audioIndex=1;enter(s.chapter6,'ready',Date.now());}prepared=structuredClone(s);
  }else{Object.assign(s,structuredClone(prepared));}
+};}
+// Authenticated checkpoint only: normal completion still enters vote through
+// advanceChapter6 after its native win/loss narration ends.
+export function makePostMazeTestSelector(){const base=makeMazeTestSelector('chapter6-ready'),finishCast=makeFinalCastTestSelector(),generation=randomUUID();let prepared,sourceRevision;return s=>{
+ if(prepared){if(s.revision!==sourceRevision)throw new LobbyError(409,'The game changed. Retry the checkpoint to preserve the latest results');delete s.chapter7;delete s.chapter8;Object.assign(s,structuredClone(prepared));return;}
+ sourceRevision=s.revision;
+ if(s.players.length<6)throw new LobbyError(409,'This test checkpoint requires at least six participants');
+ const source=(s.chapter6?.testCheckpoint==='after-maze-results'?s.postMazeCheckpointSource:null)??{generation:s.generation,phase:s.phase,...Object.fromEntries(['photo','chapter3','chapter4','chapter5','chapter6','chapter7','chapter8','packageOpenedAt','macheteHolderPlayerId'].filter(k=>s[k]).map(k=>[k,structuredClone(s[k])]))};
+ if(s.chapter6)validateChapter6(s);
+ else if(s.chapter5?.rounds.some(r=>r.completedAt!==null)&&!s.chapter5.rounds.every(r=>r.completedAt!==null)){
+  finishCast(s);const c=s.chapter5;c.completedAt=c.castStartedAt+castingFinaleMs(c.revealVersion,c.transitionVersion);s.phase='chapter5-complete';shiftCompletedPrerequisites(s,Math.min(0,Date.now()-c.completedAt));startChapter6(s);
+ }else base(s);
+ s.postMazeCheckpointSource=source;s.generation=generation;s.phase='chapter6';delete s.chapter7;delete s.chapter8;
+ const c=s.chapter6,now=Math.max(Date.now(),c.startedAt);
+ const synthetic=[];for(let i=c.results.length;i<games.length;i++){const answer=i===4?'pass':games[i].correct;synthetic.push(i);c.results.push({game:i,answer,correct:true,resolvedAt:now,recording:resultRecording(i,answer,true)});}
+ Object.assign(c,{testMode:true,testCheckpoint:'after-maze-results',syntheticResults:synthetic,game:4,audioIndex:0,step:'finale',phaseAt:now,deadline:now,voterIds:[],votes:{},electorateLocked:false,selectedPlayerId:null,tokenReturnedAt:null,completedAt:null,voteClosedAt:null});delete c.voteVersion;delete c.transitionFrom;
+ advanceChapter6(s,now,true);validateChapter6(s);prepared=structuredClone(s);
 };}
 export function makeFinalCastTestSelector(){const build=makeMazeTestSelector();let prepared;return s=>{
  if(prepared){Object.assign(s,structuredClone(prepared));return;}
