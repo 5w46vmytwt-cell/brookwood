@@ -278,9 +278,9 @@ test('knowledge answer lock is exactly three authoritative seconds with no narra
  const refreshed=structuredClone(s);now=c.phaseAt+2999;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'locked');assert.throws(()=>answer(s,'red'));assert.equal(c.results.length,1);assert.equal(c.lives,3);now=c.deadline;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'result');now+=100000;advanceChapter6(refreshed);assert.equal(refreshed.chapter6.step,'result');
 });
 test('first ballot cannot discard backgrounded voters; refresh and reconnect preserve pending ballots',async()=>{
- const s=fixture();play(s);now=s.chapter6.deadline;touchMazePresence(s,'p0');touchMazePresence(s,'p1');now+=120000;advanceChapter6(s);assert.deepEqual(s.chapter6.voterIds,['p0','p1']);
- makeTokenVoter()(s,'p0','p2',request(s,'token-vote'));assert.equal(s.chapter6.step,'vote');assert.equal(s.chapter6.selectedPlayerId,null);assert.equal(chapter6Progress(s).voteCount,1);assert.equal(chapter6Progress(s).voterCount,2);
- raw=JSON.stringify(s);await call(me,{id:'p0',token:'t0'});await call(me,{id:'p1',token:'t1'});const refreshed=JSON.parse(raw);assert.deepEqual(refreshed.chapter6.votes,{p0:'p2'});assert.deepEqual(refreshed.chapter6.voterIds,['p0','p1']);validateChapter6(refreshed);
+ const s=fixture();play(s);now=s.chapter6.deadline;touchMazePresence(s,'p0');touchMazePresence(s,'p1');now+=120000;advanceChapter6(s);assert.deepEqual(s.chapter6.voterIds,s.players.map(p=>p.id));
+ makeTokenVoter()(s,'p0','p2',request(s,'token-vote'));assert.equal(s.chapter6.step,'vote');assert.equal(s.chapter6.selectedPlayerId,null);assert.equal(chapter6Progress(s).voteCount,1);assert.equal(chapter6Progress(s).voterCount,12);
+ raw=JSON.stringify(s);await call(me,{id:'p0',token:'t0'});await call(me,{id:'p1',token:'t1'});const refreshed=JSON.parse(raw);assert.deepEqual(refreshed.chapter6.votes,{p0:'p2'});assert.deepEqual(refreshed.chapter6.voterIds,s.players.map(p=>p.id));validateChapter6(refreshed);
 });
 test('vote opens with the complete observed cast and simultaneous private ballots select one winner',async()=>{
  const s=fixture();play(s);now=s.chapter6.deadline;for(const p of s.players)touchMazePresence(s,p.id);advanceChapter6(s);assert.equal(s.chapter6.voterIds.length,12);raw=JSON.stringify(s);
@@ -293,9 +293,9 @@ test('host close requires a ballot and authorization and preserves partial elect
  assert.equal((await call(host,{...request(s,'maze-close-voting'),code:'maze-host'})).status,200);const current=JSON.parse(raw);assert.equal(current.chapter6.voterIds.length,12);assert.deepEqual(current.chapter6.votes,{p0:'p1'});assert.equal(current.chapter6.selectedPlayerId,'p1');assert.equal(current.chapter6.voteClosedAt,now);assert.equal(phaseCues(current.chapter6)[0].number,30);validateChapter6(current);
  const snapshot=JSON.stringify(current);now+=100000;advanceChapter6(current);assert.notEqual(JSON.stringify(current),snapshot);assert.equal(current.chapter6.step,'waiting');
 });
-test('legacy pending electorate migration retains ballots and every previously observed phone',()=>{
+test('legacy pending electorate migration retains ballots and every registered participant',()=>{
  const s=fixture();play(s);now=s.chapter6.deadline;touchMazePresence(s,'p0');touchMazePresence(s,'p1');advanceChapter6(s);delete s.chapter6.voteVersion;s.chapter6.voterIds=['p0'];s.chapter6.votes={p0:'p2'};s.chapter6.electorateLocked=true;
- touchMazePresence(s,'p1',now+60000);assert.deepEqual(s.chapter6.voterIds,['p0','p1']);assert.deepEqual(s.chapter6.votes,{p0:'p2'});assert.equal(s.chapter6.step,'vote');validateChapter6(s);
+ touchMazePresence(s,'p1',now+60000);assert.deepEqual(s.chapter6.voterIds,s.players.map(p=>p.id));assert.deepEqual(s.chapter6.votes,{p0:'p2'});assert.equal(s.chapter6.step,'vote');validateChapter6(s);
 });
 test('new door shuffles never reproduce the fixed narration order and persist on reconstruction',()=>{
  for(let i=0;i<40;i++){const s=fixture(12,true);assert.notDeepEqual(s.chapter6.doorOrder,['red','blue','green','black']);assert.equal(new Set(s.chapter6.doorOrder).size,4);assert.deepEqual(chapter6Progress(structuredClone(s)).doorOrder,s.chapter6.doorOrder);}

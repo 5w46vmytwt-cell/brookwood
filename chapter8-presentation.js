@@ -4,7 +4,7 @@ import {narratorFrame} from './chapter7-story-timing.js';
 
 export function wifePresentation(c,now){
  const cue=finaleCue(c),f=c?.finale,offset=f?.mediaStartedAt==null?0:Math.max(0,now-f.mediaStartedAt);
- const visible=!!cue?.visual?.startsWith('wife-');
+ const visible=cue?.id!=='wife-13'&&!!cue?.visual?.startsWith('wife-');
  const returning=cue?.visual==='wife-return',warm=cue?.visual==='wife-bright'||returning&&offset>=WIFE_RELAX_AT_MS;
  const first=['wife-01','wife-13','wife-14','wife-16'].includes(cue?.id),last=['wife-04','wife-13','wife-15','wife-16'].includes(cue?.id);
  const position=first?offset:6000+offset,end=last?(first?cue.durationMs:6000+cue.durationMs):Infinity;

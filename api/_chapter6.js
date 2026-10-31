@@ -11,14 +11,12 @@ export const PRESENCE_MS=30000;
 function shuffleDoors(){const original=['red','blue','green','black'];let order;do{order=[...original];for(let i=3;i>0;i--){const j=randomInt(i+1);[order[i],order[j]]=[order[j],order[i]];}}while(order.every((id,i)=>id===original[i]));return order;}
 const realPlayers=s=>s.players.filter(p=>p.simulated!==true);
 const candidatePlayers=s=>s.chapter6.testMode?s.players:realPlayers(s);
-// REST polling cannot distinguish a backgrounded phone from a disconnect.
-// Once observed during the maze, a phone retains its opportunity to vote.
-// If no phone has been observed, conservatively include the real registered cast.
+// Polling is presence evidence, never the authoritative session electorate.
+// Upgrade only open polls; finalized historical results remain unchanged.
 function establishElectorate(s){
- const c=s.chapter6;if(c.voteVersion===2)return;
- const observed=realPlayers(s).filter(p=>Number.isFinite(c.presence[p.id])).map(p=>p.id);
- c.voterIds=[...new Set([...c.voterIds,...Object.keys(c.votes),...(observed.length?observed:realPlayers(s).map(p=>p.id))])];
- c.electorateLocked=true;c.voteVersion=2;c.voteClosedAt=null;
+ const c=s.chapter6;if(c.step!=='vote'||c.voteVersion===3)return;
+ c.voterIds=s.players.filter(p=>c.testMode||p.simulated!==true).map(p=>p.id);
+ c.electorateLocked=true;c.voteVersion=3;c.voteClosedAt=null;
 }
 export function tokenVoteWinner(s){
  const c=s.chapter6,counts=new Map();for(const id of Object.values(c.votes))counts.set(id,(counts.get(id)||0)+1);
@@ -70,7 +68,8 @@ export function validateChapter6(s){
   if(!candidates.has(c.selectedPlayerId)||!c.electorateLocked||!c.voterIds.length||(!c.voteClosedAt&&Object.keys(c.votes).length!==c.voterIds.length)||counts.get(c.selectedPlayerId)!==Math.max(...counts.values()))throw Error('Invalid token retriever.');
  }
  if(c.voteClosedAt!==undefined&&c.voteClosedAt!==null&&(!Number.isFinite(c.voteClosedAt)||c.voteClosedAt<c.startedAt||!Object.keys(c.votes).length||c.selectedPlayerId===null))throw Error('Invalid early vote closure.');
- if(c.voteVersion!==undefined&&c.voteVersion!==2)throw Error('Invalid token voting version.');
+ if(c.voteVersion!==undefined&&![2,3].includes(c.voteVersion))throw Error('Invalid token voting version.');
+ if(c.voteVersion===3){const voters=s.players.filter(p=>c.testMode||p.simulated!==true).map(p=>p.id);if(voters.length!==c.voterIds.length||voters.some(id=>!c.voterIds.includes(id)))throw Error('Incomplete token electorate.');}
  if(['selected','waiting','return-fade','return','complete'].includes(c.step)&&c.selectedPlayerId===null)throw Error('Missing token retriever.');
  if(['return-fade','return','complete'].includes(c.step)?!Number.isFinite(c.tokenReturnedAt)||c.tokenReturnedAt<(c.polishVersion===1?c.startedAt:c.phaseAt)&&c.step==='return':c.tokenReturnedAt!==null)throw Error('Invalid token confirmation.');
  if(c.step==='complete'?!Number.isFinite(c.completedAt):c.completedAt!==null)throw Error('Invalid maze completion.');
@@ -186,9 +185,9 @@ export function touchMazePresence(s,id,now=Date.now()){
 }
 export function makeTokenVoter(){return (s,id,target,b,now=Date.now())=>{
  const c=checkMazeRequest(s,b);
- if(c.step!=='vote')throw new LobbyError(409,'Token voting is not active.');
  if(s.players.find(p=>p.id===id)?.simulated===true)throw new LobbyError(403,'Only real players vote for the token.');
- if(Object.hasOwn(c.votes,id))throw new LobbyError(409,'Your vote is already recorded.');
+ if(Object.hasOwn(c.votes,id)){if(c.votes[id]===target)return UNCHANGED;throw new LobbyError(409,'Your vote is already recorded.');}
+ if(c.step!=='vote')throw new LobbyError(409,'Token voting is not active.');
  if(!candidatePlayers(s).some(p=>p.id===target)||target===c.macheteId||target===id)throw new LobbyError(400,'Choose another eligible player.');
  establishElectorate(s);
  if(!c.voterIds.includes(id))throw new LobbyError(403,'You were not connected when voting began.');
@@ -204,10 +203,8 @@ function simulatedTokenVotes(s,now){
  const c=s.chapter6,sim=s.players.filter(p=>p.simulated===true);
  if(!c.testMode||c.step!=='vote'||!sim.length)throw new LobbyError(409,'Simulated voting is only available in test mode during token voting.');
  if(sim.every(p=>Object.hasOwn(c.votes,p.id)))return UNCHANGED;
- if(Object.keys(c.votes).length)throw new LobbyError(409,'Run the simulated helper before any real ballots.');
- establishElectorate(s);const real=realPlayers(s).filter(p=>c.voterIds.includes(p.id));
- c.voterIds=[...real,...sim].map(p=>p.id);c.electorateLocked=true;
- for(const p of sim)c.votes[p.id]=candidatePlayers(s).find(q=>q.id!==p.id&&q.id!==c.macheteId).id;
+ establishElectorate(s);
+ for(const p of sim)if(!Object.hasOwn(c.votes,p.id))c.votes[p.id]=candidatePlayers(s).find(q=>q.id!==p.id&&q.id!==c.macheteId).id;
  if(Object.keys(c.votes).length===c.voterIds.length)finalizeTokenVote(s,now);
 }
 // Build Chapter 6's test prerequisite by exercising the approved Chapter 5

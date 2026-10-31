@@ -1,4 +1,5 @@
 import {NarratorScreen} from './narrator-screen.js';
+import {EndingStaticPlayback} from './chapter8-static.js';
 import {cameraFrame} from './chapter8-camera.js';
 import {Chapter8SoundDesign,soundLayers,primaryEffectGain} from './chapter8-sound-design.js';
 import {allFinaleCues,finaleCue,cameras,NEWS_SRC,SCARE_MS,GAME_TITLE_AT_MS} from './chapter8-finale-timing.js';
@@ -12,6 +13,7 @@ export class Chapter8Finale{
  constructor(document,clock,{Player=globalThis.BrookwoodAudio.Player,request,onState}={}){
   this.document=document;this.clock=clock;this.request=request;this.onState=onState;this.state=null;this.entry=null;this.epoch=0;this.blocked=false;this.message='';this.imageReady=false;
   this.player=new Player({id:'chapter8-finale',cues:[...new Map([...allFinaleCues.filter(c=>c.src&&c.kind!=='video'),...soundLayers].map(c=>[c.id,c])).values()].map(c=>({...c,type:'narration',at:0}))},{externallyDriven:true,canSync:()=>false});
+  if(globalThis.AudioContext){const native=this.player.media.get('ending-static');native?.pause();native?.removeAttribute?.('src');native?.load?.();this.player.media.set('ending-static',new EndingStaticPlayback());}
   this.sound=new Chapter8SoundDesign(this.player,()=>this.now());
   const make=(tag,cls)=>{const n=document.createElement(tag);n.className=cls;return n;};
   this.root=make('div','ch8-finale');this.root.hidden=true;document.getElementById('chapter8TV').appendChild(this.root);
@@ -42,7 +44,7 @@ export class Chapter8Finale{
   const elapsed=this.now()-f.phaseAt,expiredScare=cue.visual==='scare'&&elapsed>=cue.durationMs;
   const approachElapsed=f.mediaStartedAt===null?0:this.now()-f.mediaStartedAt;
   const waitingForVoice=cue.syncVisualToAudio&&!(this.entry?.key===f.id+':'+c.sequence&&this.entry.started);
-  const visual=waitingForVoice?'black':expiredScare?(f.polishVersion>=4?'black':'lost'):cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
+  const visual=cue.id==='wife-13'?'black':waitingForVoice?'black':expiredScare?(f.polishVersion>=4?'black':'lost'):cue.id==='whistle-approach'&&approachElapsed>=cue.cameraSwitchMs?'living':cue.visual,camera=!!cameras[visual];this.root.dataset.visual=visual;
   this.gridCanvas.hidden=!(visual==='grid'||cue.zoom);
   this.image.hidden=!camera||visual==='grid';this.video.hidden=visual!=='news';this.collector.hidden=visual!=='collector';this.interference.hidden=!camera&&visual!=='lost';
   this.shutdown.hidden=visual!=='shutdown';this.photoPaper.hidden=visual!=='credit-photo';this.finalImage.hidden=visual!=='final9';

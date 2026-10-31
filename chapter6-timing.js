@@ -1,3 +1,4 @@
+import {SCARE_GAIN} from './scare-audio.js';
 // Original contiguous MPEG frame counts at 44,100 Hz; see chapter6-media.json.
 const files=['interruption','maze_intro','doors_intro','doors_red','doors_blue','doors_green','doors_black','boxoffice_intro','boxoffice_60','boxoffice_30','boxoffice_05','boxoffice_correct','boxoffice_wrong','memory_intro','memory_question','memory_correct','memory_wrong','bridge_intro','bridge_correct','bridge_wrong','silence_intro','silence_rules','silence_whisper','silence_chicken_reaction','silence_accusation','silence_pass','silence_fail','final_win','final_lose','retriever_selected','token_return','all_lives_lost'];
 const samples=[703872,611712,1737216,365184,498816,428544,534528,908928,235008,502272,273024,562176,972288,1162368,746496,584064,763776,1949184,432000,791424,1381248,784512,336384,269568,262656,661248,640512,1194624,1119744,460800,1461888,1109376];
@@ -53,5 +54,5 @@ export const jumpVisible=(c,now)=>c.step==='silence'&&now>=c.phaseAt+(c.polishVe
 export function orderedOptions(c){const options=games[c.game].options;return c.game===0&&c.doorOrder?c.doorOrder.map(id=>options.find(option=>option[0]===id)):options;}
 
 // A 200-ms execution tail lets native ended fire; mediaDurationMs prevents replaying padding on refresh.
-export const soundEffects=[{id:'chapter6-sfx-chicken',type:'sfx',src:'/assets/chapter6/audio/ch6_sfx_chicken.mp3',mediaDurationMs:768,durationMs:968,volume:.7},{id:'chapter6-sfx-scream',type:'sfx',src:'/assets/chapter6/audio/ch6_sfx_scream.mp3',mediaDurationMs:3312,durationMs:3512,volume:.75}];
+export const soundEffects=[{id:'chapter6-sfx-chicken',type:'sfx',src:'/assets/chapter6/audio/ch6_sfx_chicken.mp3',mediaDurationMs:768,durationMs:968,volume:.7},{id:'chapter6-sfx-scream',type:'sfx',src:'/assets/chapter6/audio/ch6_sfx_scream.mp3',mediaDurationMs:3312,durationMs:3512,volume:SCARE_GAIN}];
 export const answerRevealed=(c,now)=>c.results[c.game]?.correct||c.polishVersion!==1||now>=c.phaseAt+3000;
