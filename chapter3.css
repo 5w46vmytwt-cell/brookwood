@@ -6,6 +6,8 @@
 .chapter3-layer p{font-size:clamp(17px,2vw,28px);color:#ccc;margin:0}
 #chapter3-checkPhones{font-size:clamp(32px,5vw,76px);letter-spacing:.14em;color:#fff}
 #chapter3-readCount,#chapter3-completed b{font-size:clamp(24px,3vw,46px);font-weight:normal;letter-spacing:.1em}
+#chapter3-privateMessages .chapter3-confidential{color:#D8A16B;font-size:clamp(18px,2vw,30px);font-weight:600;letter-spacing:.045em;padding:14px 22px;border:1px solid #5A4030;background:#17110C;border-radius:4px}
+#chapter3-privateMessages .chapter3-support{font-size:clamp(16px,1.6vw,23px);color:#AAA}
 .chapter3-host{position:absolute;bottom:20px;right:20px;display:flex;gap:8px;z-index:1}
 .chapter3-host input,.chapter3-host button{background:#080808;border:1px solid #333;color:#999;padding:10px}
 #chapter3HostError{position:absolute;bottom:65px;right:20px;color:#a66;font-size:12px}

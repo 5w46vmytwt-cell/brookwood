@@ -1,7 +1,7 @@
 import {PRIVATE_MESSAGES_MS,PRIVATE_CHECKPOINT_MS} from './chapter3-timing.js';
 export const chapter3Timeline={id:'chapter3',end:PRIVATE_CHECKPOINT_MS,cues:[
   {id:'photoComplete',type:'text',at:0,end:2500,visual:{target:'chapter3-photoComplete',fadeOut:[2000,2500]}},
-  {id:'checkPhones',type:'text',at:PRIVATE_MESSAGES_MS,end:PRIVATE_CHECKPOINT_MS,visual:{target:'chapter3-checkPhones',text:'CHECK YOUR PHONES.'}},
+  {id:'checkPhones',type:'text',at:PRIVATE_MESSAGES_MS,end:PRIVATE_CHECKPOINT_MS,visual:{target:'chapter3-checkPhones',text:'CHECK YOUR PHONES'}},
   {id:'privateMessages',type:'text',at:PRIVATE_CHECKPOINT_MS,end:Infinity,visual:{target:'chapter3-privateMessages'}}
 ]};
 export const chapter3CompletionTimeline={id:'chapter3-completion',end:2000,cues:[
